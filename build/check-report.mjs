@@ -23,13 +23,22 @@ check("sanity: first ever run (no previous data) only needs the minimum", () => 
 });
 check("report: warnings degrade a source, errors fail it, and either makes the run unhealthy", () => {
   const r = new Report();
-  r.ok("defillama"); r.warn("coingecko", "429, retried"); r.ok("coingecko");
+  r.ok("defillama"); r.warn("coingecko", "treasury not refreshed"); r.ok("coingecko");
   assert.equal(r.status().sources.coingecko, "degraded");
   assert.equal(r.status().healthy, false);
   r.error("coingecko", "down");
   assert.equal(r.status().sources.coingecko, "failed");
   const clean = new Report(); clean.ok("defillama");
   assert.equal(clean.status().healthy, true);
+});
+check("report: a retry that recovers is logged but never alerts", () => {
+  const r = new Report();
+  r.retry("coingecko", "HTTP 429, retried after 60s"); r.ok("coingecko");
+  const st = r.status();
+  assert.equal(st.healthy, true);
+  assert.equal(st.sources.coingecko, "ok");
+  assert.equal(st.retries.length, 1);
+  assert.equal(decideAlert(st, null), "none");
 });
 check("report: a kept dataset keeps its last success time from the previous status", () => {
   const r = new Report();

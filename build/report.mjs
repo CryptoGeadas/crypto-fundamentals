@@ -9,10 +9,15 @@ export class Report {
   constructor(now = new Date()) {
     this.startedAt = now.toISOString();
     this.problems = [];          // { level: "error" | "warning", source, message }
+    this.retries = [];           // { source, message }: hiccups that a retry recovered from; logged, never alerted
     this.sources = {};           // name → "ok" | "degraded" | "failed"
     this.datasets = {};          // name → { status: "updated" | "kept" | "unchanged", count, lastSuccess }
   }
   ok(source) { if (!this.sources[source]) this.sources[source] = "ok"; }
+  // A retry that later succeeds is not a problem: it is recorded in status.json for the log
+  // but does not make the run unhealthy, so it never opens or comments on the alert issue.
+  // If every retry fails, the caller reports an error and that alerts as usual.
+  retry(source, message) { this.retries.push({ source, message }); }
   warn(source, message) {
     this.problems.push({ level: "warning", source, message });
     if (this.sources[source] !== "failed") this.sources[source] = "degraded";
@@ -34,6 +39,7 @@ export class Report {
       sources: this.sources,
       datasets,
       problems: this.problems,
+      retries: this.retries,
     };
   }
 }

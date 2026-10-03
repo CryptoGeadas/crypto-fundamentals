@@ -1,5 +1,5 @@
 // Network helpers for the daily job: paced JSON API calls with retries.
-// Every retry or failure is recorded in the run report.
+// Retries are logged in the run report (not alerted); a call that fails after every retry throws.
 
 export const UA_API = "Mozilla/5.0 (compatible; crypto-fundamentals daily build; +https://github.com/CryptoGeadas/crypto-fundamentals)";
 const CG_GAP_MS = 8000; // the CoinGecko keyless tier throttles even at one call per ~7s
@@ -21,13 +21,13 @@ export function createNet(report) {
       try {
         res = await fetch(url, { headers: { "user-agent": UA_API, accept: "application/json" } });
       } catch (e) {
-        if (attempt < tries) { report.warn(source, `${host} unreachable (${e.cause?.code || e.message}), retried`); await sleep(10_000); continue; }
+        if (attempt < tries) { report.retry(source, `${host} unreachable (${e.cause?.code || e.message}), retried`); await sleep(10_000); continue; }
         throw new Error(`${host} unreachable after ${tries} attempts`);
       }
       if (res.ok) { report.ok(source); return res.json(); }
       if ((res.status === 429 || res.status >= 500) && attempt < tries) {
         const backoff = res.status === 429 ? 60_000 : 10_000;
-        report.warn(source, `HTTP ${res.status} from ${host}${res.status === 429 ? " (rate limited)" : ""}, retried after ${backoff / 1000}s`);
+        report.retry(source, `HTTP ${res.status} from ${host}${res.status === 429 ? " (rate limited)" : ""}, retried after ${backoff / 1000}s`);
         console.log(`  ${res.status} from ${host}, retrying in ${backoff / 1000}s (attempt ${attempt}/${tries})`);
         await sleep(backoff);
         continue;
