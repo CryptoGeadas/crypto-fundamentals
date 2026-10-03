@@ -187,28 +187,47 @@ function sourceBanner(t, area) {
 const checkLinks = (r) => (r.check?.length ? `<div class="ex check">Check elsewhere: ${r.check.map((c) =>
   `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.label)}</a>`).join(" · ")}</div>` : "");
 
+// Factsheet card: label, value with its rating, at most one line of context. The rule, any further
+// detail and the source sit in the tooltip (hover or keyboard focus), so the card stays scannable.
 function factCard(r, t) {
   const display = t && unavailable(t, r) ? "Source unavailable" : r.display;
+  const context = r.peer ? `Cheaper than ${r.peer.cheaperThan}% of ${peerLabel(r.peer)}` : r.extra;
+  const more = r.peer && r.extra ? r.extra : "";
   return `<div class="fact t-${tone(r.favour)}" tabindex="0" aria-describedby="rule-${r.id}">
       <a class="label mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>
-      <span class="vv">${esc(display)}</span>
-      ${strip(r)}
-      ${r.peer ? `<div class="ex peer">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}
-      ${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}
+      <div class="vrow"><span class="vv">${esc(display)}</span>${strip(r)}</div>
+      ${context ? `<div class="ex${r.peer ? " peer" : ""}">${esc(context)}</div>` : ""}
       ${checkLinks(r)}
-      <div class="src">Source: ${esc(r.src)}</div>
-      <div class="rule" id="rule-${r.id}" role="tooltip">${esc(r.rule)}</div>
+      <div class="rule" id="rule-${r.id}" role="tooltip">${r.hint ? `<span class="hint">${esc(r.hint)}</span>` : ""}${esc(r.rule)}${more ? `<span class="more">${esc(more)}</span>` : ""}<span class="src">Source: ${esc(r.src)}</span></div>
     </div>`;
 }
 
+// Rows with nothing to show (not tracked, not checked, doesn't apply) collapse into one line per
+// reason instead of a card each. "Unknown" rows (not in a source's records) keep their card,
+// because they carry links to check elsewhere.
+const isGap = (t, r) => !r.notOnRecord && (r.notApplicable || (r.value == null && (r.missing || !r.unrated)) || unavailable(t, r));
+function gapLine(t, rows) {
+  const groups = new Map();
+  for (const r of rows) {
+    const src = r.src.split(",")[0];
+    const why = unavailable(t, r) ? `${src} unavailable` : r.notApplicable ? r.display : r.missing ? `${r.display} (${src})` : `No data from ${src}`;
+    groups.set(why, [...(groups.get(why) || []), r]);
+  }
+  return `<p class="gaps">${[...groups].map(([why, rs]) => `<span class="gw">${esc(why)}:</span> ${rs.map((r) =>
+    `<a class="mlink" href="methodology.html#m-${r.id}" title="${esc(r.rule)}">${esc(r.label)}</a>`).join(", ")}`).join("<br>")}</p>`;
+}
+
 function factsheet(t, a) {
-  return Object.values(a.byArea).map((d) => `<section class="sec" aria-labelledby="sec-${d.id}" id="area-${d.id}">
+  return Object.values(a.byArea).map((d) => {
+    const cards = d.rows.filter((r) => !isGap(t, r)), gaps = d.rows.filter((r) => isGap(t, r));
+    return `<section class="sec" aria-labelledby="sec-${d.id}" id="area-${d.id}">
       <div class="sec-head t-${areaTone(d.avg)}"><span class="label" id="sec-${d.id}">${esc(d.name)}</span><span class="verdict">${d.word}</span></div>
       ${sourceBanner(t, d.id)}
-      ${LEADS[d.id] ? `<p class="lead">${esc(LEADS[d.id](t, a))}</p>` : ""}
-      <div class="facts">${d.rows.map((r) => factCard(r, t)).join("")}</div>
+      ${cards.length ? `<div class="facts">${cards.map((r) => factCard(r, t)).join("")}</div>` : ""}
+      ${gaps.length ? gapLine(t, gaps) : ""}
       ${CHARTS[d.id] ? CHARTS[d.id](t) : ""}
-    </section>`).join("");
+    </section>`;
+  }).join("");
 }
 
 // Table view: one dense scorecard (prototype variant A), same data and rules as the factsheet.
@@ -216,7 +235,7 @@ function scoreTable(t, a) {
   const rows = Object.values(a.byArea).map((d) => `
     <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}</th></tr>
     ${d.rows.map((r) => `<tr>
-      <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}${checkLinks(r)}</td>
+      <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra || r.hint ? `<div class="ex">${esc(r.extra || r.hint)}</div>` : ""}${checkLinks(r)}</td>
       <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>
       <td class="rt" title="${esc(r.rule)}">${strip(r)}${r.peer ? `<div class="ex">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}</td>
       <td class="src">${esc(r.src)}</td></tr>`).join("")}`).join("");

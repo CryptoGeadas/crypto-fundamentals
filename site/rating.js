@@ -67,7 +67,7 @@ export const fmt = {
   },
   pct: (v, d = 0) => (v == null || !Number.isFinite(v) ? "—" : v.toFixed(d) + "%"),
   // Enough decimals that a value never rounds onto a band edge it sits below (1.47 must not read "1.5×").
-  x: (v) => (v == null || !Number.isFinite(v) ? "—" : (v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(1) : v.toFixed(2)) + "×"),
+  x: (v) => (v == null || !Number.isFinite(v) ? "—" : (v >= 100 ? Math.round(v).toLocaleString("en-US") : v >= 10 ? v.toFixed(1) : v.toFixed(2)) + "×"),
   chg: (v) => (v == null || !Number.isFinite(v) ? "—" : (v > 0 ? "+" : "") + v.toFixed(1) + "%"),
 };
 
@@ -167,7 +167,7 @@ const UNLOCK_METRICS = [
       return a != null && max && u.circ != null ? Math.max(0, ((max - u.circ - a) / max) * 100) : null;
     },
     show: (v) => fmt.pct(v, 1) + " of max supply",
-    extra: () => "Neither circulating nor scheduled within a year: either unlocks later, or has no published schedule",
+    hint: "Neither circulating nor scheduled within a year: either unlocks later, or has no published schedule",
   },
 ];
 METRICS.push(...UNLOCK_METRICS);
@@ -184,13 +184,13 @@ const BUSINESS_METRICS = [
       ? `From the protocol, the business behind the token${t.llama.chainFees?.d30 != null ? `; the chain itself earned ${fmt.usd(t.llama.chainFees.d30)} in gas fees` : ""}` : "") },
   { id: "revenue30", area: "traction", label: "Revenue, last 30 days", yard: "shown", src: "DefiLlama revenue",
     val: (t) => t.llama?.revenue?.d30 ?? null, show: (v) => fmt.usd(v),
-    extra: () => "The part of fees the protocol or chain keeps, rather than paying out to liquidity providers or validators" },
+    hint: "The part of fees the protocol or chain keeps, rather than paying out to liquidity providers or validators" },
   { id: "feesTrend", precision: 1, area: "traction", label: "Fees trend", yard: "fixed", src: "DefiLlama fees",
     val: (t) => pctChange(t.llama?.fees?.d30, t.llama?.fees?.prev), show: (v) => fmt.chg(v),
-    extra: () => "Last 30 days against the 30 days ending 90 days earlier" },
+    hint: "Last 30 days against the 30 days ending 90 days earlier" },
   { id: "revenueTrend", precision: 1, area: "traction", label: "Revenue trend", yard: "fixed", src: "DefiLlama revenue",
     val: (t) => pctChange(t.llama?.revenue?.d30, t.llama?.revenue?.prev), show: (v) => fmt.chg(v),
-    extra: () => "Last 30 days against the 30 days ending 90 days earlier" },
+    hint: "Last 30 days against the 30 days ending 90 days earlier" },
   { id: "tvlTrend", precision: 1, area: "traction", label: "TVL trend (30 days)", yard: "fixed", src: "DefiLlama TVL",
     val: (t) => pctChange(t.llama?.tvl?.now, t.llama?.tvl?.prev), show: (v) => fmt.chg(v),
     extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today` : "") },
@@ -227,7 +227,7 @@ const VALUATION_METRICS = [
     extra: (t) => (t.llama?.revenue?.d30 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.revenue.d30 * 12)} of yearly revenue` : "") },
   { id: "mcapToTvl", area: "valuation", label: "Market cap ÷ TVL", yard: "fixed", src: "CoinGecko, DefiLlama TVL",
     val: (t) => (t.marketCap && t.llama?.tvl?.now ? t.marketCap / t.llama.tvl.now : null), show: (v) => fmt.x(v),
-    extra: () => "How much the market pays for each dollar locked in it" },
+    hint: "How much the market pays for each dollar locked in it" },
 ];
 METRICS.push(...VALUATION_METRICS);
 
@@ -235,7 +235,7 @@ METRICS.push(...VALUATION_METRICS);
 // t.security from site/goplus.js: { chain, home, holderCount, holders: [{percent, contract, locked, tag}], flags: [...] }
 // t.defiExtra from data/defi.json: { hacks: [...], audits: { count, links } }
 const nativeAsset = (t) => (!Object.keys(t.contracts || {}).length
-  ? { display: "Native asset", rule: "Not rated: a chain's native coin has no token contract to inspect." } : null);
+  ? { display: "Native asset", notApplicable: true, rule: "Not rated: a chain's native coin has no token contract to inspect." } : null);
 const notChecked = (t) => nativeAsset(t) || (t.security === undefined ? null
   : !t.security ? { missing: true, display: "Not checked", rule: "GoPlus could not check this token's contract (unsupported chain or no answer)." } : null);
 const top10 = (t) => (t.security?.holders?.length ? t.security.holders.reduce((a, h) => a + (h.percent || 0), 0) : null);
@@ -334,8 +334,8 @@ export function rate(m, token, rules) {
   // Rate at the precision shown, so a value can never display on one side of a band edge and rate on the other.
   const v = raw != null && m.precision != null ? Number(raw.toFixed(m.precision)) : raw;
   const out = { id: m.id, area: m.area, label: m.label, src: m.src, value: v,
-    display: skip ? skip.display : v == null ? "No data" : m.show(v), extra: m.extra ? m.extra(token) : "",
-    level: null, word: null, favour: 0, rule: "", unrated: !!skip, missing: Boolean(skip?.missing), notOnRecord: Boolean(skip?.notOnRecord), check: [] };
+    display: skip ? skip.display : v == null ? "No data" : m.show(v), extra: m.extra ? m.extra(token) : "", hint: m.hint || "", // hint: a fixed definition, shown in the tooltip
+    level: null, word: null, favour: 0, rule: "", unrated: !!skip, missing: Boolean(skip?.missing), notOnRecord: Boolean(skip?.notOnRecord), notApplicable: Boolean(skip?.notApplicable), check: [] };
   // Free places to check by hand, offered only where the source has nothing.
   if ((skip?.notOnRecord || (!skip && v == null)) && m.check) out.check = m.check(token);
   if (skip) { out.rule = skip.rule; return out; }
