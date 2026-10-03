@@ -6,7 +6,33 @@
 
 export const LEVELS = ["Very low", "Low", "Neutral", "High", "Very high"];
 
-export const AREAS = [{ id: "dilution", name: "Dilution" }];
+export const AREAS = [
+  { id: "valuation", name: "Valuation" },
+  { id: "traction", name: "Traction" },
+  { id: "accrual", name: "Value accrual" },
+  { id: "dilution", name: "Dilution" },
+  { id: "holders", name: "Holders" },
+  { id: "market", name: "Market health" },
+  { id: "treasury", name: "Treasury" },
+  { id: "security", name: "Security" },
+  { id: "dev", name: "Development" },
+  { id: "backers", name: "Backers & age" },
+];
+
+// Which areas apply to each token type (decision 2 and the PRD metric set).
+export const AREAS_BY_TYPE = {
+  defi: ["valuation", "traction", "accrual", "dilution", "holders", "market", "treasury", "security", "dev", "backers"],
+  chain: ["valuation", "traction", "dilution", "holders", "market", "treasury", "security", "dev", "backers"],
+  narrative: ["dilution", "holders", "market", "security", "dev", "backers"],
+  meme: ["dilution", "holders", "market", "security"],
+};
+
+// Areas a token actually gets: its type's areas, plus value accrual for a chain whose
+// protocol side earns fees (decision 14).
+export function areasFor(type, alsoDefi = false) {
+  const base = AREAS_BY_TYPE[type] || AREAS_BY_TYPE.narrative;
+  return alsoDefi && !base.includes("accrual") ? AREAS.map((a) => a.id).filter((id) => base.includes(id) || id === "accrual") : base;
+}
 
 // ---------------------------------------------------------------- formatters
 export const fmt = {
@@ -112,16 +138,27 @@ export function rate(m, token, rules) {
   return out;
 }
 
-export function analyse(token, rules) {
-  const rows = METRICS.map((m) => rate(m, token, rules));
+// Coverage badge: share of the applicable metrics that have data (decision 10).
+// Memecoins are always "Market data only": fundamentals do not apply to them.
+export function coverageOf(rows, type) {
+  const share = rows.length ? rows.filter((r) => r.value != null || r.unrated).length / rows.length : 0;
+  const level = type === "meme" ? "Market data only" : share >= 0.8 ? "Full" : share >= 0.45 ? "Partial" : "Market data only";
+  return { level, share: Math.round(share * 100) };
+}
+
+export function analyse(token, rules, { type = "narrative", alsoDefi = false } = {}) {
+  const areas = areasFor(type, alsoDefi);
+  const rows = METRICS.filter((m) => areas.includes(m.area) && (!m.types || m.types.includes(type) || (alsoDefi && m.types.includes("defi"))))
+    .map((m) => rate(m, token, rules));
   const byArea = {};
-  for (const a of AREAS) {
+  for (const a of AREAS.filter((x) => areas.includes(x.id))) {
     const rs = rows.filter((r) => r.area === a.id);
+    if (!rs.length) continue; // area applies but has no metrics yet
     const rated = rs.filter((r) => r.level != null);
     const avg = rated.length ? rated.reduce((s, r) => s + r.favour, 0) / rated.length : null;
-    byArea[a.id] = { name: a.name, rows: rs, avg, word: areaWord(avg, rs) };
+    byArea[a.id] = { id: a.id, name: a.name, rows: rs, avg, word: areaWord(avg, rs) };
   }
-  return { rows, byArea };
+  return { rows, byArea, areas, coverage: coverageOf(rows, type) };
 }
 
 export function areaWord(avg, rows = []) {
@@ -131,3 +168,5 @@ export function areaWord(avg, rows = []) {
 
 // Tone class for colour: g2/g1 good, n neutral, b1/b2 bad.
 export const tone = (f) => (f >= 2 ? "g2" : f >= 1 ? "g1" : f <= -2 ? "b2" : f <= -1 ? "b1" : "n");
+// Tone for an area verdict from its average favour (same cut-offs as areaWord).
+export const areaTone = (avg) => (avg == null ? "n" : avg >= 1 ? "g2" : avg >= 0.34 ? "g1" : avg > -0.34 ? "n" : avg > -1 ? "b1" : "b2");

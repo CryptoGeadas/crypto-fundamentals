@@ -11,7 +11,9 @@ export async function fetchToken(id) {
   try {
     res = await fetch(url, { headers: { accept: "application/json" } });
   } catch {
-    throw new SourceError("CoinGecko could not be reached. Check your connection and try again.");
+    // CoinGecko's "too many requests" answers carry no CORS header, so the browser reports them as
+    // a network failure: a rate limit and being offline look identical from here.
+    throw new SourceError("CoinGecko didn't answer. This is usually its free-tier rate limit (too many lookups in a minute), or you may be offline. Wait a minute and try again.", 0);
   }
   if (res.status === 429) throw new SourceError("CoinGecko is rate-limiting requests right now. Wait a minute and try again.", 429);
   if (!res.ok) throw new SourceError(`CoinGecko answered with an error (HTTP ${res.status}).`, res.status);
@@ -36,6 +38,12 @@ export function normalise(c) {
     circulatingSupply: num(md.circulating_supply),
     totalSupply: num(md.total_supply),
     maxSupply: num(md.max_supply),
+    categories: (c.categories || []).filter(Boolean),
+    // chain → contract address; empty for native assets (BTC, ETH, SOL…)
+    // Real addresses only: EVM 0x…, base58 (Solana and similar), or Move-style 0x…::module::Name.
+    // Drops registry ids such as "asset_registry%2F1000624".
+    contracts: Object.fromEntries(Object.entries(c.platforms || {}).filter(([k, v]) => k && typeof v === "string" &&
+      (/^0x[0-9a-fA-F]{40}$/.test(v) || /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(v) || /^0x[0-9a-fA-F]+::\w+::\w+$/.test(v)))),
     fetchedAt: new Date(),
   };
 }

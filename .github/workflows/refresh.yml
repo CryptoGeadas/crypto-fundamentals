@@ -29,7 +29,7 @@ jobs:
           node-version: 22
 
       - name: Check the build logic before touching data
-        run: node build/check-universe.mjs && node build/check-report.mjs
+        run: for f in build/check-*.mjs; do node "$f" || exit 1; done
 
       # Writes data only when it passes its sanity checks; always writes status.json.
       # A crash still writes status.json and then fails the job (GitHub's failure email).

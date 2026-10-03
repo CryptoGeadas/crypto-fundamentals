@@ -7,7 +7,8 @@ export const MAX_RANK = 1500;   // beyond TOP_N, only tokens with a DefiLlama en
 // never fuzzy name matching (decision 10).
 //   p: protocol slug to query (a parent protocol wins over its children)
 //   c: chain name, when the token is a chain's native token
-export function llamaIndex({ protocols = [], parents = [], chains = [] }) {
+//   f: 1 when its protocol earned fees in the last 30 days; fc: 1 when its chain did (see feeEarners)
+export function llamaIndex({ protocols = [], parents = [], chains = [], fees = { protocol: new Set(), chain: new Set() } }) {
   const idx = {};
   const put = (gecko, key, value) => {
     if (!gecko) return;
@@ -18,7 +19,29 @@ export function llamaIndex({ protocols = [], parents = [], chains = [] }) {
   for (const p of protocols) if (!p.parentProtocol) put(p.gecko_id, "p", p.slug);
   for (const p of protocols) if (p.parentProtocol) put(p.gecko_id, "p", p.slug);
   for (const c of chains) put(c.gecko_id, "c", c.name);
+  for (const g of fees.protocol) if (idx[g]?.p) idx[g].f = 1;
+  for (const g of fees.chain) if (idx[g]?.c) idx[g].fc = 1;
   return idx;
+}
+
+// gecko_ids whose DefiLlama protocol or chain earned fees in the last 30 days. Fee rows are filed
+// under child protocols ("Aave V3") and chains ("chain#solana"), so they are mapped back to the
+// token through the child's own gecko_id, its parent protocol, or the chain (prototype finding).
+// Returns two sets, because "the chain earns fees" (ETH, SOL) and "a protocol earns fees" (Aave,
+// Hyperliquid's exchange) mean different things for the type rule.
+export function feeEarners({ feeRows = [], protocols = [], parents = [], chains = [] }) {
+  const parentGecko = Object.fromEntries(parents.map((p) => [p.id, p.gecko_id]));
+  const byId = Object.fromEntries(protocols.map((p) => [String(p.id), p.gecko_id || parentGecko[p.parentProtocol] || null]));
+  const chainGecko = Object.fromEntries(chains.map((c) => ["chain#" + c.name.toLowerCase(), c.gecko_id]));
+  const protocol = new Set(), chain = new Set();
+  for (const r of feeRows) {
+    if (!((r.total30d || 0) > 0)) continue;
+    const id = String(r.defillamaId ?? r.id ?? "");
+    if (id.toLowerCase().startsWith("chain#")) { const g = chainGecko[id.toLowerCase()]; if (g) chain.add(g); continue; }
+    const g = byId[id] || parentGecko[id];
+    if (g) protocol.add(g);
+  }
+  return { protocol, chain };
 }
 
 // Decision 18: top 300 by market cap, plus any token ranked 301–1,500 with any DefiLlama entry.

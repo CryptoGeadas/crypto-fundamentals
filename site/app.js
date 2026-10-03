@@ -1,4 +1,5 @@
-import { analyse, fmt, tone } from "./rating.js";
+import { analyse, fmt, tone, areaTone } from "./rating.js";
+import { classify, TYPES } from "./classify.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
 import { addressKind, buildAddressIndex, lookupAddress, searchUniverse, tickerClashes } from "./search.js";
@@ -9,7 +10,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
-  universe: null, status: null, byId: new Map(), addrIdx: new Map(),
+  universe: null, status: null, idmap: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
 const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-solana", "arbitrum"];
@@ -29,13 +30,41 @@ function outsideBanner(t, via) {
     Check this is the token you mean.</div>`;
 }
 
-function identity(t) {
+// Readable chain names for CoinGecko platform ids.
+const CHAIN_NAMES = { ethereum: "Ethereum", "binance-smart-chain": "BNB Chain", "arbitrum-one": "Arbitrum", "polygon-pos": "Polygon",
+  "optimistic-ethereum": "Optimism", avalanche: "Avalanche", base: "Base", solana: "Solana", "arbitrum-nova": "Arbitrum Nova" };
+const chainName = (k) => CHAIN_NAMES[k] || k.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const CHAIN_ORDER = ["ethereum", "solana", "base", "arbitrum-one", "binance-smart-chain", "polygon-pos", "optimistic-ethereum", "avalanche"];
+const chainRank = (k) => (CHAIN_ORDER.includes(k) ? CHAIN_ORDER.indexOf(k) : CHAIN_ORDER.length);
+
+function contractsRow(t) {
+  const entries = Object.entries(t.contracts || {}).sort((a, b) => chainRank(a[0]) - chainRank(b[0]));
+  if (!entries.length) return `<div class="contracts"><span class="label">Contract</span><span class="muted">Native asset of its own chain, no token contract</span></div>`;
+  const shown = entries.slice(0, 4);
+  const more = entries.length - shown.length;
+  return `<div class="contracts"><span class="label">Official contracts</span>
+    ${shown.map(([k, a]) => `<button class="addr" data-copy="${esc(a)}" title="Copy ${esc(a)}">${esc(chainName(k))} <code>${esc(a.slice(0, 6))}…${esc(a.slice(-4))}</code></button>`).join("")}
+    ${more > 0 ? `<span class="muted">+${more} more chain${more > 1 ? "s" : ""}</span>` : ""}</div>`;
+}
+
+function identity(t, a, cls) {
+  const ti = TYPES[cls.type];
+  const covTone = a.coverage.level === "Full" ? "badge-success" : a.coverage.level === "Partial" ? "badge-warning" : "badge-error";
+  const covRule = cls.type === "meme" ? "Memecoins have no fundamentals to cover: only market, holder and contract checks apply."
+    : `${a.coverage.share}% of the metrics that apply to this token have data. Full ≥ 80%, Partial ≥ 45%.`;
   return `<div class="idrow">
       ${t.img ? `<img class="logo" src="${esc(t.img)}" alt="" width="44" height="44">` : ""}
       <div><h2>${esc(t.name)}<span class="sym">${esc(t.sym)}</span></h2>
-        ${t.rank ? `<div class="badges"><span class="badge badge-info">Rank #${t.rank}</span></div>` : ""}</div>
+        <div class="badges">
+          <span class="badge badge-accent tip" tabindex="0" data-tip="${esc(ti.rule)}${cls.alsoDefi ? " Its protocol side also earns fees, so DeFi metrics are shown too." : ""}">${ti.label}${cls.alsoDefi ? " + DeFi" : ""}</span>
+          <span class="badge ${covTone} tip" tabindex="0" data-tip="${esc(covRule)}">Coverage: ${a.coverage.level}</span>
+          ${t.rank ? `<span class="badge badge-info">Rank #${t.rank}</span>` : ""}
+        </div></div>
       <div class="px"><div class="p">${fmt.price(t.price)}</div><div class="c">30d ${fmt.chg(t.change30d)}</div></div>
     </div>
+    ${contractsRow(t)}
+    ${cls.type === "meme" ? `<div class="memenote" role="note"><b>Fundamental analysis does not apply to memecoins.</b> There is no business, revenue or product to assess, so only supply, holder, market and contract checks are shown.</div>` : ""}
     <div class="kpis">${[["Market cap", fmt.usd(t.marketCap)], ["Fully diluted value", fmt.usd(t.fdv)],
       ["Circulating supply", fmt.num(t.circulatingSupply)], ["Max supply", t.maxSupply ? fmt.num(t.maxSupply) : "No cap"]]
       .map(([l, v]) => `<div class="kpi"><span class="label">${l}</span><b>${v}</b></div>`).join("")}</div>`;
@@ -51,30 +80,44 @@ function leadSentence(t, a) {
   return parts.length ? parts.join("; ") + "." : "CoinGecko has no supply data for this token.";
 }
 
-function factsheet(t, a) {
-  const d = a.byArea.dilution;
-  const areaTone = d.avg == null ? "n" : d.avg >= 1 ? "g2" : d.avg >= 0.34 ? "g1" : d.avg > -0.34 ? "n" : d.avg > -1 ? "b1" : "b2";
-  const cards = d.rows.map((r) => `
-    <div class="fact t-${tone(r.favour)}" tabindex="0" aria-describedby="rule-${r.id}">
+// One plain sentence of facts that opens each area (Factsheet layout).
+const LEADS = { dilution: leadSentence };
+
+function factCard(r) {
+  return `<div class="fact t-${tone(r.favour)}" tabindex="0" aria-describedby="rule-${r.id}">
       <span class="label">${esc(r.label)}</span>
       <span class="vv">${esc(r.display)}</span>
       ${strip(r)}
       ${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}
       <div class="src">Source: ${esc(r.src)}</div>
       <div class="rule" id="rule-${r.id}" role="tooltip">${esc(r.rule)}</div>
-    </div>`).join("");
-  return `<section class="sec" aria-labelledby="sec-dilution">
-      <div class="sec-head t-${areaTone}"><span class="label" id="sec-dilution">Dilution</span><span class="verdict">${d.word}</span></div>
-      <p class="lead">${esc(leadSentence(t, a))}</p>
-      <div class="facts">${cards}</div>
-    </section>`;
+    </div>`;
+}
+
+function factsheet(t, a) {
+  return Object.values(a.byArea).map((d) => `<section class="sec" aria-labelledby="sec-${d.id}">
+      <div class="sec-head t-${areaTone(d.avg)}"><span class="label" id="sec-${d.id}">${esc(d.name)}</span><span class="verdict">${d.word}</span></div>
+      ${LEADS[d.id] ? `<p class="lead">${esc(LEADS[d.id](t, a))}</p>` : ""}
+      <div class="facts">${d.rows.map(factCard).join("")}</div>
+    </section>`).join("");
 }
 
 function renderToken(t, via) {
-  const a = analyse(t, HOUSE_RULES);
-  $("#view").innerHTML = outsideBanner(t, via) + identity(t) + factsheet(t, a);
+  const cls = classify(state.idmap?.[t.id], t.categories);
+  const a = analyse(t, HOUSE_RULES, cls);
+  $("#view").innerHTML = outsideBanner(t, via) + identity(t, a, cls) + factsheet(t, a);
+  document.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = () => copyAddress(b)));
   document.title = `${t.sym} · Token Fundamentals`;
   renderFoot(t);
+}
+
+async function copyAddress(btn) {
+  try {
+    await navigator.clipboard.writeText(btn.dataset.copy);
+    btn.classList.add("copied");
+    btn.setAttribute("aria-label", "Copied");
+    setTimeout(() => btn.classList.remove("copied"), 1400);
+  } catch { window.prompt("Copy the address:", btn.dataset.copy); }
 }
 
 const ISSUES_URL = "https://github.com/CryptoGeadas/crypto-fundamentals/issues?q=is%3Aissue+is%3Aopen+label%3Apipeline";
@@ -224,11 +267,11 @@ async function start() {
     q.disabled = true;
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
-  // Health of the daily job: optional, the page works without it.
-  try {
-    const s = await fetch("./data/status.json", { cache: "no-cache" });
-    if (s.ok) state.status = await s.json();
-  } catch { state.status = null; }
+  // Optional data: the page still works without them (type falls back to the meme/narrative rule).
+  const [status, idmap] = await Promise.all(["status.json", "idmap.json"].map((f) =>
+    fetch(`./data/${f}`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+  state.status = status;
+  state.idmap = idmap?.map || null;
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;

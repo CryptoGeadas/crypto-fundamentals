@@ -7,7 +7,7 @@
 // Test the alert flow: SIMULATE_PROBLEM=1 node build/build-universe.mjs
 
 import { writeFile, readFile, mkdir } from "node:fs/promises";
-import { llamaIndex, buildUniverse, TOP_N, MAX_RANK } from "./universe-lib.mjs";
+import { llamaIndex, buildUniverse, feeEarners, TOP_N, MAX_RANK } from "./universe-lib.mjs";
 import { Report, sanityCheck } from "./report.mjs";
 
 const UA = "Mozilla/5.0 (compatible; crypto-fundamentals daily build; +https://github.com/CryptoGeadas/crypto-fundamentals)";
@@ -66,12 +66,15 @@ async function build(prev) {
   console.log("DefiLlama protocols, parents and chains ...");
   let llama;
   try {
-    const [protocols, lite, chains] = await Promise.all([
+    const [protocols, lite, chains, feeOverview] = await Promise.all([
       getJson("https://api.llama.fi/protocols", "defillama"),
       getJson("https://api.llama.fi/lite/protocols2", "defillama"),
       getJson("https://api.llama.fi/v2/chains", "defillama"),
+      getJson("https://api.llama.fi/overview/fees?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true", "defillama"),
     ]);
-    llama = llamaIndex({ protocols, parents: lite.parentProtocols || [], chains });
+    const parents = lite.parentProtocols || [];
+    const fees = feeEarners({ feeRows: feeOverview.protocols || [], protocols, parents, chains });
+    llama = llamaIndex({ protocols, parents, chains, fees });
   } catch (e) {
     report.error("defillama", `${e.message}; universe and identifier map kept from the last good run.`);
     report.datasets.universe = { status: "kept" };

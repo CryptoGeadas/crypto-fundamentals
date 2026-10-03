@@ -15,9 +15,5 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Shared rating module gives the expected results in Node
-        run: node build/check-rating.mjs
-      - name: Universe build and search behave as specified
-        run: node build/check-universe.mjs
-      - name: Run report, sanity checks and alert decisions behave as specified
-        run: node build/check-report.mjs
+      - name: Every check suite (build/check-*.mjs) passes
+        run: for f in build/check-*.mjs; do echo "== $f"; node "$f" || exit 1; done
