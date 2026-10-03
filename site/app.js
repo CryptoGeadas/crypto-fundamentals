@@ -4,14 +4,15 @@ import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
 import { addressKind, buildAddressIndex, lookupAddress, searchUniverse, tickerClashes } from "./search.js";
 import { resolveAddress } from "./resolve.js";
-import { unlockChart } from "./charts.js";
+import { unlockChart, feesChart } from "./charts.js";
+import { loadLlama } from "./llama.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
-  universe: null, status: null, idmap: null, unlocks: null, byId: new Map(), addrIdx: new Map(),
+  universe: null, status: null, idmap: null, unlocks: null, defi: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
 const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-solana", "arbitrum"];
@@ -89,9 +90,28 @@ function leadSentence(t, a) {
 }
 
 // One plain sentence of facts that opens each area (Factsheet layout).
-const LEADS = { dilution: leadSentence };
+const money = (v) => fmt.usd(v);
+function tractionLead(t, a) {
+  const L = t.llama, f = a.rows.find((r) => r.id === "feesTrend"), tv = a.rows.find((r) => r.id === "tvlTrend");
+  const parts = [];
+  if (L?.fees?.d30 != null) parts.push(`${t.name} earned ${money(L.fees.d30)} in fees over the last 30 days${f?.value != null ? ` (${f.display} against the same window three months earlier)` : ""}${L.revenue?.d30 != null ? `, of which ${money(L.revenue.d30)} was revenue` : ""}`);
+  if (L?.tvl?.now) parts.push(`${money(L.tvl.now)} is locked in it${tv?.value != null ? ` (${tv.display} in 30 days)` : ""}`);
+  if (L?.chain?.dex30) parts.push(`${money(L.chain.dex30)} traded on its DEXs in 30 days`);
+  return parts.length ? parts.join("; ") + "." : "DefiLlama returned no fee or TVL data for it.";
+}
+function accrualLead(t, a) {
+  const r = a.rows.find((x) => x.id === "holdersShare");
+  if (r?.value == null) return "DefiLlama has no holders-revenue data for it, so it is unclear whether fees reach token holders.";
+  return r.value === 0 ? `None of ${t.name}'s fees reached token holders in the last 30 days, according to DefiLlama.` : `${r.display} of ${t.name}'s fees reached token holders in the last 30 days, through buybacks, burns or staking payouts.`;
+}
+function treasuryLead(t) {
+  const tr = t.llama?.treasury;
+  return tr ? `The treasury holds ${money(tr.other)} in other assets and ${money(tr.own)} in ${t.sym}.` : "DefiLlama does not track a treasury for it.";
+}
+const LEADS = { dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
 // Charts shown under an area's facts.
 const CHARTS = {
+  traction: (t) => (t.llama?.fees?.monthly?.length ? `<div class="chartbox"><span class="label">Fees and revenue per month (DefiLlama)</span>${feesChart(t.llama.fees.monthly, t.llama.revenue?.monthly)}</div>` : ""),
   dilution: (t) => (t.unlocks?.detail?.monthly ? `<div class="chartbox"><span class="label">Unlock schedule (DefiLlama)</span>${unlockChart(t.unlocks.detail, t.unlocks.max || t.unlocks.detail.maxSupply)}</div>` : ""),
 };
 
@@ -188,9 +208,11 @@ async function load(id, via) {
   setUrl(id);
   renderLoading();
   try {
+    const entry = state.idmap?.[id];
     const [t, detail] = await Promise.all([fetchToken(id), loadUnlockDetail(id)]);
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
+    t.llama = await loadLlama(id, entry, state.defi?.[id], classify(entry, t.categories)).catch(() => null);
     if (seq === state.loadSeq) renderToken(t, via);
   } catch (e) {
     if (seq === state.loadSeq) renderError(e.message || "Something went wrong.", () => load(id, via));
@@ -292,11 +314,12 @@ async function start() {
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
   // Optional data: the page still works without them (type falls back to the meme/narrative rule).
-  const [status, idmap, unlocks] = await Promise.all(["status.json", "idmap.json", "unlocks.json"].map((f) =>
+  const [status, idmap, unlocks, defi] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json"].map((f) =>
     fetch(`./data/${f}`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
   state.status = status;
   state.idmap = idmap?.map || null;
   state.unlocks = unlocks?.tokens || null;
+  state.defi = defi?.tokens || null;
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;

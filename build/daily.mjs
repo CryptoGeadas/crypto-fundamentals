@@ -5,12 +5,14 @@
 //
 // Run: node build/daily.mjs            (a few minutes; CoinGecko calls are paced)
 // Test the alert flow: SIMULATE_PROBLEM=1 node build/daily.mjs
+// Run one step only:   ONLY=defi node build/daily.mjs
 
 import { writeFile, readFile, mkdir } from "node:fs/promises";
 import { Report, sanityCheck } from "./report.mjs";
 import { createNet } from "./net.mjs";
 import { universeStep } from "./step-universe.mjs";
 import { unlocksStep } from "./step-unlocks.mjs";
+import { defiStep } from "./step-defi.mjs";
 
 const DATA = new URL("../site/data/", import.meta.url);
 const report = new Report();
@@ -38,14 +40,15 @@ const data = {
   },
 };
 
-const STEPS = [["universe", universeStep], ["unlocks", unlocksStep]];
+const STEPS = [["universe", universeStep], ["unlocks", unlocksStep], ["defi", defiStep]];
 
 async function main() {
   await mkdir(DATA, { recursive: true });
   const prevStatus = (await data.read("status.json")) || {};
   if (process.env.SIMULATE_PROBLEM === "1") report.warn("test", "Simulated problem from a manual test run; no data was affected.");
   let crashed = false;
-  for (const [name, step] of STEPS) {
+  const only = process.env.ONLY ? process.env.ONLY.split(",") : null; // e.g. ONLY=defi for a one-off backfill
+  for (const [name, step] of STEPS.filter(([n]) => !only || only.includes(n))) {
     try { await step({ report, net, data }); }
     catch (e) { crashed = true; console.error(e); report.error("build", `Step "${name}" crashed: ${e.message}. Its previous data was kept.`); }
   }

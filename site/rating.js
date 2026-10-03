@@ -170,6 +170,50 @@ const UNLOCK_METRICS = [
 ];
 METRICS.push(...UNLOCK_METRICS);
 
+// ---------------------------------------------------------------- traction, value accrual, treasury (issue #6)
+// t.llama comes from site/llama.js: { fees, revenue, holders, accrualFees: {d30, prev, monthly}, tvl: {now, prev},
+// chain: {dex30, stables, stables90}, treasury: {own, other} }; any piece may be null.
+export const pctChange = (now, before) => (now != null && before ? (now / before - 1) * 100 : null);
+
+const BUSINESS_METRICS = [
+  { id: "fees30", area: "traction", label: "Fees, last 30 days", yard: "shown", src: "DefiLlama fees",
+    val: (t) => t.llama?.fees?.d30 ?? null, show: (v) => fmt.usd(v),
+    extra: (t) => (t.llama?.feesFrom === "protocol"
+      ? `From the protocol, the business behind the token${t.llama.chainFees?.d30 != null ? `; the chain itself earned ${fmt.usd(t.llama.chainFees.d30)} in gas fees` : ""}` : "") },
+  { id: "revenue30", area: "traction", label: "Revenue, last 30 days", yard: "shown", src: "DefiLlama revenue",
+    val: (t) => t.llama?.revenue?.d30 ?? null, show: (v) => fmt.usd(v),
+    extra: () => "The part of fees the protocol or chain keeps, rather than paying out to liquidity providers or validators" },
+  { id: "feesTrend", precision: 1, area: "traction", label: "Fees trend", yard: "fixed", src: "DefiLlama fees",
+    val: (t) => pctChange(t.llama?.fees?.d30, t.llama?.fees?.prev), show: (v) => fmt.chg(v),
+    extra: () => "Last 30 days against the 30 days ending 90 days earlier" },
+  { id: "revenueTrend", precision: 1, area: "traction", label: "Revenue trend", yard: "fixed", src: "DefiLlama revenue",
+    val: (t) => pctChange(t.llama?.revenue?.d30, t.llama?.revenue?.prev), show: (v) => fmt.chg(v),
+    extra: () => "Last 30 days against the 30 days ending 90 days earlier" },
+  { id: "tvlTrend", precision: 1, area: "traction", label: "TVL trend (30 days)", yard: "fixed", src: "DefiLlama TVL",
+    val: (t) => pctChange(t.llama?.tvl?.now, t.llama?.tvl?.prev), show: (v) => fmt.chg(v),
+    extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today` : "") },
+  { id: "dex30", area: "traction", label: "DEX volume on the chain, 30 days", yard: "shown", types: ["chain"], src: "DefiLlama DEX volumes",
+    val: (t) => t.llama?.chain?.dex30 ?? null, show: (v) => fmt.usd(v) },
+  { id: "stablesTrend", precision: 1, area: "traction", label: "Stablecoins on the chain, 90-day trend", yard: "fixed", types: ["chain"], src: "DefiLlama stablecoins",
+    val: (t) => pctChange(t.llama?.chain?.stables, t.llama?.chain?.stables90), show: (v) => fmt.chg(v),
+    extra: (t) => (t.llama?.chain?.stables ? `${fmt.usd(t.llama.chain.stables)} in stablecoins today` : "") },
+  { id: "holdersShare", precision: 1, area: "accrual", label: "Share of fees reaching token holders", yard: "fixed", src: "DefiLlama holders revenue",
+    val: (t) => { const h = t.llama?.holders?.d30, f = t.llama?.accrualFees?.d30; return h != null && f ? (h / f) * 100 : null; },
+    show: (v) => fmt.pct(v, 1),
+    extra: (t) => (t.llama?.holders?.d30 != null ? `${fmt.usd(t.llama.holders.d30)} to holders in 30 days (buybacks, burns, staking payouts)` : ""),
+    note: "DefiLlama's holders revenue can miss value returned outside the protocol, such as buybacks run by a foundation. A zero here deserves a check of the project's own docs." },
+  { id: "treasuryYears", area: "treasury", label: "Treasury outside its own token, in years of revenue", yard: "fixed", src: "DefiLlama treasury",
+    val: (t) => { const tr = t.llama?.treasury, r = t.llama?.revenue?.d30; return tr && r ? tr.other / (r * 12) : null; },
+    show: (v) => (v >= 100 ? "100+ years" : v.toFixed(1) + " years"),
+    extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.other)} in other assets` : "") },
+  { id: "treasuryOwnShare", area: "treasury", label: "Treasury held in its own token", yard: "fixed", src: "DefiLlama treasury",
+    val: (t) => { const tr = t.llama?.treasury; return tr && tr.own + tr.other > 0 ? (tr.own / (tr.own + tr.other)) * 100 : null; },
+    show: (v) => fmt.pct(v, 0),
+    extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.own)} in ${t.sym}` : ""),
+    note: "A treasury mostly in its own token loses value exactly when the project needs it most." },
+];
+METRICS.push(...BUSINESS_METRICS);
+
 // ---------------------------------------------------------------- rating
 export function levelFromBands(v, bands) {
   let i = 0;
@@ -191,7 +235,9 @@ export function ruleText(m, rule) {
 
 export function rate(m, token, rules) {
   const skip = m.unrated ? m.unrated(token) : null;
-  const v = skip ? null : m.val(token);
+  const raw = skip ? null : m.val(token);
+  // Rate at the precision shown, so a value can never display on one side of a band edge and rate on the other.
+  const v = raw != null && m.precision != null ? Number(raw.toFixed(m.precision)) : raw;
   const out = { id: m.id, area: m.area, label: m.label, src: m.src, value: v,
     display: skip ? skip.display : v == null ? "No data" : m.show(v), extra: m.extra ? m.extra(token) : "",
     level: null, word: null, favour: 0, rule: "", unrated: !!skip, missing: Boolean(skip?.missing) };

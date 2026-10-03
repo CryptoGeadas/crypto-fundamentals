@@ -21,7 +21,8 @@ const results = [];
 function check(name, fn) {
   try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", name + " — " + e.message]); }
 }
-const row = (token, id) => analyse(token, HOUSE_RULES).rows.find((r) => r.id === id);
+// DeFi has every area, so every metric is reachable from this helper.
+const row = (token, id, type = "defi") => analyse(token, HOUSE_RULES, { type }).rows.find((r) => r.id === id);
 
 check("band edges: a value equal to a cut-off moves up a level", () => {
   assert.equal(levelFromBands(29.9, [30, 50, 70, 90]), 1);
@@ -117,12 +118,51 @@ check("unlocks: a token DefiLlama does not track says 'Not tracked' and counts a
   const a = analyse(t, HOUSE_RULES, { type: "defi" });
   assert.ok(a.coverage.share < 100);
 });
+// Business fixtures shaped like live DefiLlama numbers (3 Oct 2026), rounded.
+const LLAMA_AAVE = { fees: { d30: 37.2e6, prev: 38.7e6, monthly: [] }, revenue: { d30: 5.06e6, prev: 4.9e6 }, holders: { d30: 0, prev: 0 },
+  accrualFees: { d30: 37.2e6 }, tvl: { now: 19.3e9, prev: 15.0e9 }, chain: null, treasury: { own: 97.9e6, other: 34.6e6 } };
+const LLAMA_HYPE = { fees: null, revenue: null, holders: { d30: 56.4e6 }, accrualFees: { d30: 62.0e6 }, tvl: null, chain: null, treasury: null };
+const full = (extra) => withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE, chain: { dex30: 6.09e9, stables: 3.2e9, stables90: 3.0e9 } }, ...extra });
+
+check("traction: trends are rated at display precision; fees and revenue are shown, not rated", () => {
+  const t = withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE });
+  assert.equal(row(t, "feesTrend").display, "-3.9%");
+  assert.equal(row(t, "feesTrend").word, "Neutral");
+  assert.equal(row(t, "tvlTrend").word, "Very high");
+  assert.equal(row(t, "fees30").level, null);
+  const edge = withU(FIXTURES.arbitrum, null, { llama: { ...LLAMA_AAVE, fees: { d30: 109.96, prev: 100 } } });
+  assert.equal(row(edge, "feesTrend").display, "+10.0%");
+  assert.equal(row(edge, "feesTrend").word, "High");   // rated as the +10.0% it shows, not 9.96%
+});
+check("value accrual: Aave's 0% is rated very low with the buyback caveat; Hyperliquid's 91% is very high", () => {
+  const a = row(withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE }), "holdersShare");
+  assert.equal(a.word, "Very low");
+  assert.equal(a.favour, -2);
+  const h = row(withU(FIXTURES.arbitrum, null, { llama: LLAMA_HYPE }), "holdersShare");
+  assert.equal(h.display, "91.0%");
+  assert.equal(h.word, "Very high");
+});
+check("treasury: years of revenue outside its own token, and own-token share", () => {
+  const t = withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE });
+  assert.equal(row(t, "treasuryYears").display, "0.6 years");
+  assert.equal(row(t, "treasuryYears").word, "Low");
+  assert.equal(row(t, "treasuryOwnShare").display, "74%");
+  assert.equal(row(t, "treasuryOwnShare").word, "High");
+  assert.equal(row(t, "treasuryOwnShare").favour, -1);
+});
+check("value accrual only applies to DeFi, or to a chain whose protocol earns fees", () => {
+  const ids = (o) => analyse(full(), HOUSE_RULES, o).rows.map((r) => r.id);
+  assert.ok(ids({ type: "defi" }).includes("holdersShare"));
+  assert.ok(!ids({ type: "chain" }).includes("holdersShare"));
+  assert.ok(ids({ type: "chain", alsoDefi: true }).includes("holdersShare"));
+  assert.ok(ids({ type: "chain" }).includes("stablesTrend") && !ids({ type: "defi" }).includes("stablesTrend"));
+});
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
     const rule = HOUSE_RULES.metrics[m.id];
     assert.ok(rule, `missing rule for ${m.id}`);
     assert.equal(rule.bands.length, 4);
-    assert.ok(rate(m, withU(FIXTURES.arbitrum, ARB_U), HOUSE_RULES).rule.includes("House rule"), m.id);
+    assert.ok(rate(m, full(), HOUSE_RULES).rule.includes("House rule"), m.id);
   }
 });
 

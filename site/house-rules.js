@@ -25,5 +25,19 @@ export const HOUSE_RULES = {
     // Supply neither circulating nor scheduled within 12 months, as % of max supply
     // (a later schedule, or none published: open-ended dilution).
     lockedBeyond12m: { bands: [10, 25, 40, 60], dir: "down" },
+
+    // Traction: % change of the last 30 days against the 30 days ending 90 days earlier.
+    feesTrend: { bands: [-30, -10, 10, 30], dir: "up" },
+    revenueTrend: { bands: [-30, -10, 10, 30], dir: "up" },
+    // TVL, % change over 30 days.
+    tvlTrend: { bands: [-20, -5, 5, 20], dir: "up" },
+    // Stablecoins on a chain, % change over 90 days.
+    stablesTrend: { bands: [-20, -5, 5, 20], dir: "up" },
+    // Value accrual: % of fees that reached token holders (30 days).
+    holdersShare: { bands: [5, 15, 30, 50], dir: "up" },
+    // Treasury outside the project's own token, in years of current revenue.
+    treasuryYears: { bands: [0.5, 1, 2, 5], dir: "up" },
+    // Share of the treasury held in the project's own token, %.
+    treasuryOwnShare: { bands: [30, 50, 70, 90], dir: "down" },
   },
 };

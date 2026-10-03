@@ -8,6 +8,27 @@ const fmtNum = (v) => {
 const fmtDate = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+const fmtUsd = (v) => "$" + fmtNum(v);
+
+// Monthly fees (solid) next to revenue (light), last 12 months.
+export function feesChart(fees, revenue, { w = 640, h = 190 } = {}) {
+  if (!fees?.length) return `<div class="nochart">No fee history</div>`;
+  const rev = Object.fromEntries((revenue || []).map((x) => [x.m, x.v]));
+  const max = Math.max(...fees.map((x) => x.v), ...fees.map((x) => rev[x.m] || 0), 1);
+  const padB = 22, padT = 18, bw = (w - 8) / fees.length;
+  const H = (v) => (v / max) * (h - padB - padT);
+  const month = (m) => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
+  const bars = fees.map((x, i) => {
+    const x0 = 4 + i * bw, r = rev[x.m] || 0;
+    return `<rect x="${(x0 + bw * 0.08).toFixed(1)}" y="${(h - padB - H(x.v)).toFixed(1)}" width="${(bw * 0.4).toFixed(1)}" height="${H(x.v).toFixed(1)}" class="b1"><title>${esc(x.m)} fees ${fmtUsd(x.v)}</title></rect>
+      <rect x="${(x0 + bw * 0.5).toFixed(1)}" y="${(h - padB - H(r)).toFixed(1)}" width="${(bw * 0.4).toFixed(1)}" height="${H(r).toFixed(1)}" class="b2"><title>${esc(x.m)} revenue ${fmtUsd(r)}</title></rect>
+      ${i % 2 === 0 ? `<text x="${(x0 + bw / 2).toFixed(1)}" y="${h - 6}" class="ax" text-anchor="middle">${month(x.m)}</text>` : ""}`;
+  }).join("");
+  return `<figure class="chart"><svg viewBox="0 0 ${w} ${h}" class="svg" role="img" aria-label="Monthly fees and revenue">${bars}
+      <text x="4" y="11" class="ax">${fmtUsd(max)} a month</text></svg>
+    <figcaption class="legend"><span class="lg"><i></i>Fees</span><span class="lg"><i style="opacity:.4"></i>Revenue</span></figcaption></figure>`;
+}
+
 // Unlock schedule: cumulative unlocked supply per category, stacked, with a "today" marker and,
 // when known, a dashed line at max supply (the gap above the stack is supply with no schedule).
 export function unlockChart(detail, maxSupply, { w = 640, h = 220 } = {}) {
