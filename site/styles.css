@@ -1,0 +1,95 @@
+/* Token Fundamentals — layout on top of brand.css (BG Brand System v1.0). Tokens only. */
+
+.wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 600px) { .wrap { padding: 0 16px; } }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; padding-top: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand .mark { display: block; }
+.wordmark { font-family: var(--display); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.topnav { display: flex; align-items: center; gap: 16px; }
+#theme .theme-dark, #theme .theme-light { font-size: 14px; line-height: 1; }
+:root[data-theme="dark"] #theme .theme-light { display: none; }
+:root:not([data-theme="dark"]) #theme .theme-dark { display: none; }
+
+/* hero */
+.hero { padding: 40px 24px 20px; }
+.hero-line { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; margin: 0 0 12px; }
+.sub { color: var(--muted); max-width: 62ch; margin: 0; }
+
+/* search */
+.searchbar { position: relative; margin: 8px 0 28px; }
+.searchbar input {
+  width: 100%; height: 48px; border-radius: var(--r-panel); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font: 15px var(--body); padding: 0 120px 0 44px; outline: none;
+  -webkit-appearance: none; appearance: none;
+}
+.searchbar input:focus { border-color: var(--accent); }
+.searchbar .ico { position: absolute; left: 16px; top: 13px; color: var(--muted); font-size: 16px; }
+.searchbar .hint { position: absolute; right: 16px; top: 15px; font-size: 12px; color: var(--tertiary); pointer-events: none; }
+@media (max-width: 600px) { .searchbar .hint { display: none; } .searchbar input { padding-right: 14px; } }
+.dd {
+  position: absolute; z-index: 20; left: 0; right: 0; top: 54px; background: var(--elevated);
+  border: 1px solid var(--border); border-radius: var(--r-card); overflow: hidden; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+.dd .it { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; font-size: 14px; }
+.dd .it b { font-family: var(--display); font-weight: 600; min-width: 52px; }
+.dd .it span { color: var(--muted); }
+.dd .it.sel, .dd .it:hover { background: var(--accent-tint); }
+.dd .msg { padding: 12px 14px; font-size: 13px; color: var(--muted); }
+
+/* identity */
+.idrow { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.idrow .logo { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); }
+.idrow h2 { font-family: var(--display); font-size: 26px; font-weight: 700; }
+.idrow .sym { color: var(--muted); font-weight: 600; margin-left: 8px; font-size: 16px; }
+.idrow .px { margin-left: auto; text-align: right; }
+.idrow .px .p { font-family: var(--display); font-size: 22px; font-weight: 700; }
+.idrow .px .c { font-size: 12px; color: var(--muted); }
+.kpis { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 16px; }
+.kpi .label { display: block; }
+.kpi b { font-family: var(--display); font-size: 16px; }
+
+/* rating tones: colour = favourability, the word = magnitude */
+.t-g2 { --tone: var(--success); }
+.t-g1 { --tone: color-mix(in srgb, var(--success) 60%, var(--muted)); }
+.t-n  { --tone: var(--muted); }
+.t-b1 { --tone: var(--warning); }
+.t-b2 { --tone: var(--error); }
+
+.strip { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.strip i { width: 16px; height: 8px; border-radius: 2px; background: var(--border); }
+.strip i.on { background: var(--tone); }
+.strip b { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--tone); }
+.strip.none { font-size: 12px; color: var(--tertiary); }
+
+/* factsheet */
+section.sec { padding: 26px 0; border-top: 1px solid var(--border); margin-top: 24px; }
+.sec-head { display: flex; align-items: baseline; gap: 10px; }
+.sec-head .verdict { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--tone); }
+.lead { font-size: 16px; margin: 8px 0 16px; max-width: 70ch; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.fact {
+  position: relative; padding: 14px; border-radius: var(--r-card); background: var(--surface);
+  border: 1px solid var(--border); border-left: 3px solid var(--tone); outline: none;
+}
+.fact:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.fact .label { display: block; margin-bottom: 6px; }
+.fact .vv { font-family: var(--display); font-size: 20px; font-weight: 700; display: block; margin-bottom: 6px; }
+.fact .ex { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.fact .src { font-size: 11px; color: var(--tertiary); margin-top: 4px; }
+/* the house rule, shown on hover or keyboard focus */
+.fact .rule {
+  display: none; position: absolute; z-index: 5; left: 12px; right: 12px; top: calc(100% + 6px);
+  background: var(--elevated); border: 1px solid var(--border); border-radius: var(--r-card);
+  padding: 10px 12px; font-size: 12px; color: var(--text); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+}
+.fact:hover .rule, .fact:focus .rule { display: block; }
+
+/* states */
+.state { padding: 36px 0; color: var(--muted); }
+.state .btn { margin-top: 12px; }
+.skel { height: 14px; border-radius: 6px; background: var(--border); opacity: 0.5; margin: 10px 0; }
+
+.foot { color: var(--tertiary); font-size: 12px; padding: 48px 24px 40px; line-height: 1.7; }

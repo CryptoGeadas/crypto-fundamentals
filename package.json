@@ -1,0 +1,10 @@
+{
+  "name": "crypto-fundamentals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "check": "node build/check-rating.mjs"
+  }
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Token Fundamentals</title>
+  <meta name="description" content="Type a ticker and see a token's fundamentals in one place, each number rated by visible rules. Free, keyless data; runs in your browser.">
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark"; } catch { document.documentElement.dataset.theme = "dark"; }</script>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500;600&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="brand.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="wrap top">
+    <div class="brand">
+      <img class="mark" src="logo.svg" alt="BG" width="37" height="25">
+      <span class="wordmark">Token Fundamentals</span>
+    </div>
+    <nav class="topnav">
+      <button id="theme" class="btn btn-ghost btn-sm" aria-label="Toggle theme">
+        <span class="theme-dark">&#9790;</span><span class="theme-light">&#9728;</span>
+      </button>
+    </nav>
+  </header>
+
+  <section class="wrap hero">
+    <h1 class="serif hero-line">What am I actually buying?</h1>
+    <p class="sub">Type a ticker. Every number is rated against a visible rule, from very low to very high, so you can read a token's fundamentals at a glance.</p>
+  </section>
+
+  <section class="wrap">
+    <div class="searchbar" role="combobox" aria-haspopup="listbox" aria-owns="dd" aria-expanded="false">
+      <span class="ico" aria-hidden="true">&#8981;</span>
+      <input id="q" type="search" placeholder="Search a token by name or ticker" autocomplete="off" aria-autocomplete="list" aria-controls="dd" aria-label="Search a token">
+      <span class="hint" id="hint"></span>
+      <div class="dd" id="dd" role="listbox" hidden></div>
+    </div>
+  </section>
+
+  <main class="wrap" id="view" aria-live="polite"></main>
+
+  <footer class="wrap foot" id="foot"></footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
