@@ -1,34 +1,28 @@
 {
-  "generated": "2026-10-03T19:28:51.227Z",
-  "startedAt": "2026-10-03T19:27:46.935Z",
-  "healthy": false,
+  "generated": "2026-10-03T19:32:18.927Z",
+  "startedAt": "2026-10-03T19:31:28.584Z",
+  "healthy": true,
   "sources": {
     "defillama": "ok",
     "coingecko": "ok",
-    "defillama-unlocks": "failed"
+    "defillama-unlocks": "ok"
   },
   "datasets": {
     "idmap": {
       "status": "updated",
       "count": 2980,
-      "lastSuccess": "2026-10-03T19:28:35.856Z"
+      "lastSuccess": "2026-10-03T19:32:17.307Z"
     },
     "universe": {
       "status": "updated",
-      "count": 640,
-      "lastSuccess": "2026-10-03T19:28:35.856Z"
+      "count": 641,
+      "lastSuccess": "2026-10-03T19:32:17.307Z"
     },
     "unlocks": {
-      "status": "kept",
-      "count": 223,
-      "lastSuccess": "2026-10-03T19:26:46.820Z"
+      "status": "updated",
+      "count": 224,
+      "lastSuccess": "2026-10-03T19:32:18.925Z"
     }
   },
-  "problems": [
-    {
-      "level": "error",
-      "source": "defillama-unlocks",
-      "message": "defillama.com/unlocks: HTTP 403; unlock data kept from the last good run."
-    }
-  ]
+  "problems": []
 }
