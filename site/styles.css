@@ -149,3 +149,4 @@ section.sec { padding: 26px 0; border-top: 1px solid var(--border); margin-top: 
 .nochart { font-size: 12px; color: var(--tertiary); padding: 20px 0; text-align: center; border: 1px dashed var(--border); border-radius: var(--r-card); }
 .svg .b1 { fill: var(--accent); }
 .svg .b2 { fill: var(--accent); opacity: 0.4; }
+.fact .ex.peer { color: var(--text); font-weight: 500; }

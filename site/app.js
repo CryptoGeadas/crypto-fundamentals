@@ -12,7 +12,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
-  universe: null, status: null, idmap: null, unlocks: null, defi: null, byId: new Map(), addrIdx: new Map(),
+  universe: null, status: null, idmap: null, unlocks: null, defi: null, peers: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
 const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-solana", "arbitrum"];
@@ -108,7 +108,15 @@ function treasuryLead(t) {
   const tr = t.llama?.treasury;
   return tr ? `The treasury holds ${money(tr.other)} in other assets and ${money(tr.own)} in ${t.sym}.` : "DefiLlama does not track a treasury for it.";
 }
-const LEADS = { dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
+const peerLabel = (p) => `${p.n} ${p.group === "all fee-earning tokens" ? p.group : `${p.group} peers`}`;
+function valuationLead(t, a) {
+  const f = a.rows.find((r) => r.id === "feeMultiple"), m = a.rows.find((r) => r.id === "mcapToTvl");
+  const parts = [];
+  if (f?.value != null) parts.push(`${t.sym} is valued at ${f.display} its yearly fees${f.peer ? `, cheaper than ${f.peer.cheaperThan}% of ${peerLabel(f.peer)}` : ""}`);
+  if (m?.value != null) parts.push(`its market cap is ${m.display} the value locked in it`);
+  return parts.length ? parts.join("; ") + "." : "There are no fees or TVL to value it against.";
+}
+const LEADS = { valuation: valuationLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
 // Charts shown under an area's facts.
 const CHARTS = {
   traction: (t) => (t.llama?.fees?.monthly?.length ? `<div class="chartbox"><span class="label">Fees and revenue per month (DefiLlama)</span>${feesChart(t.llama.fees.monthly, t.llama.revenue?.monthly)}</div>` : ""),
@@ -120,6 +128,7 @@ function factCard(r) {
       <span class="label">${esc(r.label)}</span>
       <span class="vv">${esc(r.display)}</span>
       ${strip(r)}
+      ${r.peer ? `<div class="ex peer">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}
       ${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}
       <div class="src">Source: ${esc(r.src)}</div>
       <div class="rule" id="rule-${r.id}" role="tooltip">${esc(r.rule)}</div>
@@ -213,6 +222,7 @@ async function load(id, via) {
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
     t.llama = await loadLlama(id, entry, state.defi?.[id], classify(entry, t.categories)).catch(() => null);
+    t.peers = state.peers ? { group: state.peers.byToken?.[id]?.group, groups: state.peers.groups, secondary: entry?.c ? "Chain" : null } : null;
     if (seq === state.loadSeq) renderToken(t, via);
   } catch (e) {
     if (seq === state.loadSeq) renderError(e.message || "Something went wrong.", () => load(id, via));
@@ -314,12 +324,13 @@ async function start() {
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
   // Optional data: the page still works without them (type falls back to the meme/narrative rule).
-  const [status, idmap, unlocks, defi] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json"].map((f) =>
+  const [status, idmap, unlocks, defi, peers] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json", "peers.json"].map((f) =>
     fetch(`./data/${f}`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
   state.status = status;
   state.idmap = idmap?.map || null;
   state.unlocks = unlocks?.tokens || null;
   state.defi = defi?.tokens || null;
+  state.peers = peers || null;
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;

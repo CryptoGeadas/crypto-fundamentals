@@ -61,6 +61,8 @@ export function buildUniverse(markets, llama, platformsById = {}) {
       rank,
       img: m.image || "",
       llama: inLlama ? 1 : 0,
+      mcap: m.market_cap || null,
+      fdv: m.fully_diluted_valuation || null,
       addr: cleanPlatforms(platformsById[m.id]),
     });
   }

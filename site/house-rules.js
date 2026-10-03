@@ -26,6 +26,13 @@ export const HOUSE_RULES = {
     // (a later schedule, or none published: open-ended dilution).
     lockedBeyond12m: { bands: [10, 25, 40, 60], dir: "down" },
 
+    // Valuation against peers: rated by percentile within the token's DefiLlama category, not by bands
+    // (bottom 20% of the group = very low … top 20% = very high). Lower multiples are cheaper.
+    feeMultiple: { peer: true, dir: "down" },
+    revenueMultiple: { peer: true, dir: "down" },
+    // Market cap ÷ TVL, as a multiple (fixed bands).
+    mcapToTvl: { bands: [0.1, 0.3, 1, 3], dir: "down" },
+
     // Traction: % change of the last 30 days against the 30 days ending 90 days earlier.
     feesTrend: { bands: [-30, -10, 10, 30], dir: "up" },
     revenueTrend: { bands: [-30, -10, 10, 30], dir: "up" },

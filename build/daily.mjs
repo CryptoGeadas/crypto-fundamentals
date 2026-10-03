@@ -13,6 +13,7 @@ import { createNet } from "./net.mjs";
 import { universeStep } from "./step-universe.mjs";
 import { unlocksStep } from "./step-unlocks.mjs";
 import { defiStep } from "./step-defi.mjs";
+import { peersStep } from "./step-peers.mjs";
 
 const DATA = new URL("../site/data/", import.meta.url);
 const report = new Report();
@@ -40,7 +41,7 @@ const data = {
   },
 };
 
-const STEPS = [["universe", universeStep], ["unlocks", unlocksStep], ["defi", defiStep]];
+const STEPS = [["universe", universeStep], ["unlocks", unlocksStep], ["defi", defiStep], ["peers", peersStep]];
 
 async function main() {
   await mkdir(DATA, { recursive: true });

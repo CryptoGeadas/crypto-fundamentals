@@ -34,6 +34,8 @@ export function areasFor(type, alsoDefi = false) {
   return alsoDefi && !base.includes("accrual") ? AREAS.map((a) => a.id).filter((id) => base.includes(id) || id === "accrual") : base;
 }
 
+import { peerPercentile } from "./peers.js";
+
 // ---------------------------------------------------------------- formatters
 export const fmt = {
   usd(v) {
@@ -214,6 +216,21 @@ const BUSINESS_METRICS = [
 ];
 METRICS.push(...BUSINESS_METRICS);
 
+// ---------------------------------------------------------------- valuation against peers (issue #7)
+// t.peers = { group, groups } from data/peers.json; FDV is live from CoinGecko, fees and revenue live from DefiLlama.
+const VALUATION_METRICS = [
+  { id: "feeMultiple", area: "valuation", label: "FDV ÷ yearly fees", yard: "peer", peerKey: "pf", src: "CoinGecko FDV, DefiLlama fees",
+    val: (t) => (t.fdv && t.llama?.fees?.d30 ? t.fdv / (t.llama.fees.d30 * 12) : null), show: (v) => fmt.x(v),
+    extra: (t) => (t.llama?.fees?.d30 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.fees.d30 * 12)} of yearly fees` : "") },
+  { id: "revenueMultiple", area: "valuation", label: "FDV ÷ yearly revenue", yard: "peer", peerKey: "pr", src: "CoinGecko FDV, DefiLlama revenue",
+    val: (t) => (t.fdv && t.llama?.revenue?.d30 ? t.fdv / (t.llama.revenue.d30 * 12) : null), show: (v) => fmt.x(v),
+    extra: (t) => (t.llama?.revenue?.d30 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.revenue.d30 * 12)} of yearly revenue` : "") },
+  { id: "mcapToTvl", area: "valuation", label: "Market cap ÷ TVL", yard: "fixed", src: "CoinGecko, DefiLlama TVL",
+    val: (t) => (t.marketCap && t.llama?.tvl?.now ? t.marketCap / t.llama.tvl.now : null), show: (v) => fmt.x(v),
+    extra: () => "How much the market pays for each dollar locked in it" },
+];
+METRICS.push(...VALUATION_METRICS);
+
 // ---------------------------------------------------------------- rating
 export function levelFromBands(v, bands) {
   let i = 0;
@@ -246,6 +263,16 @@ export function rate(m, token, rules) {
   if (m.yard === "shown") { out.rule = "Shown for context, deliberately not rated."; return out; }
   const rule = rules.metrics[m.id];
   if (!rule) throw new Error(`No house rule for metric "${m.id}"`);
+  if (m.yard === "peer") {
+    const p = peerPercentile(v, token.peers?.group, token.peers?.groups || {}, m.peerKey, token.peers?.secondary);
+    if (!p) { out.rule = "No peer benchmarks available for this token yet."; return out; }
+    out.level = p.level;
+    out.word = LEVELS[p.level - 1];
+    out.favour = favourOf(p.level, rule.dir);
+    out.peer = p;
+    out.rule = `Peer rule: percentile among ${p.n} ${p.group}${p.fellBack ? ` (its own category, ${token.peers?.group || "unknown"}, has fewer than 8 peers)` : " peers"}. Cheaper than ${p.cheaperThan}% of them. Bottom 20% of the group = very low … top 20% = very high; lower is cheaper.`;
+    return out;
+  }
   out.level = levelFromBands(v, rule.bands);
   out.word = LEVELS[out.level - 1];
   out.favour = favourOf(out.level, rule.dir);
