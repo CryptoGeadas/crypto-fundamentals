@@ -24,7 +24,7 @@ const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-sol
 
 // ---------------------------------------------------------------- rendering
 function strip(r) {
-  if (r.level == null) return `<span class="strip none">${r.missing || (r.value == null && !r.unrated) ? "No data" : "Not rated"}</span>`;
+  if (r.level == null) return `<span class="strip none">${r.notOnRecord ? "Unknown" : r.missing || (r.value == null && !r.unrated) ? "No data" : "Not rated"}</span>`;
   const good = r.favour > 0 ? "good" : r.favour < 0 ? "bad" : "neutral";
   return `<span class="strip t-${tone(r.favour)}" role="img" aria-label="Rating: ${r.word} (${good})">${[1, 2, 3, 4, 5]
     .map((i) => `<i class="${i === r.level ? "on" : ""}"></i>`).join("")}<b>${r.word}</b></span>`;
@@ -143,20 +143,23 @@ function securityLead(t, a) {
   if (f?.display === "Native asset") parts.push("As a native coin it has no token contract to audit");
   else if (f?.value != null) parts.push(f.value === 0 ? "GoPlus found no risky owner powers, taxes or honeypot behaviour in the contract" : `GoPlus raises ${f.display} on the contract: ${t.security.flags.join(", ").toLowerCase()}`);
   const n = (t.defiExtra?.hacks || []).length, ex = n === 1 ? "1 exploit" : `${n} exploits`;
-  if (e?.value != null) parts.push(!n ? "DefiLlama records no exploits" : e.value === 0 ? `DefiLlama records ${ex}, with the funds returned in full` : `DefiLlama records ${ex}, with ${e.display} lost after returned funds`);
+  if (e?.value != null) parts.push(e.value === 0 ? `DefiLlama records ${ex}, with the funds returned in full` : `DefiLlama records ${ex}, with ${e.display} lost after returned funds`);
+  else if (e?.notOnRecord) parts.push("DefiLlama's exploit list has nothing on file for it, which is not proof that none happened");
   return parts.length ? parts.join("; ") + "." : "The contract could not be checked.";
 }
 function devLead(t, a) {
   const c = a.rows.find((x) => x.id === "contributors90");
-  if (!c || c.value == null) return c?.display === "Not measured yet" ? "Development activity is still queued for measurement by the daily job." : "No public GitHub repository is linked for it.";
+  if (!c || c.value == null) return c?.display === "Not measured yet" ? "Development activity is still queued for measurement by the daily job." : c?.notOnRecord ? "Neither DefiLlama nor CoinGecko links a GitHub organisation for it, so its development activity is unknown." : "No public GitHub repository is linked for it.";
   const d = t.meta.dev;
   return `${c.display} people (bots excluded) made ${d.commits90} commits in the last 90 days across ${d.repos.length} recently active repositories, against ${d.commitsPrev90} commits in the 90 days before.`;
 }
 function backersLead(t, a) {
   const r = a.rows.find((x) => x.id === "raised"), g = a.rows.find((x) => x.id === "age");
   const parts = [];
-  if (r?.value) parts.push(`It raised ${r.display} across ${t.meta.raises.length} recorded round${t.meta.raises.length > 1 ? "s" : ""}`);
-  else if (r?.value === 0) parts.push("DefiLlama records no funding rounds");
+  const n = t.meta?.raises?.length || 0, rounds = `${n} recorded round${n > 1 ? "s" : ""}`;
+  if (r?.value) parts.push(`It raised ${r.display} across ${rounds}`);
+  else if (r?.value === 0) parts.push(`DefiLlama lists ${rounds} with undisclosed amounts`);
+  else if (r?.notOnRecord) parts.push("DefiLlama has no funding rounds on file for it, which does not mean it raised nothing");
   if (g?.value != null) parts.push(`the token has traded for ${g.display}`);
   return parts.length ? parts.join("; ") + "." : "No funding or age data for it.";
 }
@@ -180,6 +183,10 @@ function sourceBanner(t, area) {
     <button class="btn btn-ghost btn-sm" data-retry="${k}">Retry</button></div>`).join("");
 }
 
+// Where the source has nothing on file: links to free places to check by hand (opens a new tab).
+const checkLinks = (r) => (r.check?.length ? `<div class="ex check">Check elsewhere: ${r.check.map((c) =>
+  `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.label)}</a>`).join(" · ")}</div>` : "");
+
 function factCard(r, t) {
   const display = t && unavailable(t, r) ? "Source unavailable" : r.display;
   return `<div class="fact t-${tone(r.favour)}" tabindex="0" aria-describedby="rule-${r.id}">
@@ -188,6 +195,7 @@ function factCard(r, t) {
       ${strip(r)}
       ${r.peer ? `<div class="ex peer">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}
       ${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}
+      ${checkLinks(r)}
       <div class="src">Source: ${esc(r.src)}</div>
       <div class="rule" id="rule-${r.id}" role="tooltip">${esc(r.rule)}</div>
     </div>`;
@@ -208,7 +216,7 @@ function scoreTable(t, a) {
   const rows = Object.values(a.byArea).map((d) => `
     <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}</th></tr>
     ${d.rows.map((r) => `<tr>
-      <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}</td>
+      <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}${checkLinks(r)}</td>
       <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>
       <td class="rt" title="${esc(r.rule)}">${strip(r)}${r.peer ? `<div class="ex">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}</td>
       <td class="src">${esc(r.src)}</td></tr>`).join("")}`).join("");

@@ -177,6 +177,7 @@ check("security: flags counted (1 = Low), exploit loss is net of returned funds"
   assert.equal(row(full(), "contractFlags").word, "Low");
   assert.equal(row(full({ security: { ...SECURITY, flags: [] } }), "contractFlags").display, "None");
   const ex = row(full(), "exploitLoss");
+  assert.equal(row(full({ defiExtra: { hacks: [{ date: 1, name: "X", amount: 5, returned: 5 }], audits: null } }), "exploitLoss").display, "$0 net");
   assert.equal(ex.value, 0.056);                 // $862K returned in full; $56K not
   assert.equal(ex.word, "Low");
   assert.equal(row(full(), "audits").level, null);
@@ -195,7 +196,7 @@ check("development: human contributors and commit trend; queued or repo-less pro
   const queued = row(full({ meta: { orgs: ["x"] } }), "contributors90");
   assert.equal(queued.display, "Not measured yet");
   assert.equal(queued.missing, true);
-  assert.equal(row(full({ meta: { orgs: [] } }), "contributors90").display, "No repository found");
+  assert.equal(row(full({ meta: { orgs: [] } }), "contributors90").display, "No GitHub link on file");
 });
 check("backers and age are shown, never rated", () => {
   const r = row(full(), "raised");
@@ -204,6 +205,25 @@ check("backers and age are shown, never rated", () => {
   assert.match(r.extra, /Framework Ventures/);
   assert.equal(row(full(), "age").display, "6.0 years");
   assert.equal(row(full({ firstPriceTs: Date.now() / 1000 - 0.4 * 365 * 86400 }), "age").display, "5 months");
+});
+check("no record is never 'none': empty lookups are unknown, unrated, missing, and offer links to check", () => {
+  const empty = full({ name: "Canton", meta: { orgs: [], raises: [], raisesAt: "2026-10-03T00:00:00Z" }, defiExtra: { hacks: [], audits: null } });
+  for (const id of ["raised", "exploitLoss", "audits", "contributors90"]) {
+    const r = row(empty, id);
+    assert.equal(r.notOnRecord, true, id);
+    assert.equal(r.missing, true, id);
+    assert.equal(r.level, null, id);
+    assert.doesNotMatch(r.display, /^(None|0$)/, id);
+    assert.ok(r.check.length && r.check.every((c) => c.url.startsWith("https://") && c.url.includes("Canton")), id);
+  }
+  // Rows that do have a value never carry the links.
+  assert.deepEqual(row(full(), "raised").check, []);
+  // Across every metric, "None…" is only allowed where a check actually ran (GoPlus scan) or a tracked schedule is empty.
+  const allowed = new Set(["contractFlags"]);
+  for (const r of analyse(full({ meta: { orgs: [], raises: [], raisesAt: "x" }, defiExtra: { hacks: [], audits: null }, security: { ...SECURITY, flags: [] } }), HOUSE_RULES, { type: "defi" }).rows)
+    if (/^None/.test(r.display) && r.display !== "None scheduled") assert.ok(allowed.has(r.id), `${r.id} shows "${r.display}"`);
+  // Rounds on record with no disclosed amount are a real record, not "none".
+  assert.equal(row(full({ meta: { orgs: [], raises: [{ date: 1, round: "Seed", amount: 0, leads: [] }], raisesAt: "x" } }), "raised").display, "Amount undisclosed");
 });
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {

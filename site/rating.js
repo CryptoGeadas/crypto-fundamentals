@@ -241,6 +241,14 @@ const notChecked = (t) => nativeAsset(t) || (t.security === undefined ? null
 const top10 = (t) => (t.security?.holders?.length ? t.security.holders.reduce((a, h) => a + (h.percent || 0), 0) : null);
 const fmtDate = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 
+// "No record" is never "none". When a lookup source has nothing on file for a project, that is
+// missing data, not a finding: shown as unknown, never rated, counted as missing for coverage, and
+// the page links to free places to check. (A scan that ran and found nothing, like GoPlus, is a finding.)
+const notOnRecord = (what) => ({ missing: true, notOnRecord: true, display: "Not in DefiLlama's records",
+  rule: `DefiLlama has no ${what} on file for this project. That does not mean there were none: its lists are incomplete, and some entries are filed under the company behind a project. Use the links to check elsewhere.` });
+const nameOf = (t) => t.name || t.symbol || t.id || "";
+const webSearch = (label, q) => ({ label, url: `https://www.google.com/search?q=${encodeURIComponent(q)}` });
+
 const HOLDER_MARKET_SECURITY = [
   { id: "top10Share", precision: 1, area: "holders", label: "Held by the 10 largest wallets", yard: "fixed", src: "GoPlus",
     unrated: notChecked, val: (t) => top10(t), show: (v) => fmt.pct(v, 1),
@@ -256,11 +264,16 @@ const HOLDER_MARKET_SECURITY = [
     unrated: notChecked, val: (t) => (t.security ? t.security.flags.length : null), show: (v) => (v === 0 ? "None" : `${v} flag${v > 1 ? "s" : ""}`),
     extra: (t) => (t.security?.flags?.length ? t.security.flags.join(" · ") : t.security ? "No owner powers, taxes or honeypot behaviour found" : "") },
   { id: "exploitLoss", area: "security", label: "Past exploits, net loss", yard: "fixed", types: ["defi", "chain"], src: "DefiLlama hacks",
-    val: (t) => (t.defiExtra ? (t.defiExtra.hacks || []).reduce((a, h) => a + Math.max(0, h.amount - h.returned), 0) / 1e6 : null),
-    show: (v) => (v === 0 ? "None" : fmt.usd(v * 1e6)),
-    extra: (t) => { const h = t.defiExtra?.hacks || []; return h.length ? h.slice(0, 3).map((x) => `${x.name}, ${fmtDate(x.date)}${x.cls ? ` (${x.cls})` : ""}${x.returned ? `, ${fmt.usd(x.returned)} returned` : ""}`).join(" · ") : "No exploit recorded by DefiLlama"; } },
+    unrated: (t) => (t.defiExtra && !(t.defiExtra.hacks || []).length ? notOnRecord("exploits") : null),
+    val: (t) => (t.defiExtra?.hacks?.length ? t.defiExtra.hacks.reduce((a, h) => a + Math.max(0, h.amount - h.returned), 0) / 1e6 : null),
+    show: (v) => (v === 0 ? "$0 net" : fmt.usd(v * 1e6)),
+    extra: (t) => { const h = t.defiExtra?.hacks || []; return h.length ? h.slice(0, 3).map((x) => `${x.name}, ${fmtDate(x.date)}${x.cls ? ` (${x.cls})` : ""}${x.returned ? `, ${fmt.usd(x.returned)} returned` : ""}`).join(" · ") : ""; },
+    check: (t) => [webSearch("Web search", `${nameOf(t)} crypto exploit hack`), webSearch("Rekt News", `site:rekt.news ${nameOf(t)}`)],
+    note: "Rated only when an exploit is on record. An empty record is shown as unknown, not as \"none\": DefiLlama's list misses incidents." },
   { id: "audits", area: "security", label: "Audit reports linked", yard: "shown", types: ["defi", "chain"], src: "DefiLlama",
+    unrated: (t) => (t.defiExtra && !t.defiExtra.audits?.count ? notOnRecord("audit reports") : null),
     val: (t) => t.defiExtra?.audits?.count ?? null, show: (v) => String(v),
+    check: (t) => [webSearch("Web search", `${nameOf(t)} smart contract audit report`)],
     note: "Shown, never rated: DefiLlama's audit data is patchy (often only on sub-protocols)." },
 ];
 METRICS.push(...HOLDER_MARKET_SECURITY);
@@ -269,21 +282,25 @@ METRICS.push(...HOLDER_MARKET_SECURITY);
 // t.meta from data/meta.json: { orgs, dev: { repos, contributors90, commits90, commitsPrev90, bots90 } | null, devAt, raises: [...] }
 // t.firstPriceTs from DefiLlama coins /prices/first (live).
 const noRepo = (t) => (!t.meta?.orgs?.length
-  ? { missing: true, display: "No repository found", rule: "Neither DefiLlama nor CoinGecko links a GitHub organisation for this project." }
+  ? { missing: true, notOnRecord: true, display: "No GitHub link on file", rule: "Neither DefiLlama nor CoinGecko links a GitHub organisation for this project. It may still have one; use the link to check." }
   : t.meta.devAt && !t.meta.dev ? { missing: true, display: "No public repositories", rule: "Its GitHub organisations have no live public repositories." }
   : !t.meta.devAt ? { missing: true, display: "Not measured yet", rule: "The daily job measures development activity on a weekly rotation; this project is still queued." } : null);
 
 const DEV_BACKERS = [
   { id: "contributors90", area: "dev", label: "Human contributors, last 90 days", yard: "fixed", src: "GitHub",
     unrated: noRepo, val: (t) => t.meta?.dev?.contributors90 ?? null, show: (v) => String(v),
+    check: (t) => [{ label: "GitHub search", url: `https://github.com/search?q=${encodeURIComponent(nameOf(t))}&type=users` }],
     extra: (t) => (t.meta?.dev ? `${t.meta.dev.repos.join(", ")}${t.meta.dev.bots90 ? ` · ${t.meta.dev.bots90} bot commits excluded` : ""}` : "") },
   { id: "commitTrend", precision: 1, area: "dev", label: "Commit trend (90 days vs the 90 before)", yard: "fixed", src: "GitHub",
     unrated: noRepo, val: (t) => pctChange(t.meta?.dev?.commits90, t.meta?.dev?.commitsPrev90), show: (v) => fmt.chg(v),
     extra: (t) => (t.meta?.dev ? `${t.meta.dev.commits90} human commits, against ${t.meta.dev.commitsPrev90} before` : "") },
   { id: "raised", area: "backers", label: "Total raised", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama raises",
-    val: (t) => (t.meta?.raisesAt ? (t.meta.raises || []).reduce((a, r) => a + r.amount, 0) : null),
-    show: (v) => (v ? fmt.usd(v * 1e6) : "None recorded"),
-    extra: (t) => { const leads = [...new Set((t.meta?.raises || []).flatMap((r) => r.leads))].slice(0, 4); return leads.length ? `Lead investors: ${leads.join(", ")}` : ""; },
+    unrated: (t) => (t.meta?.raisesAt && !(t.meta.raises || []).length ? notOnRecord("funding rounds") : null),
+    val: (t) => (t.meta?.raises?.length ? t.meta.raises.reduce((a, r) => a + r.amount, 0) : null),
+    show: (v) => (v ? fmt.usd(v * 1e6) : "Amount undisclosed"),
+    extra: (t) => { const r = t.meta?.raises || []; if (!r.length) return ""; const leads = [...new Set(r.flatMap((x) => x.leads))].slice(0, 4);
+      return `${r.length} recorded round${r.length > 1 ? "s" : ""}${leads.length ? ` · Lead investors: ${leads.join(", ")}` : ""}`; },
+    check: (t) => [webSearch("Web search", `${nameOf(t)} crypto funding round raised`), webSearch("CryptoRank", `site:cryptorank.io ${nameOf(t)} funding rounds`)],
     note: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule." },
   { id: "age", area: "backers", label: "Token age (first traded price)", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama coins",
     val: (t) => (t.firstPriceTs ? (Date.now() / 1000 - t.firstPriceTs) / (365 * 86400) : null),
@@ -318,7 +335,9 @@ export function rate(m, token, rules) {
   const v = raw != null && m.precision != null ? Number(raw.toFixed(m.precision)) : raw;
   const out = { id: m.id, area: m.area, label: m.label, src: m.src, value: v,
     display: skip ? skip.display : v == null ? "No data" : m.show(v), extra: m.extra ? m.extra(token) : "",
-    level: null, word: null, favour: 0, rule: "", unrated: !!skip, missing: Boolean(skip?.missing) };
+    level: null, word: null, favour: 0, rule: "", unrated: !!skip, missing: Boolean(skip?.missing), notOnRecord: Boolean(skip?.notOnRecord), check: [] };
+  // Free places to check by hand, offered only where the source has nothing.
+  if ((skip?.notOnRecord || (!skip && v == null)) && m.check) out.check = m.check(token);
   if (skip) { out.rule = skip.rule; return out; }
   if (v == null) { out.rule = "The source returned no data for this token."; return out; }
   if (m.yard === "shown") { out.rule = "Shown for context, deliberately not rated."; return out; }

@@ -222,3 +222,6 @@ a.mlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .brand .badge { margin-left: 4px; }
 .outside.personal { background: var(--accent-tint); border-color: var(--border); }
 .dd .it .noimg { width: 22px; height: 22px; border-radius: 50%; background: var(--border); flex: none; }
+
+/* "check elsewhere" links where a source has nothing on file */
+.ex.check a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }

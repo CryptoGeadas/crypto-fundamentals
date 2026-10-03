@@ -134,7 +134,7 @@ export const METRIC_EXPLAIN = {
   },
   exploitLoss: {
     what: "Money lost in past exploits recorded by DefiLlama, minus any funds returned.",
-    why: "A history of losses says something about how carefully the project is built and run.",
+    why: "A history of losses says something about how carefully the project is built and run. It is rated only when an exploit is on record; when DefiLlama's list has nothing, the page says unknown rather than none.",
     terms: ["exploit"],
   },
   audits: {
@@ -154,7 +154,7 @@ export const METRIC_EXPLAIN = {
   },
   raised: {
     what: "The total raised in funding rounds recorded by DefiLlama, with the lead investors.",
-    why: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule.",
+    why: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule. DefiLlama's list is incomplete, so an empty record is shown as unknown, with links to check elsewhere.",
     terms: ["funding-round"],
   },
   age: {
