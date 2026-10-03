@@ -36,7 +36,7 @@ async function commitsBetween(repo, since, until) {
 
 async function devStats(orgs, now) {
   const lists = [];
-  for (const org of orgs.slice(0, 2)) lists.push((await gh(`/users/${encodeURIComponent(org)}/repos?sort=pushed&per_page=15`)) || []);
+  for (const org of orgs.slice(0, 2)) lists.push((await gh(`/users/${encodeURIComponent(org)}/repos?sort=pushed&per_page=40`)) || []);
   const repos = pickRepos(lists);
   if (!repos.length) return null;
   const iso = (t) => new Date(t * 1000).toISOString();

@@ -38,12 +38,15 @@ export function humanActivity(commits) {
   return { commits: humans.length, contributors: who.size, bots: commits.length - humans.length };
 }
 
-// The most recently pushed live repositories across a project's orgs (no forks, no archives).
-export function pickRepos(repoLists, n = 3) {
-  return repoLists.flat()
-    .filter((r) => r && !r.fork && !r.archived && r.full_name)
-    .sort((a, b) => Date.parse(b.pushed_at || 0) - Date.parse(a.pushed_at || 0))
-    .slice(0, n).map((r) => r.full_name);
+// The project's main live codebases: among repositories pushed in the last ~6 months (no forks, no
+// archives), the most starred. "Most recently pushed" alone picks bot-maintained config repos
+// (aave-governance-cache, hooklist) over the real code. Falls back to the most recent if none qualify.
+export function pickRepos(repoLists, n = 3, now = Date.now()) {
+  const live = repoLists.flat().filter((r) => r && !r.fork && !r.archived && r.full_name);
+  const recent = live.filter((r) => now - Date.parse(r.pushed_at || 0) < 183 * 86_400_000)
+    .sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0) || Date.parse(b.pushed_at || 0) - Date.parse(a.pushed_at || 0));
+  const pool = recent.length ? recent : live.sort((a, b) => Date.parse(b.pushed_at || 0) - Date.parse(a.pushed_at || 0));
+  return pool.slice(0, n).map((r) => r.full_name);
 }
 
 // Tokens due for a refresh of `field` (each entry stores `<field>At`), oldest first, capped.

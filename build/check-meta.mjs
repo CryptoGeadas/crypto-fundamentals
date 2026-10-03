@@ -31,10 +31,13 @@ check("human activity counts commits and distinct people (by login, else email)"
   const a = humanActivity([c("alice"), c("alice"), c("bob"), c(null, "carol@x.io"), { author: { login: "dependabot[bot]", type: "Bot" } }]);
   assert.deepEqual(a, { commits: 4, contributors: 3, bots: 1 });
 });
-check("repos: most recently pushed, skipping forks and archives", () => {
-  const r = (n, d, o = {}) => ({ full_name: n, pushed_at: `2026-0${d}-01T00:00:00Z`, ...o });
-  assert.deepEqual(pickRepos([[r("a/old", 1), r("a/fork", 9, { fork: true }), r("a/new", 8)], [r("b/arch", 9, { archived: true }), r("b/mid", 5), r("b/x", 4)]]),
-    ["a/new", "b/mid", "b/x"]);
+check("repos: the most-starred among those active in ~6 months, skipping forks and archives", () => {
+  const NOWMS = Date.UTC(2026, 9, 3);
+  const r = (n, monthsAgo, stars, o = {}) => ({ full_name: n, pushed_at: new Date(NOWMS - monthsAgo * 30 * 86400000).toISOString(), stargazers_count: stars, ...o });
+  const lists = [[r("aave/governance-cache", 0, 2), r("aave/v3-core", 2, 900), r("aave/fork", 0, 5000, { fork: true }), r("aave/ancient", 20, 3000)],
+                 [r("aave/arch", 0, 4000, { archived: true }), r("aave/interface", 1, 400), r("aave/docs", 0, 60)]];
+  assert.deepEqual(pickRepos(lists, 3, NOWMS), ["aave/v3-core", "aave/interface", "aave/docs"]);
+  assert.deepEqual(pickRepos([[r("x/old", 20, 1), r("x/older", 30, 9)]], 3, NOWMS), ["x/old", "x/older"]);   // none recent → most recent
 });
 check("rotation: never fetched or older than the limit, oldest first, capped", () => {
   const iso = (d) => new Date((NOW - d * DAY) * 1000).toISOString();
