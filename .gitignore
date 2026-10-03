@@ -1,0 +1,25 @@
+# --- secrets: never commit (keyless by design; this is the safety net) ---
+.env
+.env.*
+*.key
+*.pem
+secrets*
+*secret*
+*token*.txt
+credentials*
+
+# --- personal version: stays on Bernardo's machine, never in this public repo ---
+evaluations/
+*evaluation*.json
+personal/
+*personal*
+always-include*
+watchlist*
+
+# --- build / OS noise ---
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+*.log
+.cache/
