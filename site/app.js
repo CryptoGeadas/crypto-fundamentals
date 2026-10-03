@@ -179,7 +179,7 @@ function sourceBanner(t, area) {
 function factCard(r, t) {
   const display = t && unavailable(t, r) ? "Source unavailable" : r.display;
   return `<div class="fact t-${tone(r.favour)}" tabindex="0" aria-describedby="rule-${r.id}">
-      <span class="label">${esc(r.label)}</span>
+      <a class="label mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>
       <span class="vv">${esc(display)}</span>
       ${strip(r)}
       ${r.peer ? `<div class="ex peer">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}
@@ -204,7 +204,7 @@ function scoreTable(t, a) {
   const rows = Object.values(a.byArea).map((d) => `
     <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}</th></tr>
     ${d.rows.map((r) => `<tr>
-      <td><span class="tl">${esc(r.label)}</span>${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}</td>
+      <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}</td>
       <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>
       <td class="rt" title="${esc(r.rule)}">${strip(r)}${r.peer ? `<div class="ex">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}</td>
       <td class="src">${esc(r.src)}</td></tr>`).join("")}`).join("");

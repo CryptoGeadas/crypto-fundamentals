@@ -113,7 +113,7 @@ section.sec { padding: 26px 0; border-top: 1px solid var(--border); margin-top: 
   border: 1px solid var(--border); border-left: 3px solid var(--tone); outline: none;
 }
 .fact:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
-.fact .label { display: block; margin-bottom: 6px; }
+.fact .label { display: block; margin-bottom: 6px; width: fit-content; }
 .fact .vv { font-family: var(--display); font-size: 20px; font-weight: 700; display: block; margin-bottom: 6px; }
 .fact .ex { font-size: 12px; color: var(--muted); margin-top: 6px; }
 .fact .src { font-size: 11px; color: var(--tertiary); margin-top: 4px; }
@@ -189,3 +189,31 @@ table.score .ex { color: var(--muted); font-size: 11px; margin-top: 3px; overflo
 /* source failures */
 .srcfail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; padding: 8px 12px; font: 400 13px var(--body);
   border-radius: var(--r-card); background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); }
+
+/* methodology page */
+.navlink { color: var(--muted); font-size: 13px; }
+.doc { padding-bottom: 20px; }
+.doc .hero-line { margin-top: 36px; }
+.doc section { padding: 26px 0 6px; border-top: 1px solid var(--border); margin-top: 26px; scroll-margin-top: 16px; }
+.doc h2 { margin-bottom: 12px; }
+.doc p { max-width: 75ch; }
+.toc { margin: 22px 0 0; font-size: 13px; color: var(--muted); line-height: 2; }
+.callout { padding: 12px 14px; border-radius: var(--r-card); background: var(--accent-tint); border: 1px solid var(--border); }
+.marea { border-top: 0 !important; padding-top: 10px !important; }
+.marea h3 { margin: 18px 0 6px; font-size: 17px; }
+.metric { padding: 12px 0 10px; border-bottom: 1px solid var(--border); scroll-margin-top: 16px; }
+.metric:target { background: var(--accent-tint); border-radius: var(--r-card); padding-left: 10px; }
+.metric h4 { font: 600 15px var(--display); margin: 0 0 6px; }
+.metric p { margin: 4px 0; }
+.metric .meta { font-size: 13px; color: var(--muted); }
+.metric .meta .label { margin-right: 6px; }
+.glossary dt { font: 600 14px var(--display); margin-top: 14px; scroll-margin-top: 16px; }
+.glossary dt:target { color: var(--accent); }
+.glossary dd { margin: 4px 0 0; color: var(--muted); max-width: 75ch; }
+table.types td.ar, table.types th.ar { text-align: center; font-size: 11px; }
+.small { font-size: 12px; }
+@media (max-width: 640px) { table.types th.ar, table.types td.ar { display: none; } }
+
+/* metric labels link to their methodology entry */
+a.mlink { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--tertiary); }
+a.mlink:hover { color: var(--accent); border-bottom-color: var(--accent); }

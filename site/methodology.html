@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How it works · Token Fundamentals</title>
+  <meta name="description" content="How Token Fundamentals rates a token: every metric, its formula, source and house rule, the limits of free data, and a glossary.">
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark"; } catch { document.documentElement.dataset.theme = "dark"; }</script>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500;600&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="brand.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="wrap top">
+    <a class="brand" href="./" style="color:inherit;text-decoration:none">
+      <img class="mark" src="logo.svg" alt="BG" width="37" height="25">
+      <span class="wordmark">Token Fundamentals</span>
+    </a>
+    <nav class="topnav">
+      <a class="navlink" href="./">Search a token</a>
+      <button id="theme" class="btn btn-ghost btn-sm" aria-label="Toggle theme">
+        <span class="theme-dark">&#9790;</span><span class="theme-light">&#9728;</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="wrap doc">
+    <h1 class="serif hero-line">How it works</h1>
+    <p class="sub">Every number on a token page is rated against a published rule. This page explains each metric, where its data comes from, the rule that rates it, and the limits of free data.</p>
+
+    <nav class="toc" aria-label="Contents">
+      <a href="#ratings">What the ratings mean</a> · <a href="#types">Token types</a> · <a href="#coverage">Coverage</a> ·
+      <a href="#universe">Which tokens</a> · <a href="#sources">Data sources</a> · <a href="#limits">Limits</a> ·
+      <a href="#metrics">The metrics</a> · <a href="#glossary">Glossary</a>
+    </nav>
+
+    <section id="ratings">
+      <h2>What the ratings mean</h2>
+      <p>Each rated number gets a five-step strip: very low, low, neutral, high or very high. The word describes the size of the number. The colour says whether that size is good or bad for a holder, so a very high fee multiple shows red because the token is expensive, while a very high share of fees reaching holders shows green. Hover or tab onto any rating on a token page to see the exact rule behind it.</p>
+      <p>Three kinds of yardstick are used, each chosen to suit the metric. <strong>Fixed thresholds</strong> apply to numbers that mean the same for every token, such as how much of the supply is still locked. <strong>Peer percentiles</strong> apply to valuation: a token's fee multiple is ranked within its own category, because a multiple that is cheap for an exchange can be expensive for a chain. <strong>Trends</strong> apply to activity, comparing the latest period with an earlier one, because a growing project and a shrinking one can show the same number today. Some numbers are <strong>shown but not rated</strong>, where a rule would only be opinion dressed up as fact.</p>
+      <p>The thresholds are <strong>house rules</strong>: published opinions, not evidence. They are starting points and will be tuned as ratings are reviewed against tokens with a known history. Each section of a token page also gets an overall verdict (strong, good, mixed, weak or poor) from the average of its rated metrics.</p>
+      <p class="callout">Informational only, not financial advice. Ratings follow published rules and can be wrong when the source data is wrong. Check anything important against the project's own documents.</p>
+    </section>
+
+    <section id="types">
+      <h2>How a token gets its type</h2>
+      <p>A fixed rule, checked in order, decides the type, and the type decides which areas apply. A memecoin has no business to analyse, so only its supply, holders, market and contract are checked. A chain whose protocol side also earns fees, such as Hyperliquid or Arbitrum, stays a chain but also gets the value-accrual area, and its fees are taken from the protocol, because that is the business behind the token.</p>
+      <div id="types-table"></div>
+    </section>
+
+    <section id="coverage">
+      <h2>Coverage</h2>
+      <p>The coverage badge shows how complete a page is: the share of the metrics that apply to the token that actually have data. <strong>Full</strong> means at least 80%, <strong>Partial</strong> at least 45%, and <strong>Market data only</strong> anything less. Memecoins are always market data only. Missing data is shown as "No data", never as a low rating, and a metric that does not apply to a token (such as holders for a chain's native coin) says why instead.</p>
+    </section>
+
+    <section id="universe">
+      <h2>Which tokens can be searched</h2>
+      <p>The search only offers real tokens: the CoinGecko top 300 by market cap, plus any token ranked up to 1,500 that DefiLlama tracks as a protocol or chain. Fake copies that reuse a well-known ticker never appear. Any other token can still be opened by pasting its contract address; its page is labelled as outside the verified list so you can check it is the token you mean. Every token page shows its official contract addresses so they can be compared with your wallet or exchange.</p>
+    </section>
+
+    <section id="sources">
+      <h2>Where the data comes from</h2>
+      <p>All data is free and needs no account or key. Prices, supply and contract addresses come live from <strong>CoinGecko</strong>. Fees, revenue, value locked, unlock schedules, treasuries, funding rounds, exploits and category benchmarks come from <strong>DefiLlama</strong>. Holder lists and contract risk flags come live from <strong>GoPlus</strong>, read on the token's home chain. Development activity comes from <strong>GitHub</strong>.</p>
+      <p>Most numbers are fetched live in your browser when you open a token. Data that is too heavy for a browser, or not available to one, is prepared once a day by an automated job: the searchable token list, unlock schedules, treasuries, exploit history, funding rounds, development activity and the peer benchmarks. The job checks its results before saving them and never replaces good data with a suspicious result. The footer of the search page shows when it last ran and whether every source answered.</p>
+    </section>
+
+    <section id="limits">
+      <h2>Limits of free data</h2>
+      <p>DefiLlama's figure for revenue reaching token holders can miss value returned outside the protocol, such as buybacks run by a foundation, so a zero there deserves a check of the project's own documents. Its audit records are patchy, which is why audits are shown but never rated. Unlock schedules are DefiLlama's documented schedules; supply without a published schedule is counted as locked beyond twelve months. The ten largest wallets often include exchanges, bridges, staking contracts and treasuries, which hold tokens on behalf of many people, and on Solana the type of each wallet is not identified. Development activity only sees public repositories, so teams that build in private look quieter than they are. Peer comparisons need at least eight projects in a category; smaller categories fall back to a wider group, and the page says so.</p>
+    </section>
+
+    <section id="metrics">
+      <h2>The metrics</h2>
+      <p>Grouped by area, in the order they appear on a token page. Each entry gives what the number is, why it matters, where it comes from and the rule that rates it.</p>
+      <div id="metric-list"><p class="muted">Loading the metric list…</p></div>
+    </section>
+
+    <section id="glossary">
+      <h2>Glossary</h2>
+      <dl id="glossary-list" class="glossary"></dl>
+    </section>
+  </main>
+
+  <footer class="wrap foot">Informational only, not financial advice. House rules v<span id="hr-version"></span>.</footer>
+  <script type="module" src="methodology.js"></script>
+</body>
+</html>
