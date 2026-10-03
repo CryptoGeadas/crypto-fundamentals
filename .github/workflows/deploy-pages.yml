@@ -36,9 +36,11 @@ jobs:
           node-version: 22
       - name: Check ratings and search before publishing
         run: node build/check-rating.mjs && node build/check-universe.mjs
+      - name: Stamp file references with the commit, so each release loads as one set
+        run: node build/stamp.mjs "$(git rev-parse --short=12 HEAD)"
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: site
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v5
