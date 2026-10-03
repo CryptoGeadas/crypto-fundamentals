@@ -135,3 +135,15 @@ section.sec { padding: 26px 0; border-top: 1px solid var(--border); margin-top: 
 .health { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .health.ok { background: var(--success); }
 .health.warn { background: var(--warning); }
+
+/* charts */
+.chartbox { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-panel); background: var(--surface); }
+.chart { margin: 8px 0 0; }
+.svg { width: 100%; height: auto; display: block; }
+.svg .st { fill: var(--accent); }
+.svg .ax { fill: var(--muted); font: 10px var(--body); }
+.svg .now { stroke: var(--warning); stroke-dasharray: 3 3; }
+.svg .maxline { stroke: var(--muted); stroke-dasharray: 2 4; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 11px; color: var(--muted); margin-top: 6px; }
+.legend .lg i { display: inline-block; width: 9px; height: 9px; background: var(--accent); margin-right: 5px; border-radius: 2px; vertical-align: -1px; }
+.nochart { font-size: 12px; color: var(--tertiary); padding: 20px 0; text-align: center; border: 1px dashed var(--border); border-radius: var(--r-card); }

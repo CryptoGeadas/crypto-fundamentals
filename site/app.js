@@ -4,20 +4,21 @@ import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
 import { addressKind, buildAddressIndex, lookupAddress, searchUniverse, tickerClashes } from "./search.js";
 import { resolveAddress } from "./resolve.js";
+import { unlockChart } from "./charts.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
-  universe: null, status: null, idmap: null, byId: new Map(), addrIdx: new Map(),
+  universe: null, status: null, idmap: null, unlocks: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
 const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-solana", "arbitrum"];
 
 // ---------------------------------------------------------------- rendering
 function strip(r) {
-  if (r.level == null) return `<span class="strip none">${r.unrated || r.value != null ? "Not rated" : "No data"}</span>`;
+  if (r.level == null) return `<span class="strip none">${r.missing || (r.value == null && !r.unrated) ? "No data" : "Not rated"}</span>`;
   const good = r.favour > 0 ? "good" : r.favour < 0 ? "bad" : "neutral";
   return `<span class="strip t-${tone(r.favour)}" role="img" aria-label="Rating: ${r.word} (${good})">${[1, 2, 3, 4, 5]
     .map((i) => `<i class="${i === r.level ? "on" : ""}"></i>`).join("")}<b>${r.word}</b></span>`;
@@ -77,11 +78,22 @@ function leadSentence(t, a) {
   if (circ.unrated) parts.push(`${t.sym} has no maximum supply, so its dilution depends on how fast new tokens are issued`);
   else if (circ.value != null) parts.push(`${circ.display} of ${t.sym}'s eventual supply is already circulating`);
   if (fdvm.value != null) parts.push(`its fully diluted value is ${fdvm.display} its market cap`);
-  return parts.length ? parts.join("; ") + "." : "CoinGecko has no supply data for this token.";
+  let text = parts.length ? parts.join("; ") + "." : "CoinGecko has no supply data for this token.";
+  const next = a.rows.find((r) => r.id === "nextUnlockShare");
+  const y = a.rows.find((r) => r.id === "unlocks12m");
+  if (next && next.value != null) text += ` Next unlock: ${next.extra}.`;
+  else if (next?.display === "None scheduled") text += " No unlock is scheduled.";
+  if (y && y.value != null) text += ` ${y.display.replace(" of circulating", "")} of circulating supply is due to unlock in the next 12 months.`;
+  else if (!t.unlocks) text += " DefiLlama does not track an unlock schedule for it.";
+  return text;
 }
 
 // One plain sentence of facts that opens each area (Factsheet layout).
 const LEADS = { dilution: leadSentence };
+// Charts shown under an area's facts.
+const CHARTS = {
+  dilution: (t) => (t.unlocks?.detail?.monthly ? `<div class="chartbox"><span class="label">Unlock schedule (DefiLlama)</span>${unlockChart(t.unlocks.detail, t.unlocks.max || t.unlocks.detail.maxSupply)}</div>` : ""),
+};
 
 function factCard(r) {
   return `<div class="fact t-${tone(r.favour)}" tabindex="0" aria-describedby="rule-${r.id}">
@@ -99,6 +111,7 @@ function factsheet(t, a) {
       <div class="sec-head t-${areaTone(d.avg)}"><span class="label" id="sec-${d.id}">${esc(d.name)}</span><span class="verdict">${d.word}</span></div>
       ${LEADS[d.id] ? `<p class="lead">${esc(LEADS[d.id](t, a))}</p>` : ""}
       <div class="facts">${d.rows.map(factCard).join("")}</div>
+      ${CHARTS[d.id] ? CHARTS[d.id](t) : ""}
     </section>`).join("");
 }
 
@@ -175,11 +188,22 @@ async function load(id, via) {
   setUrl(id);
   renderLoading();
   try {
-    const t = await fetchToken(id);
+    const [t, detail] = await Promise.all([fetchToken(id), loadUnlockDetail(id)]);
+    const u = state.unlocks?.[id];
+    t.unlocks = u ? { ...u, detail } : null;
     if (seq === state.loadSeq) renderToken(t, via);
   } catch (e) {
     if (seq === state.loadSeq) renderError(e.message || "Something went wrong.", () => load(id, via));
   }
+}
+
+// Full unlock schedule for one token (same origin, built by the daily job); optional.
+async function loadUnlockDetail(id) {
+  if (!state.unlocks?.[id]?.detail) return null;
+  try {
+    const r = await fetch(`./data/unlocks/${encodeURIComponent(id)}.json`, { cache: "no-cache" });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
 }
 
 async function loadAddress(address, kind) {
@@ -268,10 +292,11 @@ async function start() {
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
   // Optional data: the page still works without them (type falls back to the meme/narrative rule).
-  const [status, idmap] = await Promise.all(["status.json", "idmap.json"].map((f) =>
+  const [status, idmap, unlocks] = await Promise.all(["status.json", "idmap.json", "unlocks.json"].map((f) =>
     fetch(`./data/${f}`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
   state.status = status;
   state.idmap = idmap?.map || null;
+  state.unlocks = unlocks?.tokens || null;
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;

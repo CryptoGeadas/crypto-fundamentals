@@ -35,6 +35,7 @@ export function normalise(c) {
     change30d: md.price_change_percentage_30d ?? null,
     marketCap: num(usd(md.market_cap)),
     fdv: num(usd(md.fully_diluted_valuation)),
+    volume24h: num(usd(md.total_volume)),
     circulatingSupply: num(md.circulating_supply),
     totalSupply: num(md.total_supply),
     maxSupply: num(md.max_supply),

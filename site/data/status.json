@@ -1,22 +1,49 @@
 {
-  "generated": "2026-10-03T19:13:18.403Z",
-  "startedAt": "2026-10-03T19:12:29.683Z",
-  "healthy": true,
+  "generated": "2026-10-03T19:26:46.822Z",
+  "startedAt": "2026-10-03T19:20:35.145Z",
+  "healthy": false,
   "sources": {
     "defillama": "ok",
-    "coingecko": "ok"
+    "coingecko": "ok",
+    "defillama-unlocks": "degraded"
   },
   "datasets": {
     "idmap": {
       "status": "updated",
       "count": 2980,
-      "lastSuccess": "2026-10-03T19:13:18.381Z"
+      "lastSuccess": "2026-10-03T19:21:23.817Z"
     },
     "universe": {
       "status": "updated",
       "count": 639,
-      "lastSuccess": "2026-10-03T19:13:18.381Z"
+      "lastSuccess": "2026-10-03T19:21:23.817Z"
+    },
+    "unlocks": {
+      "status": "updated",
+      "count": 223,
+      "lastSuccess": "2026-10-03T19:26:46.820Z"
     }
   },
-  "problems": []
+  "problems": [
+    {
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for movement not refreshed (defillama.com/unlocks/ooia: HTTP 404); previous copy kept if any. Retried in a week."
+    },
+    {
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for bsquared-network not refreshed (defillama.com/unlocks/buzz-farming: HTTP 404); previous copy kept if any. Retried in a week."
+    },
+    {
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for pharos-network not refreshed (defillama.com/unlocks/undefined: HTTP 404); previous copy kept if any. Retried in a week."
+    },
+    {
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for flow not refreshed (defillama.com/unlocks/flow: HTTP 404); previous copy kept if any. Retried in a week."
+    }
+  ]
 }

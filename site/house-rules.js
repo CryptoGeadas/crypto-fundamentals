@@ -16,5 +16,14 @@ export const HOUSE_RULES = {
     circulatingShare: { bands: [30, 50, 70, 90], dir: "up" },
     // Fully diluted valuation ÷ market cap, as a multiple.
     fdvToMcap: { bands: [1.1, 1.5, 2, 3], dir: "down" },
+    // Next scheduled unlock as % of circulating supply.
+    nextUnlockShare: { bands: [0.5, 1, 2, 5], dir: "down" },
+    // Next scheduled unlock's dollar value ÷ 24h trading volume, as a multiple.
+    nextUnlockVsVolume: { bands: [0.25, 0.5, 1, 2], dir: "down" },
+    // Supply due to unlock in the next 12 months, as % of circulating supply.
+    unlocks12m: { bands: [2, 5, 10, 20], dir: "down" },
+    // Supply neither circulating nor scheduled within 12 months, as % of max supply
+    // (a later schedule, or none published: open-ended dilution).
+    lockedBeyond12m: { bands: [10, 25, 40, 60], dir: "down" },
   },
 };

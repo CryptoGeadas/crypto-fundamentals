@@ -101,6 +101,75 @@ export const METRICS = [
   },
 ];
 
+// ---------------------------------------------------------------- unlock metrics (issue #5)
+// t.unlocks comes from the daily job (DefiLlama unlock pages): { circ, max, perDay, next:{ts,amount,type},
+// detail:{ cats, monthly:[[ts, ...cumulative per category]], upcoming } }. Missing when not tracked.
+const YEAR = 365 * 86400;
+const nowSec = () => Date.now() / 1000;
+const fmtDay = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+export function unlockedAt(monthly, ts) {
+  if (!monthly?.length) return null;
+  const total = (r) => r.slice(1).reduce((a, b) => a + b, 0);
+  if (ts <= monthly[0][0]) return total(monthly[0]);
+  for (let i = 1; i < monthly.length; i++) {
+    if (ts <= monthly[i][0]) {
+      const a = monthly[i - 1], b = monthly[i];
+      return total(a) + (total(b) - total(a)) * ((ts - a[0]) / (b[0] - a[0] || 1));
+    }
+  }
+  return total(monthly[monthly.length - 1]);
+}
+
+// Supply due in the next 12 months: from the full schedule when we have it, otherwise null.
+export function unlocks12mAmount(u, now = nowSec()) {
+  const m = u?.detail?.monthly;
+  if (!m?.length) return null;
+  const a = unlockedAt(m, now), b = unlockedAt(m, now + YEAR);
+  return a == null || b == null ? null : Math.max(0, b - a);
+}
+
+const nextEvent = (u) => (u?.next && u.next.ts > nowSec() ? u.next : null);
+const noSchedule = (t) => (!t.unlocks ? { missing: true, display: "Not tracked", rule: "DefiLlama does not track an unlock schedule for this token, so there is nothing to rate." } : null);
+const noneScheduled = (t) => noSchedule(t) || (!nextEvent(t.unlocks)
+  ? { display: "None scheduled", rule: "Not rated: no unlock is scheduled. That alone is not good news when supply is still locked; see \"Locked supply not unlocking within 12 months\"." }
+  : null);
+
+const UNLOCK_METRICS = [
+  {
+    id: "nextUnlockShare", area: "dilution", label: "Next unlock, % of circulating", yard: "fixed", src: "DefiLlama unlock page",
+    unrated: noneScheduled,
+    val: (t) => { const n = nextEvent(t.unlocks); const c = t.unlocks?.circ; return n && c ? (n.amount / c) * 100 : null; },
+    show: (v) => fmt.pct(v, 2),
+    extra: (t) => { const n = nextEvent(t.unlocks); return n ? `${fmt.num(n.amount)} ${t.sym} on ${fmtDay(n.ts)} (${n.type})` : ""; },
+  },
+  {
+    id: "nextUnlockVsVolume", area: "dilution", label: "Next unlock vs daily volume", yard: "fixed", src: "DefiLlama unlock page, CoinGecko",
+    unrated: noneScheduled,
+    val: (t) => { const n = nextEvent(t.unlocks); return n && t.volume24h && t.price ? (n.amount * t.price) / t.volume24h : null; },
+    show: (v) => fmt.x(v),
+    extra: (t) => { const n = nextEvent(t.unlocks); return n && t.price ? `${fmt.usd(n.amount * t.price)} unlocking vs ${fmt.usd(t.volume24h)} traded in 24h` : ""; },
+  },
+  {
+    id: "unlocks12m", area: "dilution", label: "Unlocks due in the next 12 months", yard: "fixed", src: "DefiLlama unlock page",
+    unrated: noSchedule,
+    val: (t) => { const a = unlocks12mAmount(t.unlocks); const c = t.unlocks?.circ; return a != null && c ? (a / c) * 100 : null; },
+    show: (v) => fmt.pct(v, 1) + " of circulating",
+    extra: (t) => { const a = unlocks12mAmount(t.unlocks); return a != null ? `${fmt.num(a)} ${t.sym} on the published schedule` : t.unlocks ? "Full schedule not fetched yet" : ""; },
+  },
+  {
+    id: "lockedBeyond12m", area: "dilution", label: "Locked supply not unlocking within 12 months", yard: "fixed", src: "DefiLlama unlock page",
+    unrated: noSchedule,
+    val: (t) => {
+      const u = t.unlocks, a = unlocks12mAmount(u), max = u?.max || u?.detail?.maxSupply;
+      return a != null && max && u.circ != null ? Math.max(0, ((max - u.circ - a) / max) * 100) : null;
+    },
+    show: (v) => fmt.pct(v, 1) + " of max supply",
+    extra: () => "Neither circulating nor scheduled within a year: either unlocks later, or has no published schedule",
+  },
+];
+METRICS.push(...UNLOCK_METRICS);
+
 // ---------------------------------------------------------------- rating
 export function levelFromBands(v, bands) {
   let i = 0;
@@ -125,7 +194,7 @@ export function rate(m, token, rules) {
   const v = skip ? null : m.val(token);
   const out = { id: m.id, area: m.area, label: m.label, src: m.src, value: v,
     display: skip ? skip.display : v == null ? "No data" : m.show(v), extra: m.extra ? m.extra(token) : "",
-    level: null, word: null, favour: 0, rule: "", unrated: !!skip };
+    level: null, word: null, favour: 0, rule: "", unrated: !!skip, missing: Boolean(skip?.missing) };
   if (skip) { out.rule = skip.rule; return out; }
   if (v == null) { out.rule = "The source returned no data for this token."; return out; }
   if (m.yard === "shown") { out.rule = "Shown for context, deliberately not rated."; return out; }
@@ -141,7 +210,8 @@ export function rate(m, token, rules) {
 // Coverage badge: share of the applicable metrics that have data (decision 10).
 // Memecoins are always "Market data only": fundamentals do not apply to them.
 export function coverageOf(rows, type) {
-  const share = rows.length ? rows.filter((r) => r.value != null || r.unrated).length / rows.length : 0;
+  // "Not tracked" (missing) counts as no data; "Uncapped" or "None scheduled" are real answers.
+  const share = rows.length ? rows.filter((r) => r.value != null || (r.unrated && !r.missing)).length / rows.length : 0;
   const level = type === "meme" ? "Market data only" : share >= 0.8 ? "Full" : share >= 0.45 ? "Partial" : "Market data only";
   return { level, share: Math.round(share * 100) };
 }
@@ -162,7 +232,7 @@ export function analyse(token, rules, { type = "narrative", alsoDefi = false } =
 }
 
 export function areaWord(avg, rows = []) {
-  if (avg == null) return rows.some((r) => r.value != null || r.unrated) ? "Shown only" : "No data";
+  if (avg == null) return rows.some((r) => r.value != null || (r.unrated && !r.missing)) ? "Shown only" : "No data";
   return avg >= 1 ? "Strong" : avg >= 0.34 ? "Good" : avg > -0.34 ? "Mixed" : avg > -1 ? "Weak" : "Poor";
 }
 

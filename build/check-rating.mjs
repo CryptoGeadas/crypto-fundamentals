@@ -85,12 +85,44 @@ check("display never rounds a value onto the band edge it sits below", () => {
   assert.equal(c.word, "Neutral");
   assert.equal(c.display, "69.6%");
 });
+// Unlock fixtures shaped like the live DefiLlama data (3 Oct 2026).
+const NOW = Date.now() / 1000, Y = 365 * 86400;
+const ARB_U = { circ: 7.04e9, max: 1e10, perDay: 513285, next: { ts: NOW + 12 * 86400, amount: 56.125e6, type: "cliff" },
+  detail: { cats: ["Team", "Investors"], monthly: [[NOW - Y, 6.0e9, 0.8e9], [NOW, 6.2e9, 0.84e9], [NOW + Y, 6.8e9, 1.2e9]] } };
+const JUP_U = { circ: 3.457e9, max: 7e9, perDay: 0, next: null,
+  detail: { cats: ["Airdrop"], monthly: [[NOW - 2 * Y, 3.0e9], [NOW - 0.2 * Y, 3.457e9]] } };
+const withU = (base, u, extra = {}) => ({ ...base, unlocks: u, sym: "X", price: 0.2, volume24h: 2.3e8, ...extra });
+
+check("unlocks (ARB-like): next unlock 0.80% = Low, vs volume Very low, 12m 13.6% = High (bad), locked beyond 20% = Low", () => {
+  const t = withU(FIXTURES.arbitrum, ARB_U);
+  assert.equal(row(t, "nextUnlockShare").word, "Low");
+  assert.equal(row(t, "nextUnlockVsVolume").word, "Very low");
+  assert.equal(row(t, "unlocks12m").display, "13.6% of circulating");
+  assert.equal(row(t, "unlocks12m").word, "High");
+  assert.equal(row(t, "unlocks12m").favour, -1);
+  assert.equal(row(t, "lockedBeyond12m").word, "Low");
+});
+check("unlocks (JUP-like): nothing scheduled is NOT rated as good; locked-beyond-12m catches the risk; area no better than Mixed", () => {
+  const t = withU(FIXTURES.jupiter, JUP_U);
+  assert.equal(row(t, "nextUnlockShare").display, "None scheduled");
+  assert.equal(row(t, "nextUnlockShare").level, null);
+  assert.equal(row(t, "unlocks12m").value, 0);
+  assert.equal(row(t, "lockedBeyond12m").display, "50.6% of max supply");
+  assert.equal(row(t, "lockedBeyond12m").word, "High");
+  assert.ok(["Mixed", "Weak", "Poor"].includes(analyse(t, HOUSE_RULES).byArea.dilution.word));
+});
+check("unlocks: a token DefiLlama does not track says 'Not tracked' and counts as missing for coverage", () => {
+  const t = withU(FIXTURES.pepe, null);
+  for (const id of ["nextUnlockShare", "nextUnlockVsVolume", "unlocks12m", "lockedBeyond12m"]) assert.equal(row(t, id).display, "Not tracked");
+  const a = analyse(t, HOUSE_RULES, { type: "defi" });
+  assert.ok(a.coverage.share < 100);
+});
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
     const rule = HOUSE_RULES.metrics[m.id];
     assert.ok(rule, `missing rule for ${m.id}`);
     assert.equal(rule.bands.length, 4);
-    assert.ok(rate(m, FIXTURES.arbitrum, HOUSE_RULES).rule.includes("House rule"));
+    assert.ok(rate(m, withU(FIXTURES.arbitrum, ARB_U), HOUSE_RULES).rule.includes("House rule"), m.id);
   }
 });
 
