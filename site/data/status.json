@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-03T19:02:33.692Z",
-  "startedAt": "2026-10-03T19:01:44.936Z",
+  "generated": "2026-10-03T19:13:18.403Z",
+  "startedAt": "2026-10-03T19:12:29.683Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -10,12 +10,12 @@
     "idmap": {
       "status": "updated",
       "count": 2980,
-      "lastSuccess": "2026-10-03T19:02:33.662Z"
+      "lastSuccess": "2026-10-03T19:13:18.381Z"
     },
     "universe": {
       "status": "updated",
-      "count": 640,
-      "lastSuccess": "2026-10-03T19:02:33.662Z"
+      "count": 639,
+      "lastSuccess": "2026-10-03T19:13:18.381Z"
     }
   },
   "problems": []
