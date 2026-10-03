@@ -7,6 +7,7 @@ import { resolveAddress } from "./resolve.js";
 import { unlockChart, feesChart, holdersChart } from "./charts.js";
 import { fetchSecurity } from "./goplus.js";
 import { loadLlama } from "./llama.js";
+import { createCache, TTL } from "./cache.js";
 
 const $ = (s) => document.querySelector(s);
 // Personal version only: the local server injects window.TF_PERSONAL. On the public site it is absent.
@@ -276,16 +277,30 @@ function renderToken(t, via) {
   const a = analyse(t, HOUSE_RULES, cls);
   const view = getView();
   $("#view").innerHTML = outsideBanner(t, via) + identity(t, a, cls)
+    + freshLine(t)
     + `<div class="viewbar">${areaChips(a)}${viewToggle(view)}</div>`
     + (view === "table" ? scoreTable(t, a) : factsheet(t, a));
   document.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = () => copyAddress(b)));
   document.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => { setView(b.dataset.view); renderToken(t, via); }));
   document.querySelectorAll("[data-retry]").forEach((b) => (b.onclick = () => retrySource(b.dataset.retry, b)));
+  $("#refresh")?.addEventListener("click", () => load(t.id, via, { fresh: true }));
   document.title = `${t.sym} · Token Fundamentals`;
   renderFoot(t);
   // Lets the local personal version add its AI Insights panel. Nothing listens on the public site.
   const leads = Object.fromEntries(Object.keys(a.byArea).map((id) => [id, LEADS[id] ? LEADS[id](t, a) : ""]));
   window.dispatchEvent(new CustomEvent("tf:render", { detail: { t, a, cls, leads, coverage: a.coverage } }));
+}
+
+// "Prices from 14:45 · fundamentals from 09:10 · Refresh": how old the live data on screen is.
+const hhmm = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+function freshLine(t) {
+  const at = t.dataAt;
+  if (!at) return "";
+  const minutes = (ms) => Math.round((Date.now() - ms) / 60000);
+  const text = minutes(at.slow) < 2 && minutes(at.market) < 2 ? `Live data fetched at ${hhmm(at.market)}`
+    : `Prices from ${hhmm(at.market)} · fundamentals from ${new Date(at.slow).toDateString() === new Date().toDateString() ? hhmm(at.slow) : new Date(at.slow).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}, saved in your browser`;
+  return `<p class="fresh"><span title="Prices are reused for up to 15 minutes, other live data for up to 12 hours. The daily data (unlocks, peers, treasuries, funding, development) updates once a day.">${esc(text)}</span>
+    <button id="refresh" class="btn btn-ghost btn-sm">Refresh</button></p>`;
 }
 
 async function copyAddress(btn) {
@@ -316,7 +331,7 @@ function healthLine(s) {
 function renderFoot(t) {
   const u = state.universe;
   $("#foot").innerHTML = `${healthLine(state.status)}
-    ${t ? `Live data from CoinGecko, fetched ${t.fetchedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} in your browser. ` : ""}
+    ${t ? `Prices from CoinGecko, fetched ${hhmm(t.fetchedAt)} in your browser. ` : ""}
     ${u ? `Verified token list: ${u.count} tokens. ` : ""}
     Ratings follow house rules v${HOUSE_RULES.version}: published opinions, not evidence. Hover a rating to see its rule.<br>
     Informational only, not financial advice.`;
@@ -346,27 +361,42 @@ function setUrl(id) {
   history.replaceState(null, "", url);
 }
 
-async function load(id, via) {
+const cache = createCache();
+cache.prune(); // drop entries older than 12 hours
+
+// fresh: true (the Refresh button) skips this browser's cache and fetches everything live.
+async function load(id, via, { fresh = false } = {}) {
   const seq = ++state.loadSeq;
   state.id = id;
   setUrl(id);
   renderLoading();
   try {
     const entry = state.idmap?.[id];
-    const [t, detail] = await Promise.all([
-      fetchToken(id, { onRetry: () => seq === state.loadSeq && renderLoading("CoinGecko is busy; trying again in a few seconds…") }),
+    const [market, detail] = await Promise.all([
+      cache.get(`cg:${id}`, TTL.market, () => fetchToken(id, { onRetry: () => seq === state.loadSeq && renderLoading("CoinGecko is busy; trying again in a few seconds…") }), { fresh }),
       loadUnlockDetail(id),
     ]);
+    const t = market.value;
+    t.fetchedAt = new Date(market.at);
     t.sourceFailed = {};
-    const securityJob = fetchSecurity(t).catch(() => { t.sourceFailed.goplus = true; return null; });
-    const firstPriceJob = fetch(`https://coins.llama.fi/prices/first/coingecko:${encodeURIComponent(id)}`).then((r) => r.json())
-      .then((d) => d.coins?.[`coingecko:${id}`]?.timestamp ?? null).catch(() => null);
+    const cls = clsFor(id, t.categories);
+    // Slow data: failures are never cached (a failed source keeps its Retry button).
+    const securityJob = cache.get(`gp:${id}`, TTL.slow, () => fetchSecurity(t), { fresh, keep: () => true })
+      .catch(() => { t.sourceFailed.goplus = true; return { value: null, at: null }; });
+    const firstPriceJob = cache.get(`fp:${id}`, TTL.slow, () => fetch(`https://coins.llama.fi/prices/first/coingecko:${encodeURIComponent(id)}`).then((r) => r.json())
+      .then((d) => d.coins?.[`coingecko:${id}`]?.timestamp ?? null).catch(() => null), { fresh });
+    const llamaJob = cache.get(`ll:${id}:${cls.type}:${cls.alsoDefi ? 1 : 0}`, TTL.slow,
+      () => loadLlama(id, entry, state.defi?.[id], cls).catch(() => ({ failed: true })), { fresh, keep: (v) => !v?.failed });
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
-    t.llama = await loadLlama(id, entry, state.defi?.[id], clsFor(id, t.categories)).catch(() => ({ failed: true }));
+    const [llama, security, firstPrice] = await Promise.all([llamaJob, securityJob, firstPriceJob]);
+    t.llama = llama.value;
     if (t.llama?.failed) t.sourceFailed.defillama = true;
-    t.security = await securityJob;
-    t.firstPriceTs = await firstPriceJob;
+    t.security = security.value;
+    t.firstPriceTs = firstPrice.value;
+    // When each part of the page was fetched: the oldest slow lookup is what the refresh line reports.
+    const slowAts = [llama, security, firstPrice].filter((x) => entry || x !== llama).map((x) => x.at).filter(Boolean);
+    t.dataAt = { market: market.at, slow: slowAts.length ? Math.min(...slowAts) : market.at };
     t.meta = state.meta?.[id] || null;
     t.defiExtra = state.defi?.[id] ? { hacks: state.defi[id].hacks || [], audits: state.defi[id].audits || null } : null;
     t.peers = state.peers ? { group: state.peers.byToken?.[id]?.group, groups: state.peers.groups, secondary: entry?.c ? "Chain" : null } : null;

@@ -237,3 +237,7 @@ a.mlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .gaps .gw { color: var(--tertiary); }
 .gaps a { color: var(--muted); text-decoration: underline dotted; text-underline-offset: 3px; }
 .fact .rule .hint { display: block; margin-bottom: 6px; font-weight: 500; }
+
+/* how old the live data is, with a Refresh button */
+.fresh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 0; font-size: 12px; color: var(--muted); }
+.fresh .btn { padding: 2px 10px; }
