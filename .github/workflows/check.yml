@@ -17,3 +17,5 @@ jobs:
           node-version: 22
       - name: Shared rating module gives the expected results in Node
         run: node build/check-rating.mjs
+      - name: Universe build and search behave as specified
+        run: node build/check-universe.mjs

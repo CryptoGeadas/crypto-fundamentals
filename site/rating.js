@@ -18,7 +18,7 @@ export const fmt = {
     if (a >= 1e6) return "$" + (v / 1e6).toFixed(1) + "M";
     if (a >= 1e3) return "$" + (v / 1e3).toFixed(1) + "K";
     if (a >= 1) return "$" + v.toFixed(2);
-    return "$" + v.toPrecision(3);
+    return fmt.price(v);
   },
   num(v) {
     if (v == null || !Number.isFinite(v)) return "—";
@@ -29,11 +29,13 @@ export const fmt = {
     if (a >= 1e3) return (v / 1e3).toFixed(1) + "K";
     return v.toFixed(a < 10 ? 1 : 0);
   },
-  // Prices keep their digits ($2,734.12); only large totals are abbreviated.
+  // Prices keep their digits ($2,734.12); tiny prices get 3 significant digits, never
+  // scientific notation ($0.000000116, not $1.16e-7). Only large totals are abbreviated.
   price(v) {
     if (v == null || !Number.isFinite(v)) return "—";
     if (v >= 1) return "$" + v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return "$" + v.toPrecision(3);
+    if (v <= 0) return "$0";
+    return "$" + v.toFixed(Math.min(20, 2 - Math.floor(Math.log10(v))));
   },
   pct: (v, d = 0) => (v == null || !Number.isFinite(v) ? "—" : v.toFixed(d) + "%"),
   // Enough decimals that a value never rounds onto a band edge it sits below (1.47 must not read "1.5×").

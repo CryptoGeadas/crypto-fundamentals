@@ -63,6 +63,9 @@ check("uncapped token: circulating share is shown as 'Uncapped supply', never ra
 check("prices keep their digits; totals are abbreviated", () => {
   assert.equal(fmt.price(2734.125), "$2,734.13");
   assert.equal(fmt.price(0.2011), "$0.201");
+  assert.equal(fmt.price(1.16e-7), "$0.000000116");
+  assert.equal(fmt.price(4.45e-6), "$0.00000445");
+  assert.equal(fmt.usd(0.5), "$0.500");
   assert.equal(fmt.usd(327.93e9), "$327.93B");
 });
 check("missing data renders 'No data', never a rating", () => {

@@ -37,6 +37,20 @@
 .dd .it b { font-family: var(--display); font-weight: 600; min-width: 52px; }
 .dd .it span { color: var(--muted); }
 .dd .it.sel, .dd .it:hover { background: var(--accent-tint); }
+.dd .it img { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.dd .it .r { margin-left: auto; color: var(--tertiary); font-size: 12px; }
+.dd .it .clash { font-style: normal; font-size: 11px; color: var(--warning); margin-left: 6px; }
+.examples { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip-btn {
+  font: 600 12px var(--display); padding: 5px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.chip-btn:hover { border-color: var(--accent); color: var(--accent); }
+.outside {
+  margin-bottom: 18px; padding: 10px 14px; border-radius: var(--r-card); font-size: 13px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+}
+.outside code { font-size: 12px; word-break: break-all; }
 .dd .msg { padding: 12px 14px; font-size: 13px; color: var(--muted); }
 
 /* identity */
