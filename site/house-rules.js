@@ -33,6 +33,17 @@ export const HOUSE_RULES = {
     // Market cap ÷ TVL, as a multiple (fixed bands).
     mcapToTvl: { bands: [0.1, 0.3, 1, 3], dir: "down" },
 
+    // Holders: % of supply held by the 10 largest wallets (exchanges, bridges and treasuries included).
+    top10Share: { bands: [20, 35, 50, 70], dir: "down" },
+    // Market health: 24h volume ÷ market cap, %.
+    volumeToMcap: { bands: [1, 3, 8, 20], dir: "up" },
+    // Distance from the all-time high, %. Context only: neither good nor bad on its own.
+    athDistance: { bands: [-90, -70, -40, -15], dir: "none" },
+    // Security: number of contract risk flags raised by GoPlus.
+    contractFlags: { bands: [0.5, 1.5, 2.5, 3.5], dir: "down" },
+    // Past exploits, net loss after returned funds, in $ millions.
+    exploitLoss: { bands: [0.01, 1, 10, 50], dir: "down" },
+
     // Traction: % change of the last 30 days against the 30 days ending 90 days earlier.
     feesTrend: { bands: [-30, -10, 10, 30], dir: "up" },
     revenueTrend: { bands: [-30, -10, 10, 30], dir: "up" },

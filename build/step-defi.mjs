@@ -1,8 +1,8 @@
 // Daily step 3: protocol TVL (now vs a month ago) and treasury breakdowns, precomputed because the
 // per-protocol endpoints are too heavy for a visitor's browser (/protocol/aave 3 MB, /treasury/aave 4 MB).
-//   site/data/defi.json   { tokens: { <gecko_id>: { tvl, tvlPrevMonth, treasury: { own, other, at } | null } } }
+//   site/data/defi.json   { tokens: { <gecko_id>: { tvl, tvlPrevMonth, treasury: { own, other, at } | null, hacks: [...], audits: { count, links } | null } } }
 
-import { tvlByToken, treasurySummary, treasuriesToRefresh } from "./defi-lib.mjs";
+import { tvlByToken, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
 import { sleep } from "./net.mjs";
 
 const API = "https://api.llama.fi";
@@ -14,10 +14,15 @@ export async function defiStep({ report, net, data }) {
   const ids = new Set(universe.tokens.map((t) => t.id));
 
   console.log("DefiLlama protocol TVL ...");
-  let tvl;
+  let tvl, hacks, audits;
   try {
-    const [protocols, lite] = await Promise.all([net.getJson(`${API}/protocols`, "defillama"), net.getJson(`${API}/lite/protocols2`, "defillama")]);
-    tvl = tvlByToken({ protocols, lite: lite.protocols || [], parents: lite.parentProtocols || [], idmap: idmap.map, ids });
+    const [protocols, lite, hackList] = await Promise.all([
+      net.getJson(`${API}/protocols`, "defillama"), net.getJson(`${API}/lite/protocols2`, "defillama"), net.getJson(`${API}/hacks`, "defillama"),
+    ]);
+    const parents = lite.parentProtocols || [];
+    tvl = tvlByToken({ protocols, lite: lite.protocols || [], parents, idmap: idmap.map, ids });
+    hacks = hacksByToken({ hacks: hackList, protocols, parents });
+    audits = auditsByToken({ protocols, parents });
   } catch (e) {
     report.error("defillama", `${e.message}; protocol data kept from the last good run.`);
     report.datasets.defi = { status: "kept" };
@@ -45,9 +50,9 @@ export async function defiStep({ report, net, data }) {
   }
 
   const tokens = {};
-  for (const id of new Set([...Object.keys(tvl), ...Object.keys(treasury)])) {
+  for (const id of new Set([...Object.keys(tvl), ...Object.keys(treasury), ...Object.keys(hacks), ...Object.keys(audits)])) {
     if (!ids.has(id)) continue;
-    tokens[id] = { ...(tvl[id] || {}), treasury: treasury[id] ?? null };
+    tokens[id] = { ...(tvl[id] || {}), treasury: treasury[id] ?? null, hacks: hacks[id] || [], audits: audits[id] || null };
   }
   await data.publish("defi", "defi.json", { generated: new Date().toISOString(), count: Object.keys(tokens).length, tokens },
     Object.keys(tokens).length, prev?.count, MIN_TOKENS);

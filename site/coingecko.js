@@ -36,6 +36,8 @@ export function normalise(c) {
     marketCap: num(usd(md.market_cap)),
     fdv: num(usd(md.fully_diluted_valuation)),
     volume24h: num(usd(md.total_volume)),
+    athChange: typeof md.ath_change_percentage?.usd === "number" ? md.ath_change_percentage.usd : null,
+    homeChain: c.asset_platform_id || null,   // the chain the token lives on natively (null for native assets)
     circulatingSupply: num(md.circulating_supply),
     totalSupply: num(md.total_supply),
     maxSupply: num(md.max_supply),

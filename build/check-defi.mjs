@@ -2,7 +2,7 @@
 // Run: node build/check-defi.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { tvlByToken, treasurySummary, treasuriesToRefresh } from "./defi-lib.mjs";
+import { tvlByToken, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
 
 const results = [];
 const check = (name, fn) => { try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", `${name} — ${e.message}`]); } };
@@ -32,6 +32,26 @@ check("treasury rotation: missing or week-old are due; 'none' waits 30 days", ()
   const iso = (d) => new Date((NOW - d * DAY) * 1000).toISOString();
   const stored = { a: { treasury: { at: iso(8) } }, b: { treasury: { at: iso(2) } }, c: { treasury: { none: true, at: iso(10) } }, d: { treasury: { none: true, at: iso(31) } } };
   assert.deepEqual(treasuriesToRefresh({ a: "a", b: "b", c: "c", d: "d", e: "e" }, stored, NOW, 10), ["e", "d", "a"]);
+});
+
+check("hacks attach through child or parent protocol ids; unattributable incidents are skipped", () => {
+  const parents = [{ id: "parent#aave", gecko_id: "aave" }];
+  const protocols = [{ id: "1599", parentProtocol: "parent#aave" }, { id: "1", gecko_id: "aave" }, { id: "2862", gecko_id: "hyperliquid" }];
+  const h = hacksByToken({ parents, protocols, hacks: [
+    { date: 1773273600, name: "Aave V3", defillamaId: "1599", parentProtocolId: "parent#aave", amount: 862000, returnedFunds: 862000, classification: "Oracle Manipulation" },
+    { date: 1724803200, name: "Aave", defillamaId: "1", amount: 56000, returnedFunds: null, classification: "Access Control" },
+    { date: 1786000000, name: "Hyperliquid Malaysia", defillamaId: null, amount: null },
+  ] });
+  assert.deepEqual(Object.keys(h), ["aave"]);
+  assert.equal(h.aave.length, 2);
+  assert.equal(h.aave[0].name, "Aave V3");            // newest first
+  assert.equal(h.aave[1].returned, 0);
+});
+check("audit links are de-duplicated across child protocols", () => {
+  const a = auditsByToken({ parents: [{ id: "parent#x", gecko_id: "x" }], protocols: [
+    { id: "1", parentProtocol: "parent#x", audit_links: ["https://a.io/1", "https://a.io/2"] },
+    { id: "2", parentProtocol: "parent#x", audit_links: ["https://a.io/2", "not a link"] } ] });
+  assert.deepEqual(a, { x: { count: 2, links: ["https://a.io/1", "https://a.io/2"] } });
 });
 
 for (const [s, n] of results) console.log(`${s}  ${n}`);

@@ -44,3 +44,37 @@ export function treasuriesToRefresh(candidates, stored, now = Date.now() / 1000,
   }
   return due.sort((a, b) => b[1] - a[1]).slice(0, cap).map(([id]) => id);
 }
+
+// gecko id for a DefiLlama protocol id (own gecko_id, else its parent's), from /protocols + parents.
+function protocolGecko(protocols, parents) {
+  const parentGecko = Object.fromEntries(parents.map((p) => [p.id, p.gecko_id]));
+  const byId = Object.fromEntries(protocols.map((p) => [String(p.id), p.gecko_id || parentGecko[p.parentProtocol] || null]));
+  return (id, parentId) => byId[String(id)] || parentGecko[parentId] || parentGecko[id] || null;
+}
+
+// /hacks → { gecko: [{ date, name, amount, returned, cls }] }, newest first. Incidents with no
+// DefiLlama protocol id (e.g. an exchange's regional entity) cannot be attributed and are skipped.
+export function hacksByToken({ hacks = [], protocols = [], parents = [] }) {
+  const geckoOf = protocolGecko(protocols, parents);
+  const out = {};
+  for (const h of hacks) {
+    const g = h.defillamaId ? geckoOf(h.defillamaId, h.parentProtocolId) : null;
+    if (!g) continue;
+    (out[g] ||= []).push({ date: h.date, name: h.name, amount: Number(h.amount) || 0, returned: Number(h.returnedFunds) || 0, cls: h.classification || "" });
+  }
+  for (const list of Object.values(out)) list.sort((a, b) => b.date - a.date);
+  return out;
+}
+
+// /protocols audit_links → { gecko: { count, links: [first 5] } }, de-duplicated across child protocols.
+export function auditsByToken({ protocols = [], parents = [] }) {
+  const geckoOf = protocolGecko(protocols, parents);
+  const sets = {};
+  for (const p of protocols) {
+    const g = geckoOf(p.id, p.parentProtocol);
+    const links = (p.audit_links || []).filter((l) => typeof l === "string" && /^https?:\/\//.test(l));
+    if (!g || !links.length) continue;
+    for (const l of links) (sets[g] ||= new Set()).add(l);
+  }
+  return Object.fromEntries(Object.entries(sets).map(([g, s]) => [g, { count: s.size, links: [...s].slice(0, 5) }]));
+}

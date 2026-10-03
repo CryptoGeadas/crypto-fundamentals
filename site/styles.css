@@ -150,3 +150,10 @@ section.sec { padding: 26px 0; border-top: 1px solid var(--border); margin-top: 
 .svg .b1 { fill: var(--accent); }
 .svg .b2 { fill: var(--accent); opacity: 0.4; }
 .fact .ex.peer { color: var(--text); font-weight: 500; }
+.hbars { display: grid; gap: 6px; margin-top: 8px; }
+.hb { display: grid; grid-template-columns: minmax(110px, 180px) 1fr 52px; gap: 10px; align-items: center; font-size: 12px; }
+.hb .hn { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace; font-size: 11px; }
+.hb em { font-style: normal; font-family: var(--body); color: var(--tertiary); font-size: 10px; }
+.hbar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.hbar i { display: block; height: 100%; background: var(--accent); }
+.hv { text-align: right; font-variant-numeric: tabular-nums; }

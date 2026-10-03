@@ -4,7 +4,8 @@ import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
 import { addressKind, buildAddressIndex, lookupAddress, searchUniverse, tickerClashes } from "./search.js";
 import { resolveAddress } from "./resolve.js";
-import { unlockChart, feesChart } from "./charts.js";
+import { unlockChart, feesChart, holdersChart } from "./charts.js";
+import { fetchSecurity } from "./goplus.js";
 import { loadLlama } from "./llama.js";
 
 const $ = (s) => document.querySelector(s);
@@ -116,9 +117,34 @@ function valuationLead(t, a) {
   if (m?.value != null) parts.push(`its market cap is ${m.display} the value locked in it`);
   return parts.length ? parts.join("; ") + "." : "There are no fees or TVL to value it against.";
 }
-const LEADS = { valuation: valuationLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
+function holdersLead(t, a) {
+  const r = a.rows.find((x) => x.id === "top10Share");
+  if (r?.display === "Native asset") return `${t.name} is a chain's native coin, so there is no token contract or holder list to inspect.`;
+  if (r?.value == null) return "The holder list could not be checked.";
+  if (t.security.chain === "solana") return `The 10 largest wallets hold ${r.display} of the supply. On Solana these can include team, exchange and treasury wallets, which are not single owners.`;
+  const c = t.security.holders.filter((h) => h.contract).length;
+  return `The 10 largest wallets hold ${r.display} of the supply; ${c} of them are contracts such as exchanges, bridges, staking or treasuries, not single owners.`;
+}
+function marketLead(t, a) {
+  const v = a.rows.find((x) => x.id === "volumeToMcap"), h = a.rows.find((x) => x.id === "athDistance");
+  const parts = [];
+  if (v?.value != null) parts.push(`${money(t.volume24h)} traded in the last 24 hours, ${v.display} of its market cap`);
+  if (h?.value != null) parts.push(`the price is ${Math.abs(h.value).toFixed(0)}% below its all-time high`);
+  return parts.length ? parts.join("; ") + "." : "CoinGecko has no market data for it.";
+}
+function securityLead(t, a) {
+  const f = a.rows.find((x) => x.id === "contractFlags"), e = a.rows.find((x) => x.id === "exploitLoss");
+  const parts = [];
+  if (f?.display === "Native asset") parts.push("As a native coin it has no token contract to audit");
+  else if (f?.value != null) parts.push(f.value === 0 ? "GoPlus found no risky owner powers, taxes or honeypot behaviour in the contract" : `GoPlus raises ${f.display} on the contract: ${t.security.flags.join(", ").toLowerCase()}`);
+  const n = (t.defiExtra?.hacks || []).length, ex = n === 1 ? "1 exploit" : `${n} exploits`;
+  if (e?.value != null) parts.push(!n ? "DefiLlama records no exploits" : e.value === 0 ? `DefiLlama records ${ex}, with the funds returned in full` : `DefiLlama records ${ex}, with ${e.display} lost after returned funds`);
+  return parts.length ? parts.join("; ") + "." : "The contract could not be checked.";
+}
+const LEADS = { valuation: valuationLead, holders: holdersLead, market: marketLead, security: securityLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
 // Charts shown under an area's facts.
 const CHARTS = {
+  holders: (t) => (t.security?.holders?.length ? `<div class="chartbox"><span class="label">Top 10 wallets, share of supply (GoPlus, ${esc(chainName(t.security.chain))})</span>${holdersChart(t.security.holders)}</div>` : ""),
   traction: (t) => (t.llama?.fees?.monthly?.length ? `<div class="chartbox"><span class="label">Fees and revenue per month (DefiLlama)</span>${feesChart(t.llama.fees.monthly, t.llama.revenue?.monthly)}</div>` : ""),
   dilution: (t) => (t.unlocks?.detail?.monthly ? `<div class="chartbox"><span class="label">Unlock schedule (DefiLlama)</span>${unlockChart(t.unlocks.detail, t.unlocks.max || t.unlocks.detail.maxSupply)}</div>` : ""),
 };
@@ -219,9 +245,12 @@ async function load(id, via) {
   try {
     const entry = state.idmap?.[id];
     const [t, detail] = await Promise.all([fetchToken(id), loadUnlockDetail(id)]);
+    const securityJob = fetchSecurity(t).catch(() => null);
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
     t.llama = await loadLlama(id, entry, state.defi?.[id], classify(entry, t.categories)).catch(() => null);
+    t.security = await securityJob;
+    t.defiExtra = state.defi?.[id] ? { hacks: state.defi[id].hacks || [], audits: state.defi[id].audits || null } : null;
     t.peers = state.peers ? { group: state.peers.byToken?.[id]?.group, groups: state.peers.groups, secondary: entry?.c ? "Chain" : null } : null;
     if (seq === state.loadSeq) renderToken(t, via);
   } catch (e) {

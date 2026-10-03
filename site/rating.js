@@ -231,6 +231,40 @@ const VALUATION_METRICS = [
 ];
 METRICS.push(...VALUATION_METRICS);
 
+// ---------------------------------------------------------------- holders, market health, security (issue #8)
+// t.security from site/goplus.js: { chain, home, holderCount, holders: [{percent, contract, locked, tag}], flags: [...] }
+// t.defiExtra from data/defi.json: { hacks: [...], audits: { count, links } }
+const nativeAsset = (t) => (!Object.keys(t.contracts || {}).length
+  ? { display: "Native asset", rule: "Not rated: a chain's native coin has no token contract to inspect." } : null);
+const notChecked = (t) => nativeAsset(t) || (t.security === undefined ? null
+  : !t.security ? { missing: true, display: "Not checked", rule: "GoPlus could not check this token's contract (unsupported chain or no answer)." } : null);
+const top10 = (t) => (t.security?.holders?.length ? t.security.holders.reduce((a, h) => a + (h.percent || 0), 0) : null);
+const fmtDate = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+
+const HOLDER_MARKET_SECURITY = [
+  { id: "top10Share", precision: 1, area: "holders", label: "Held by the 10 largest wallets", yard: "fixed", src: "GoPlus",
+    unrated: notChecked, val: (t) => top10(t), show: (v) => fmt.pct(v, 1),
+    extra: (t) => (t.security?.holders?.length ? `${t.security.chain === "solana" ? "Wallet types not identified on Solana" : `${t.security.holders.filter((h) => h.contract).length} of the 10 are contracts (exchanges, bridges, staking or treasuries)`}${t.security.holderCount ? `; ${fmt.num(t.security.holderCount)} holders in total` : ""}${t.security.home ? "" : " · checked on a bridged copy"}` : ""),
+    note: "Large wallets include exchanges, bridges, staking contracts and treasuries, which are not single owners." },
+  { id: "volumeToMcap", precision: 1, area: "market", label: "Daily volume ÷ market cap", yard: "fixed", src: "CoinGecko",
+    val: (t) => (t.volume24h && t.marketCap ? (t.volume24h / t.marketCap) * 100 : null), show: (v) => fmt.pct(v, 1),
+    extra: (t) => (t.volume24h ? `${fmt.usd(t.volume24h)} traded in 24 hours` : "") },
+  { id: "athDistance", precision: 0, area: "market", label: "Distance from all-time high", yard: "fixed", src: "CoinGecko",
+    val: (t) => t.athChange ?? null, show: (v) => fmt.pct(v, 0),
+    note: "Context only, shown in a neutral colour: a big drawdown can mean opportunity or decline." },
+  { id: "contractFlags", area: "security", label: "Contract risk flags", yard: "fixed", src: "GoPlus",
+    unrated: notChecked, val: (t) => (t.security ? t.security.flags.length : null), show: (v) => (v === 0 ? "None" : `${v} flag${v > 1 ? "s" : ""}`),
+    extra: (t) => (t.security?.flags?.length ? t.security.flags.join(" · ") : t.security ? "No owner powers, taxes or honeypot behaviour found" : "") },
+  { id: "exploitLoss", area: "security", label: "Past exploits, net loss", yard: "fixed", types: ["defi", "chain"], src: "DefiLlama hacks",
+    val: (t) => (t.defiExtra ? (t.defiExtra.hacks || []).reduce((a, h) => a + Math.max(0, h.amount - h.returned), 0) / 1e6 : null),
+    show: (v) => (v === 0 ? "None" : fmt.usd(v * 1e6)),
+    extra: (t) => { const h = t.defiExtra?.hacks || []; return h.length ? h.slice(0, 3).map((x) => `${x.name}, ${fmtDate(x.date)}${x.cls ? ` (${x.cls})` : ""}${x.returned ? `, ${fmt.usd(x.returned)} returned` : ""}`).join(" · ") : "No exploit recorded by DefiLlama"; } },
+  { id: "audits", area: "security", label: "Audit reports linked", yard: "shown", types: ["defi", "chain"], src: "DefiLlama",
+    val: (t) => t.defiExtra?.audits?.count ?? null, show: (v) => String(v),
+    note: "Shown, never rated: DefiLlama's audit data is patchy (often only on sub-protocols)." },
+];
+METRICS.push(...HOLDER_MARKET_SECURITY);
+
 // ---------------------------------------------------------------- rating
 export function levelFromBands(v, bands) {
   let i = 0;

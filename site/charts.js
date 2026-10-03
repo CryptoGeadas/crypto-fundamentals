@@ -58,3 +58,14 @@ export function unlockChart(detail, maxSupply, { w = 640, h = 220 } = {}) {
       <text x="${padL}" y="${h - 6}" class="ax">${fmtDate(x0)}</text><text x="${w - padL}" y="${h - 6}" class="ax" text-anchor="end">${fmtDate(x1)}</text></svg>
     <figcaption class="legend">${legend}</figcaption></figure>`;
 }
+
+// Top holders as horizontal bars: share of supply, with contract / locked / tag markers.
+export function holdersChart(holders) {
+  if (!holders?.length) return `<div class="nochart">No holder list</div>`;
+  const max = Math.max(...holders.map((h) => h.percent || 0), 1);
+  const short = (a) => (a ? `${a.slice(0, 6)}…${a.slice(-4)}` : "?");
+  return `<div class="hbars" role="list">${holders.map((h) => `<div class="hb" role="listitem">
+      <span class="hn" title="${esc(h.address)}">${esc(h.tag || short(h.address))}${h.contract ? ' <em>contract</em>' : ""}${h.locked ? ' <em>locked</em>' : ""}</span>
+      <span class="hbar"><i style="width:${(((h.percent || 0) / max) * 100).toFixed(1)}%"></i></span>
+      <span class="hv">${(h.percent || 0).toFixed(1)}%</span></div>`).join("")}</div>`;
+}

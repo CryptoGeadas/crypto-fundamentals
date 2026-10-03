@@ -122,7 +122,10 @@ check("unlocks: a token DefiLlama does not track says 'Not tracked' and counts a
 const LLAMA_AAVE = { fees: { d30: 37.2e6, prev: 38.7e6, monthly: [] }, revenue: { d30: 5.06e6, prev: 4.9e6 }, holders: { d30: 0, prev: 0 },
   accrualFees: { d30: 37.2e6 }, tvl: { now: 19.3e9, prev: 15.0e9 }, chain: null, treasury: { own: 97.9e6, other: 34.6e6 } };
 const LLAMA_HYPE = { fees: null, revenue: null, holders: { d30: 56.4e6 }, accrualFees: { d30: 62.0e6 }, tvl: null, chain: null, treasury: null };
-const full = (extra) => withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE, chain: { dex30: 6.09e9, stables: 3.2e9, stables90: 3.0e9 } }, ...extra });
+const SECURITY = { chain: "ethereum", home: true, holderCount: 189239, holders: Array.from({ length: 10 }, (_, i) => ({ percent: [15.6, 5.1, 4, 3, 2, 2, 1.5, 1.2, 1, 1][i], contract: i < 6 })), flags: ["Upgradeable (proxy) contract"] };
+const full = (extra) => withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE, chain: { dex30: 6.09e9, stables: 3.2e9, stables90: 3.0e9 } },
+  contracts: { ethereum: "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9" }, security: SECURITY, volume24h: 2.3e8, athChange: -74,
+  defiExtra: { hacks: [{ date: 1773273600, name: "Aave V3", amount: 862000, returned: 862000 }, { date: 1724803200, name: "Aave", amount: 56000, returned: 0 }], audits: { count: 3 } }, ...extra });
 
 check("traction: trends are rated at display precision; fees and revenue are shown, not rated", () => {
   const t = withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE });
@@ -156,6 +159,30 @@ check("value accrual only applies to DeFi, or to a chain whose protocol earns fe
   assert.ok(!ids({ type: "chain" }).includes("holdersShare"));
   assert.ok(ids({ type: "chain", alsoDefi: true }).includes("holdersShare"));
   assert.ok(ids({ type: "chain" }).includes("stablesTrend") && !ids({ type: "defi" }).includes("stablesTrend"));
+});
+check("holders: top-10 share rated (36.4% = Neutral); native assets and unchecked tokens are not rated", () => {
+  assert.equal(row(full(), "top10Share").display, "36.4%");
+  assert.equal(row(full(), "top10Share").word, "Neutral");
+  const native = row(full({ contracts: {} }), "top10Share");
+  assert.equal(native.display, "Native asset");
+  assert.equal(native.missing, false);
+  const failed = row(full({ security: null }), "top10Share");
+  assert.equal(failed.display, "Not checked");
+  assert.equal(failed.missing, true);
+});
+check("security: flags counted (1 = Low), exploit loss is net of returned funds", () => {
+  assert.equal(row(full(), "contractFlags").word, "Low");
+  assert.equal(row(full({ security: { ...SECURITY, flags: [] } }), "contractFlags").display, "None");
+  const ex = row(full(), "exploitLoss");
+  assert.equal(ex.value, 0.056);                 // $862K returned in full; $56K not
+  assert.equal(ex.word, "Low");
+  assert.equal(row(full(), "audits").level, null);
+});
+check("market: distance from ATH uses the neutral colour whatever its level", () => {
+  const r = row(full(), "athDistance");
+  assert.equal(r.word, "Low");
+  assert.equal(r.favour, 0);
+  assert.equal(row(full(), "volumeToMcap").display, "16.9%");
 });
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
