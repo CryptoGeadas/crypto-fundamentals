@@ -1,29 +1,28 @@
 {
-  "generated": "2026-10-03T18:54:23.528Z",
-  "startedAt": "2026-10-03T18:53:34.774Z",
+  "generated": "2026-10-03T18:57:10.286Z",
+  "startedAt": "2026-10-03T18:55:21.341Z",
   "healthy": false,
   "sources": {
-    "test": "degraded",
     "defillama": "ok",
-    "coingecko": "ok"
+    "coingecko": "degraded"
   },
   "datasets": {
     "idmap": {
       "status": "updated",
       "count": 2980,
-      "lastSuccess": "2026-10-03T18:54:23.494Z"
+      "lastSuccess": "2026-10-03T18:57:10.261Z"
     },
     "universe": {
       "status": "updated",
       "count": 640,
-      "lastSuccess": "2026-10-03T18:54:23.494Z"
+      "lastSuccess": "2026-10-03T18:57:10.261Z"
     }
   },
   "problems": [
     {
       "level": "warning",
-      "source": "test",
-      "message": "Simulated problem from a manual test run; no data was affected."
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
     }
   ]
 }
