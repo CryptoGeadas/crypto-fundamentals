@@ -264,6 +264,9 @@ function renderToken(t, via) {
   document.querySelectorAll("[data-retry]").forEach((b) => (b.onclick = () => retrySource(b.dataset.retry, b)));
   document.title = `${t.sym} · Token Fundamentals`;
   renderFoot(t);
+  // Lets the local personal version add its AI Insights panel. Nothing listens on the public site.
+  const leads = Object.fromEntries(Object.keys(a.byArea).map((id) => [id, LEADS[id] ? LEADS[id](t, a) : ""]));
+  window.dispatchEvent(new CustomEvent("tf:render", { detail: { t, a, cls, leads, coverage: a.coverage } }));
 }
 
 async function copyAddress(btn) {
