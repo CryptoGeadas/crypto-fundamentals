@@ -9,11 +9,14 @@ import { fetchSecurity } from "./goplus.js";
 import { loadLlama } from "./llama.js";
 
 const $ = (s) => document.querySelector(s);
+// Personal version only: the local server injects window.TF_PERSONAL. On the public site it is absent.
+const PERSONAL = window.TF_PERSONAL || null;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
-  defaultView: "factsheet", viewFallback: null, current: null,
+  defaultView: PERSONAL?.defaultView || "factsheet", viewFallback: null, current: null,
+  personalIds: new Set((PERSONAL?.alwaysInclude || []).map((t) => t.id)),
   universe: null, status: null, idmap: null, unlocks: null, defi: null, peers: null, meta: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
@@ -29,6 +32,7 @@ function strip(r) {
 
 function outsideBanner(t, via) {
   if (state.byId.has(t.id)) return "";
+  if (state.personalIds.has(t.id)) return `<div class="outside personal" role="note"><b>On your always-include list.</b> ${esc(t.name)} is outside the verified universe; it is searchable because you added it to settings.json.</div>`;
   return `<div class="outside" role="note"><b>Outside the verified universe.</b> ${esc(t.name)} is not in the curated list
     (CoinGecko top 300, plus tokens up to #1,500 with DefiLlama data)${via ? `; it was found from the address <code>${esc(via)}</code>` : ""}.
     Check this is the token you mean.</div>`;
@@ -61,7 +65,7 @@ function identity(t, a, cls) {
       ${t.img ? `<img class="logo" src="${esc(t.img)}" alt="" width="44" height="44">` : ""}
       <div><h2>${esc(t.name)}<span class="sym">${esc(t.sym)}</span></h2>
         <div class="badges">
-          <span class="badge badge-accent tip" tabindex="0" data-tip="${esc(ti.rule)}${cls.alsoDefi ? " Its protocol side also earns fees, so DeFi metrics are shown too." : ""}">${ti.label}${cls.alsoDefi ? " + DeFi" : ""}</span>
+          <span class="badge badge-accent tip" tabindex="0" data-tip="${cls.overridden ? "Type set by your always-include list (overrides the rule). " : ""}${esc(ti.rule)}${cls.alsoDefi ? " Its protocol side also earns fees, so DeFi metrics are shown too." : ""}">${ti.label}${cls.alsoDefi ? " + DeFi" : ""}</span>
           <span class="badge ${covTone} tip" tabindex="0" data-tip="${esc(covRule)}">Coverage: ${a.coverage.level}</span>
           ${t.rank ? `<span class="badge badge-info">Rank #${t.rank}</span>` : ""}
         </div></div>
@@ -233,9 +237,15 @@ function viewToggle(view) {
     ${["factsheet", "table"].map((v) => `<button data-view="${v}" aria-pressed="${view === v}" class="${view === v ? "on" : ""}">${v === "factsheet" ? "Factsheet" : "Table"}</button>`).join("")}</div>`;
 }
 
+// The type rule, unless the personal always-include list overrides it for this token.
+function clsFor(id, categories) {
+  const forced = PERSONAL?.alwaysInclude?.find((x) => x.id === id)?.type;
+  return forced ? { type: forced, alsoDefi: false, overridden: true } : classify(state.idmap?.[id], categories);
+}
+
 function renderToken(t, via) {
   state.current = { t, via };
-  const cls = classify(state.idmap?.[t.id], t.categories);
+  const cls = clsFor(t.id, t.categories);
   const a = analyse(t, HOUSE_RULES, cls);
   const view = getView();
   $("#view").innerHTML = outsideBanner(t, via) + identity(t, a, cls)
@@ -323,7 +333,7 @@ async function load(id, via) {
       .then((d) => d.coins?.[`coingecko:${id}`]?.timestamp ?? null).catch(() => null);
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
-    t.llama = await loadLlama(id, entry, state.defi?.[id], classify(entry, t.categories)).catch(() => ({ failed: true }));
+    t.llama = await loadLlama(id, entry, state.defi?.[id], clsFor(id, t.categories)).catch(() => ({ failed: true }));
     if (t.llama?.failed) t.sourceFailed.defillama = true;
     t.security = await securityJob;
     t.firstPriceTs = await firstPriceJob;
@@ -345,7 +355,7 @@ async function retrySource(source, btn) {
   const { t, via } = cur;
   if (source === "defillama") {
     const entry = state.idmap?.[t.id];
-    t.llama = await loadLlama(t.id, entry, state.defi?.[t.id], classify(entry, t.categories)).catch(() => ({ failed: true }));
+    t.llama = await loadLlama(t.id, entry, state.defi?.[t.id], clsFor(t.id, t.categories)).catch(() => ({ failed: true }));
     t.sourceFailed.defillama = Boolean(t.llama?.failed);
   } else if (source === "goplus") {
     t.sourceFailed.goplus = false;
@@ -394,8 +404,8 @@ function drawDropdown() {
   } else if (state.hits.length) {
     const clash = tickerClashes(state.hits);
     dd.innerHTML = state.hits.map((t, i) => `<div class="it ${i === state.sel ? "sel" : ""}" role="option" aria-selected="${i === state.sel}" data-id="${t.id}">
-        <img src="${esc(t.img)}" alt="" width="22" height="22" loading="lazy"><b>${esc(t.sym)}</b><span>${esc(t.name)}${clash.has(t.id) ? ' <em class="clash">same ticker</em>' : ""}</span>
-        <span class="r">#${t.rank}</span></div>`).join("");
+        ${t.img ? `<img src="${esc(t.img)}" alt="" width="22" height="22" loading="lazy">` : `<span class="noimg" aria-hidden="true"></span>`}<b>${esc(t.sym)}</b><span>${esc(t.name)}${clash.has(t.id) ? ' <em class="clash">same ticker</em>' : ""}</span>
+        <span class="r">${t.personal ? "your list" : `#${t.rank}`}</span></div>`).join("");
   } else {
     dd.innerHTML = `<div class="msg">Not in the verified universe (CoinGecko top 300, plus tokens up to #1,500 with DefiLlama data). Paste its contract address instead.</div>`;
   }
@@ -416,7 +426,7 @@ q.addEventListener("input", () => {
   const v = q.value.trim();
   const kind = addressKind(v);
   state.address = kind ? { value: v, kind } : null;
-  state.hits = kind || !state.universe ? [] : searchUniverse(state.universe.tokens, v);
+  state.hits = kind || !state.universe ? [] : searchUniverse(state.searchPool, v);
   state.sel = 0;
   drawDropdown();
 });
@@ -458,6 +468,10 @@ async function start() {
   state.peers = peers || null;
   state.meta = meta?.tokens || null;
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
+  const extra = (PERSONAL?.alwaysInclude || []).filter((t) => !state.byId.has(t.id))
+    .map((t) => ({ id: t.id, sym: t.sym || t.id.toUpperCase(), name: t.name || t.id, rank: 9999, img: "", personal: true }));
+  state.searchPool = [...state.universe.tokens, ...extra];
+  if (PERSONAL) document.querySelector(".brand")?.insertAdjacentHTML("beforeend", '<span class="badge badge-info" title="Local personal version">Personal</span>');
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;
   if (state.id) load(state.id);
