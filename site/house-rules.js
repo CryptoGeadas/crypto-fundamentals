@@ -44,6 +44,11 @@ export const HOUSE_RULES = {
     // Past exploits, net loss after returned funds, in $ millions.
     exploitLoss: { bands: [0.01, 1, 10, 50], dir: "down" },
 
+    // Development: distinct human contributors in the last 90 days (bots excluded).
+    contributors90: { bands: [2, 5, 10, 25], dir: "up" },
+    // Development: % change in human commits, last 90 days vs the 90 days before.
+    commitTrend: { bands: [-40, -15, 15, 40], dir: "up" },
+
     // Traction: % change of the last 30 days against the 30 days ending 90 days earlier.
     feesTrend: { bands: [-30, -10, 10, 30], dir: "up" },
     revenueTrend: { bands: [-30, -10, 10, 30], dir: "up" },

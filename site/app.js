@@ -13,7 +13,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
-  universe: null, status: null, idmap: null, unlocks: null, defi: null, peers: null, byId: new Map(), addrIdx: new Map(),
+  universe: null, status: null, idmap: null, unlocks: null, defi: null, peers: null, meta: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
 const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-solana", "arbitrum"];
@@ -141,7 +141,21 @@ function securityLead(t, a) {
   if (e?.value != null) parts.push(!n ? "DefiLlama records no exploits" : e.value === 0 ? `DefiLlama records ${ex}, with the funds returned in full` : `DefiLlama records ${ex}, with ${e.display} lost after returned funds`);
   return parts.length ? parts.join("; ") + "." : "The contract could not be checked.";
 }
-const LEADS = { valuation: valuationLead, holders: holdersLead, market: marketLead, security: securityLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
+function devLead(t, a) {
+  const c = a.rows.find((x) => x.id === "contributors90");
+  if (!c || c.value == null) return c?.display === "Not measured yet" ? "Development activity is still queued for measurement by the daily job." : "No public GitHub repository is linked for it.";
+  const d = t.meta.dev;
+  return `${c.display} people (bots excluded) made ${d.commits90} commits in the last 90 days across ${d.repos.length} recently active repositories, against ${d.commitsPrev90} commits in the 90 days before.`;
+}
+function backersLead(t, a) {
+  const r = a.rows.find((x) => x.id === "raised"), g = a.rows.find((x) => x.id === "age");
+  const parts = [];
+  if (r?.value) parts.push(`It raised ${r.display} across ${t.meta.raises.length} recorded round${t.meta.raises.length > 1 ? "s" : ""}`);
+  else if (r?.value === 0) parts.push("DefiLlama records no funding rounds");
+  if (g?.value != null) parts.push(`the token has traded for ${g.display}`);
+  return parts.length ? parts.join("; ") + "." : "No funding or age data for it.";
+}
+const LEADS = { valuation: valuationLead, holders: holdersLead, market: marketLead, security: securityLead, dev: devLead, backers: backersLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
 // Charts shown under an area's facts.
 const CHARTS = {
   holders: (t) => (t.security?.holders?.length ? `<div class="chartbox"><span class="label">Top 10 wallets, share of supply (GoPlus, ${esc(chainName(t.security.chain))})</span>${holdersChart(t.security.holders)}</div>` : ""),
@@ -246,10 +260,14 @@ async function load(id, via) {
     const entry = state.idmap?.[id];
     const [t, detail] = await Promise.all([fetchToken(id), loadUnlockDetail(id)]);
     const securityJob = fetchSecurity(t).catch(() => null);
+    const firstPriceJob = fetch(`https://coins.llama.fi/prices/first/coingecko:${encodeURIComponent(id)}`).then((r) => r.json())
+      .then((d) => d.coins?.[`coingecko:${id}`]?.timestamp ?? null).catch(() => null);
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
     t.llama = await loadLlama(id, entry, state.defi?.[id], classify(entry, t.categories)).catch(() => null);
     t.security = await securityJob;
+    t.firstPriceTs = await firstPriceJob;
+    t.meta = state.meta?.[id] || null;
     t.defiExtra = state.defi?.[id] ? { hacks: state.defi[id].hacks || [], audits: state.defi[id].audits || null } : null;
     t.peers = state.peers ? { group: state.peers.byToken?.[id]?.group, groups: state.peers.groups, secondary: entry?.c ? "Chain" : null } : null;
     if (seq === state.loadSeq) renderToken(t, via);
@@ -353,13 +371,14 @@ async function start() {
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
   // Optional data: the page still works without them (type falls back to the meme/narrative rule).
-  const [status, idmap, unlocks, defi, peers] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json", "peers.json"].map((f) =>
+  const [status, idmap, unlocks, defi, peers, meta] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json", "peers.json", "meta.json"].map((f) =>
     fetch(`./data/${f}`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
   state.status = status;
   state.idmap = idmap?.map || null;
   state.unlocks = unlocks?.tokens || null;
   state.defi = defi?.tokens || null;
   state.peers = peers || null;
+  state.meta = meta?.tokens || null;
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;

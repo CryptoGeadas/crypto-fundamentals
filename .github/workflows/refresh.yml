@@ -36,6 +36,7 @@ jobs:
       - name: Build the data (universe, identifier map, unlocks)
         env:
           SIMULATE_PROBLEM: ${{ inputs.simulate_problem && '1' || '0' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # GitHub API for development activity; no new keys
         run: node build/daily.mjs
 
       - name: Commit data and status

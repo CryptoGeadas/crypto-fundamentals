@@ -265,6 +265,33 @@ const HOLDER_MARKET_SECURITY = [
 ];
 METRICS.push(...HOLDER_MARKET_SECURITY);
 
+// ---------------------------------------------------------------- development, backers and age (issue #9)
+// t.meta from data/meta.json: { orgs, dev: { repos, contributors90, commits90, commitsPrev90, bots90 } | null, devAt, raises: [...] }
+// t.firstPriceTs from DefiLlama coins /prices/first (live).
+const noRepo = (t) => (!t.meta?.orgs?.length
+  ? { missing: true, display: "No repository found", rule: "Neither DefiLlama nor CoinGecko links a GitHub organisation for this project." }
+  : t.meta.devAt && !t.meta.dev ? { missing: true, display: "No public repositories", rule: "Its GitHub organisations have no live public repositories." }
+  : !t.meta.devAt ? { missing: true, display: "Not measured yet", rule: "The daily job measures development activity on a weekly rotation; this project is still queued." } : null);
+
+const DEV_BACKERS = [
+  { id: "contributors90", area: "dev", label: "Human contributors, last 90 days", yard: "fixed", src: "GitHub",
+    unrated: noRepo, val: (t) => t.meta?.dev?.contributors90 ?? null, show: (v) => String(v),
+    extra: (t) => (t.meta?.dev ? `${t.meta.dev.repos.join(", ")}${t.meta.dev.bots90 ? ` · ${t.meta.dev.bots90} bot commits excluded` : ""}` : "") },
+  { id: "commitTrend", precision: 1, area: "dev", label: "Commit trend (90 days vs the 90 before)", yard: "fixed", src: "GitHub",
+    unrated: noRepo, val: (t) => pctChange(t.meta?.dev?.commits90, t.meta?.dev?.commitsPrev90), show: (v) => fmt.chg(v),
+    extra: (t) => (t.meta?.dev ? `${t.meta.dev.commits90} human commits, against ${t.meta.dev.commitsPrev90} before` : "") },
+  { id: "raised", area: "backers", label: "Total raised", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama raises",
+    val: (t) => (t.meta?.raisesAt ? (t.meta.raises || []).reduce((a, r) => a + r.amount, 0) : null),
+    show: (v) => (v ? fmt.usd(v * 1e6) : "None recorded"),
+    extra: (t) => { const leads = [...new Set((t.meta?.raises || []).flatMap((r) => r.leads))].slice(0, 4); return leads.length ? `Lead investors: ${leads.join(", ")}` : ""; },
+    note: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule." },
+  { id: "age", area: "backers", label: "Token age (first traded price)", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama coins",
+    val: (t) => (t.firstPriceTs ? (Date.now() / 1000 - t.firstPriceTs) / (365 * 86400) : null),
+    show: (v) => (v < 1 ? `${Math.max(1, Math.round(v * 12))} months` : `${v.toFixed(1)} years`),
+    note: "The age of the current token, not the project: a migrated token (LEND → AAVE) restarts the clock." },
+];
+METRICS.push(...DEV_BACKERS);
+
 // ---------------------------------------------------------------- rating
 export function levelFromBands(v, bands) {
   let i = 0;

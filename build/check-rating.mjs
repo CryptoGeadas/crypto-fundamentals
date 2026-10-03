@@ -125,6 +125,9 @@ const LLAMA_HYPE = { fees: null, revenue: null, holders: { d30: 56.4e6 }, accrua
 const SECURITY = { chain: "ethereum", home: true, holderCount: 189239, holders: Array.from({ length: 10 }, (_, i) => ({ percent: [15.6, 5.1, 4, 3, 2, 2, 1.5, 1.2, 1, 1][i], contract: i < 6 })), flags: ["Upgradeable (proxy) contract"] };
 const full = (extra) => withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE, chain: { dex30: 6.09e9, stables: 3.2e9, stables90: 3.0e9 } },
   contracts: { ethereum: "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9" }, security: SECURITY, volume24h: 2.3e8, athChange: -74,
+  meta: { orgs: ["aave", "aave-dao"], dev: { repos: ["aave-dao/seatbelt-gov-v3"], contributors90: 11, commits90: 120, commitsPrev90: 80, bots90: 2580 }, devAt: "2026-10-03T00:00:00Z",
+    raises: [{ date: 1594771200, round: "Private", amount: 3, leads: ["Framework Ventures", "3AC"] }, { date: 1600000000, round: "Seed", amount: 4.5, leads: ["ParaFi"] }], raisesAt: "2026-10-03T00:00:00Z" },
+  firstPriceTs: Date.now() / 1000 - 6 * 365 * 86400,
   defiExtra: { hacks: [{ date: 1773273600, name: "Aave V3", amount: 862000, returned: 862000 }, { date: 1724803200, name: "Aave", amount: 56000, returned: 0 }], audits: { count: 3 } }, ...extra });
 
 check("traction: trends are rated at display precision; fees and revenue are shown, not rated", () => {
@@ -183,6 +186,24 @@ check("market: distance from ATH uses the neutral colour whatever its level", ()
   assert.equal(r.word, "Low");
   assert.equal(r.favour, 0);
   assert.equal(row(full(), "volumeToMcap").display, "16.9%");
+});
+check("development: human contributors and commit trend; queued or repo-less projects are missing, not rated", () => {
+  assert.equal(row(full(), "contributors90").word, "High");
+  assert.match(row(full(), "contributors90").extra, /2580 bot commits excluded/);
+  assert.equal(row(full(), "commitTrend").display, "+50.0%");
+  assert.equal(row(full(), "commitTrend").word, "Very high");
+  const queued = row(full({ meta: { orgs: ["x"] } }), "contributors90");
+  assert.equal(queued.display, "Not measured yet");
+  assert.equal(queued.missing, true);
+  assert.equal(row(full({ meta: { orgs: [] } }), "contributors90").display, "No repository found");
+});
+check("backers and age are shown, never rated", () => {
+  const r = row(full(), "raised");
+  assert.equal(r.display, "$7.5M");
+  assert.equal(r.level, null);
+  assert.match(r.extra, /Framework Ventures/);
+  assert.equal(row(full(), "age").display, "6.0 years");
+  assert.equal(row(full({ firstPriceTs: Date.now() / 1000 - 0.4 * 365 * 86400 }), "age").display, "5 months");
 });
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
