@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-03T19:32:18.927Z",
-  "startedAt": "2026-10-03T19:31:28.584Z",
+  "generated": "2026-10-03T19:45:37.003Z",
+  "startedAt": "2026-10-03T19:44:45.748Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -11,17 +11,22 @@
     "idmap": {
       "status": "updated",
       "count": 2980,
-      "lastSuccess": "2026-10-03T19:32:17.307Z"
+      "lastSuccess": "2026-10-03T19:45:35.971Z"
     },
     "universe": {
       "status": "updated",
-      "count": 641,
-      "lastSuccess": "2026-10-03T19:32:17.307Z"
+      "count": 640,
+      "lastSuccess": "2026-10-03T19:45:35.971Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 224,
-      "lastSuccess": "2026-10-03T19:32:18.925Z"
+      "count": 223,
+      "lastSuccess": "2026-10-03T19:45:36.532Z"
+    },
+    "defi": {
+      "status": "updated",
+      "count": 408,
+      "lastSuccess": "2026-10-03T19:45:37.002Z"
     }
   },
   "problems": []
