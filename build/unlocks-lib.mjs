@@ -1,17 +1,11 @@
 // Pure logic for unlock data (no network), tested by build/check-unlocks.mjs.
-// Source: DefiLlama's public unlock pages (the /emissions API is paid). The overview page
-// (defillama.com/unlocks) gives every tracked token's current supply and next event; each
-// token's own page (defillama.com/unlocks/<slug>) gives its full cumulative schedule.
+// Source: DefiLlama's public datasets host (the /emissions API is paid). emissionsIndex gives every
+// tracked token's current supply and next event (the same rows as defillama.com/unlocks);
+// emissions/<slug> gives a token's full cumulative schedule.
 
 export const DETAIL_MAX_AGE_DAYS = 7;   // refresh each token's full schedule about weekly
 export const DETAIL_PER_RUN = 40;       // polite cap on per-token pages fetched in one run
 const DAY = 86_400;
-
-export function nextData(html) {
-  const m = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html || "");
-  if (!m) return null;
-  try { return JSON.parse(m[1]).props?.pageProps ?? null; } catch { return null; }
-}
 
 // Overview row → compact summary for tokens in our universe.
 export function summariseOverview(rows, universeIds) {
@@ -30,26 +24,35 @@ export function summariseOverview(rows, universeIds) {
   return out;
 }
 
-// Token page → compact schedule: monthly cumulative unlocked supply per category, plus the
-// upcoming events. Uses DefiLlama's "documented" schedule.
-export function summariseDetail(pageProps, now = Date.now() / 1000) {
-  const em = pageProps?.emissions;
-  const ds = em?.datasets?.documented;
-  if (!ds?.dimensions?.length || !ds.source?.length) return null;
-  const cats = ds.dimensions.slice(1);
-  const rows = ds.source.map((r) => [Math.round(r[0] / 1000), ...r.slice(1).map((x) => Number(x) || 0)]);
-  // first row of each calendar month, plus the last row, keeps the chart light
+// Token schedule → compact form: monthly cumulative unlocked supply per category, plus upcoming
+// events. From DefiLlama's public datasets host (defillama-datasets.llama.fi/emissions/<slug>),
+// which serves the data behind the website without its bot challenge. Shape:
+//   documentedData.data = [{ label, data: [{ timestamp (s), unlocked (cumulative), ... }] }]
+export function summariseDataset(e, now = Date.now() / 1000) {
+  const series = e?.documentedData?.data;
+  if (!Array.isArray(series) || !series.length || !series[0]?.data?.length) return null;
+  const cats = series.map((s) => s.label);
+  const byTs = new Map();
+  series.forEach((s, c) => {
+    for (const p of s.data) {
+      if (!byTs.has(p.timestamp)) byTs.set(p.timestamp, new Array(cats.length).fill(null));
+      byTs.get(p.timestamp)[c] = Number(p.unlocked) || 0;
+    }
+  });
+  // carry each category's last known value forward where a series has no point for a date
+  const last = new Array(cats.length).fill(0);
+  const rows = [...byTs.keys()].sort((a, b) => a - b).map((ts) => [ts, ...byTs.get(ts).map((v, c) => (v == null ? last[c] : (last[c] = v)))]);
   const seen = new Set();
   const monthly = rows.filter((r, i) => {
     const d = new Date(r[0] * 1000);
     const key = d.getUTCFullYear() * 12 + d.getUTCMonth();
     if (i === rows.length - 1 || !seen.has(key)) { seen.add(key); return true; }
     return false;
-  });
-  const upcoming = (em.events || []).filter((e) => e.timestamp >= now)
-    .map((e) => ({ ts: e.timestamp, amount: (e.noOfTokens || []).reduce((a, b) => a + (Number(b) || 0), 0), cat: e.category || "", type: e.unlockType || "cliff" }))
+  }).map((r) => [r[0], ...r.slice(1).map((v) => Math.round(v))]);
+  const upcoming = (e.metadata?.events || []).filter((ev) => ev.timestamp >= now)
+    .map((ev) => ({ ts: ev.timestamp, amount: (ev.noOfTokens || []).reduce((a, b) => a + (Number(b) || 0), 0), cat: ev.category || "", type: ev.unlockType || "cliff" }))
     .sort((a, b) => a.ts - b.ts).slice(0, 24);
-  return { cats, monthly, upcoming, maxSupply: num(em.meta?.maxSupply), generatedAt: new Date(now * 1000).toISOString() };
+  return { cats, monthly, upcoming, maxSupply: num(e.supplyMetrics?.maxSupply ?? e.metadata?.total), generatedAt: new Date(now * 1000).toISOString() };
 }
 
 // Cumulative unlocked supply at time `ts` (seconds), from monthly rows, linear between rows.
