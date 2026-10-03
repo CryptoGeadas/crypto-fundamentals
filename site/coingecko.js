@@ -5,7 +5,20 @@ export class SourceError extends Error {
   constructor(message, status) { super(message); this.status = status; }
 }
 
-export async function fetchToken(id) {
+// One automatic wait-and-retry: CoinGecko's free tier throttles bursts, and its "too many requests"
+// answers reach the browser as network failures (no CORS header), so both are retried once.
+export async function fetchToken(id, { onRetry, waitMs = 8000 } = {}) {
+  try {
+    return await fetchTokenOnce(id);
+  } catch (e) {
+    if (!(e instanceof SourceError) || (e.status !== 0 && e.status !== 429)) throw e;
+    onRetry?.();
+    await new Promise((r) => setTimeout(r, waitMs));
+    return fetchTokenOnce(id);
+  }
+}
+
+async function fetchTokenOnce(id) {
   const url = `${BASE}/coins/${encodeURIComponent(id)}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
   let res;
   try {

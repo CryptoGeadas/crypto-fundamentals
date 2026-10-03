@@ -13,6 +13,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
+  defaultView: "factsheet", viewFallback: null, current: null,
   universe: null, status: null, idmap: null, unlocks: null, defi: null, peers: null, meta: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
@@ -163,10 +164,23 @@ const CHARTS = {
   dilution: (t) => (t.unlocks?.detail?.monthly ? `<div class="chartbox"><span class="label">Unlock schedule (DefiLlama)</span>${unlockChart(t.unlocks.detail, t.unlocks.max || t.unlocks.detail.maxSupply)}</div>` : ""),
 };
 
-function factCard(r) {
+// Which areas each live source feeds, so a failed source marks exactly its rows.
+const SOURCE_AREAS = { defillama: ["valuation", "traction", "accrual"], goplus: ["holders", "security"] };
+const SOURCE_NAMES = { defillama: "DefiLlama", goplus: "GoPlus" };
+const failedSources = (t) => Object.keys(SOURCE_AREAS).filter((k) => t.sourceFailed?.[k]);
+const failedIn = (t, area) => failedSources(t).filter((k) => SOURCE_AREAS[k].includes(area));
+const unavailable = (t, r) => r.value == null && !r.unrated && failedIn(t, r.area).length > 0;
+
+function sourceBanner(t, area) {
+  return failedIn(t, area).map((k) => `<div class="srcfail" role="alert">${SOURCE_NAMES[k]} didn't answer, so some rows here are missing.
+    <button class="btn btn-ghost btn-sm" data-retry="${k}">Retry</button></div>`).join("");
+}
+
+function factCard(r, t) {
+  const display = t && unavailable(t, r) ? "Source unavailable" : r.display;
   return `<div class="fact t-${tone(r.favour)}" tabindex="0" aria-describedby="rule-${r.id}">
       <span class="label">${esc(r.label)}</span>
-      <span class="vv">${esc(r.display)}</span>
+      <span class="vv">${esc(display)}</span>
       ${strip(r)}
       ${r.peer ? `<div class="ex peer">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}
       ${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}
@@ -176,19 +190,60 @@ function factCard(r) {
 }
 
 function factsheet(t, a) {
-  return Object.values(a.byArea).map((d) => `<section class="sec" aria-labelledby="sec-${d.id}">
+  return Object.values(a.byArea).map((d) => `<section class="sec" aria-labelledby="sec-${d.id}" id="area-${d.id}">
       <div class="sec-head t-${areaTone(d.avg)}"><span class="label" id="sec-${d.id}">${esc(d.name)}</span><span class="verdict">${d.word}</span></div>
+      ${sourceBanner(t, d.id)}
       ${LEADS[d.id] ? `<p class="lead">${esc(LEADS[d.id](t, a))}</p>` : ""}
-      <div class="facts">${d.rows.map(factCard).join("")}</div>
+      <div class="facts">${d.rows.map((r) => factCard(r, t)).join("")}</div>
       ${CHARTS[d.id] ? CHARTS[d.id](t) : ""}
     </section>`).join("");
 }
 
+// Table view: one dense scorecard (prototype variant A), same data and rules as the factsheet.
+function scoreTable(t, a) {
+  const rows = Object.values(a.byArea).map((d) => `
+    <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}</th></tr>
+    ${d.rows.map((r) => `<tr>
+      <td><span class="tl">${esc(r.label)}</span>${r.extra ? `<div class="ex">${esc(r.extra)}</div>` : ""}</td>
+      <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>
+      <td class="rt" title="${esc(r.rule)}">${strip(r)}${r.peer ? `<div class="ex">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}</td>
+      <td class="src">${esc(r.src)}</td></tr>`).join("")}`).join("");
+  return `<div class="tablewrap"><table class="score"><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Rating</th><th scope="col" class="src">Source</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+// Area verdicts sit in the same place in both views; each chip jumps to its area.
+function areaChips(a) {
+  return `<nav class="areachips" aria-label="Area verdicts">${Object.values(a.byArea).map((d) =>
+    `<a class="chip t-${areaTone(d.avg)}" href="#area-${d.id}"><span class="dot"></span>${esc(d.name)}: ${d.word}</a>`).join("")}</nav>`;
+}
+
+const VIEW_KEY = "tf-view";
+function getView() {
+  try { return localStorage.getItem(VIEW_KEY) || state.viewFallback || state.defaultView; }
+  catch { return state.viewFallback || state.defaultView; }
+}
+function setView(v) {
+  state.viewFallback = v;
+  try { localStorage.setItem(VIEW_KEY, v); } catch { /* storage blocked: the choice lasts for this page only */ }
+}
+
+function viewToggle(view) {
+  return `<div class="viewtoggle" role="group" aria-label="Layout">
+    ${["factsheet", "table"].map((v) => `<button data-view="${v}" aria-pressed="${view === v}" class="${view === v ? "on" : ""}">${v === "factsheet" ? "Factsheet" : "Table"}</button>`).join("")}</div>`;
+}
+
 function renderToken(t, via) {
+  state.current = { t, via };
   const cls = classify(state.idmap?.[t.id], t.categories);
   const a = analyse(t, HOUSE_RULES, cls);
-  $("#view").innerHTML = outsideBanner(t, via) + identity(t, a, cls) + factsheet(t, a);
+  const view = getView();
+  $("#view").innerHTML = outsideBanner(t, via) + identity(t, a, cls)
+    + `<div class="viewbar">${areaChips(a)}${viewToggle(view)}</div>`
+    + (view === "table" ? scoreTable(t, a) : factsheet(t, a));
   document.querySelectorAll("[data-copy]").forEach((b) => (b.onclick = () => copyAddress(b)));
+  document.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => { setView(b.dataset.view); renderToken(t, via); }));
+  document.querySelectorAll("[data-retry]").forEach((b) => (b.onclick = () => retrySource(b.dataset.retry, b)));
   document.title = `${t.sym} · Token Fundamentals`;
   renderFoot(t);
 }
@@ -258,13 +313,18 @@ async function load(id, via) {
   renderLoading();
   try {
     const entry = state.idmap?.[id];
-    const [t, detail] = await Promise.all([fetchToken(id), loadUnlockDetail(id)]);
-    const securityJob = fetchSecurity(t).catch(() => null);
+    const [t, detail] = await Promise.all([
+      fetchToken(id, { onRetry: () => seq === state.loadSeq && renderLoading("CoinGecko is busy; trying again in a few seconds…") }),
+      loadUnlockDetail(id),
+    ]);
+    t.sourceFailed = {};
+    const securityJob = fetchSecurity(t).catch(() => { t.sourceFailed.goplus = true; return null; });
     const firstPriceJob = fetch(`https://coins.llama.fi/prices/first/coingecko:${encodeURIComponent(id)}`).then((r) => r.json())
       .then((d) => d.coins?.[`coingecko:${id}`]?.timestamp ?? null).catch(() => null);
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
-    t.llama = await loadLlama(id, entry, state.defi?.[id], classify(entry, t.categories)).catch(() => null);
+    t.llama = await loadLlama(id, entry, state.defi?.[id], classify(entry, t.categories)).catch(() => ({ failed: true }));
+    if (t.llama?.failed) t.sourceFailed.defillama = true;
     t.security = await securityJob;
     t.firstPriceTs = await firstPriceJob;
     t.meta = state.meta?.[id] || null;
@@ -274,6 +334,24 @@ async function load(id, via) {
   } catch (e) {
     if (seq === state.loadSeq) renderError(e.message || "Something went wrong.", () => load(id, via));
   }
+}
+
+// Retry one failed live source for the token on screen, then re-render.
+async function retrySource(source, btn) {
+  const cur = state.current;
+  if (!cur) return;
+  btn.disabled = true;
+  btn.textContent = "Retrying…";
+  const { t, via } = cur;
+  if (source === "defillama") {
+    const entry = state.idmap?.[t.id];
+    t.llama = await loadLlama(t.id, entry, state.defi?.[t.id], classify(entry, t.categories)).catch(() => ({ failed: true }));
+    t.sourceFailed.defillama = Boolean(t.llama?.failed);
+  } else if (source === "goplus") {
+    t.sourceFailed.goplus = false;
+    t.security = await fetchSecurity(t).catch(() => { t.sourceFailed.goplus = true; return null; });
+  }
+  if (state.current === cur) renderToken(t, via);
 }
 
 // Full unlock schedule for one token (same origin, built by the daily job); optional.

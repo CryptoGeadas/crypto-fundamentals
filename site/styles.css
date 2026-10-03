@@ -157,3 +157,35 @@ section.sec { padding: 26px 0; border-top: 1px solid var(--border); margin-top: 
 .hbar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
 .hbar i { display: block; height: 100%; background: var(--accent); }
 .hv { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* view bar: area verdicts (same place in both views) + layout toggle */
+.viewbar { display: flex; align-items: flex-start; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+.areachips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 320px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--text); background: var(--surface); text-decoration: none; }
+.chip:hover { border-color: var(--accent); text-decoration: none; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tone); }
+.viewtoggle { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-btn); overflow: hidden; flex: none; }
+.viewtoggle button { font: 600 12px var(--display); padding: 7px 14px; background: var(--surface); color: var(--muted); border: 0; cursor: pointer; }
+.viewtoggle button.on { background: var(--accent-tint); color: var(--accent); }
+section.sec { scroll-margin-top: 16px; }
+
+/* table view */
+.tablewrap { margin-top: 18px; max-width: 100%; }
+table.score { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
+table.score th, table.score td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.score thead th { font: 600 10px var(--display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+table.score tr.grp th { background: var(--elevated); font: 600 12px var(--display); scroll-margin-top: 16px; }
+table.score tr.grp .verdict { color: var(--tone); margin-left: 6px; }
+table.score td.v { font-weight: 600; }
+table.score td.src { color: var(--tertiary); font-size: 11px; }
+table.score .ex { color: var(--muted); font-size: 11px; margin-top: 3px; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  table.score th.src, table.score td.src { display: none; }
+  table.score th, table.score td { padding: 8px 6px; }
+  table.score .strip b { display: none; }
+}
+
+/* source failures */
+.srcfail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; padding: 8px 12px; font: 400 13px var(--body);
+  border-radius: var(--r-card); background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent); }

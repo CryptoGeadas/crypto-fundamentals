@@ -36,13 +36,15 @@ export async function feeSummary(slug, dataType, now = Date.now() / 1000) {
   return { d30: windowSum(chart, now - 30 * DAY, now), prev: windowSum(chart, now - 120 * DAY, now - 90 * DAY), monthly: monthlySums(chart) };
 }
 
-const settle = (p) => p.then((v) => v, () => null);
 const chainSlug = (name) => name.toLowerCase().replace(/\s+/g, "-");
 
 // Everything the traction / accrual / treasury areas need for one token. Each piece may be null.
 export async function loadLlama(id, entry, defi, cls, now = Date.now() / 1000) {
   if (!entry) return null;
-  const out = { fees: null, revenue: null, holders: null, accrualFees: null, tvl: null, chain: null, treasury: null };
+  const out = { fees: null, revenue: null, holders: null, accrualFees: null, tvl: null, chain: null, treasury: null, failed: false };
+  // "No data" (DefiLlama answers 400/404 for a protocol it does not cover) is different from
+  // "DefiLlama did not answer" (network, rate limit, 5xx): only the second offers a retry.
+  const settle = (p) => p.then((v) => v, (e) => { if (!/HTTP 40[04]/.test(e?.message || "")) out.failed = true; return null; });
   const jobs = [];
   if (cls.type === "chain" && entry.c) {
     const c = chainSlug(entry.c);
