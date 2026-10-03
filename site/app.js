@@ -9,7 +9,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),
-  universe: null, byId: new Map(), addrIdx: new Map(),
+  universe: null, status: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
 const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-solana", "arbitrum"];
@@ -77,10 +77,27 @@ function renderToken(t, via) {
   renderFoot(t);
 }
 
+const ISSUES_URL = "https://github.com/CryptoGeadas/crypto-fundamentals/issues?q=is%3Aissue+is%3Aopen+label%3Apipeline";
+const fmtWhen = (iso) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }) + " UTC";
+
+// "Data updated 4 Oct 06:00 UTC, all sources OK", or which sources are degraded and which data is older.
+function healthLine(s) {
+  if (!s) return "";
+  const bad = Object.entries(s.sources || {}).filter(([, v]) => v !== "ok");
+  const kept = Object.entries(s.datasets || {}).filter(([, d]) => d.status === "kept");
+  const ok = s.healthy;
+  const parts = [`<span class="health ${ok ? "ok" : "warn"}" aria-hidden="true"></span>Data updated ${fmtWhen(s.startedAt)}`];
+  parts.push(ok ? "all sources OK" : `${bad.length || s.problems.length} ${bad.length === 1 ? "source" : "sources"} degraded`);
+  const plain = { universe: "the token list", idmap: "the DefiLlama links" };
+  if (kept.length) parts.push(`using earlier data for ${kept.map(([n, d]) => `${plain[n] || n}${d.lastSuccess ? ` (from ${fmtWhen(d.lastSuccess)})` : ""}`).join(", ")}`);
+  return parts.join(", ") + (ok ? "." : `. <a href="${ISSUES_URL}" target="_blank" rel="noopener">See status</a>.`) + "<br>";
+}
+
 function renderFoot(t) {
   const u = state.universe;
-  $("#foot").innerHTML = `${t ? `Live data from CoinGecko, fetched ${t.fetchedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} in your browser. ` : ""}
-    ${u ? `Verified token list: ${u.count} tokens, rebuilt ${new Date(u.generated).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. ` : ""}
+  $("#foot").innerHTML = `${healthLine(state.status)}
+    ${t ? `Live data from CoinGecko, fetched ${t.fetchedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} in your browser. ` : ""}
+    ${u ? `Verified token list: ${u.count} tokens. ` : ""}
     Ratings follow house rules v${HOUSE_RULES.version}: published opinions, not evidence. Hover a rating to see its rule.<br>
     Informational only, not financial advice.`;
 }
@@ -207,6 +224,11 @@ async function start() {
     q.disabled = true;
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
+  // Health of the daily job: optional, the page works without it.
+  try {
+    const s = await fetch("./data/status.json", { cache: "no-cache" });
+    if (s.ok) state.status = await s.json();
+  } catch { state.status = null; }
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;

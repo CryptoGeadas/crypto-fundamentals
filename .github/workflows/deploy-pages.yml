@@ -23,8 +23,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Deploys after every refresh, even a failed one: data is never overwritten by a bad run,
+  # and status.json must reach the page so the footer can show a degraded state.
   deploy:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -35,7 +36,7 @@ jobs:
         with:
           node-version: 22
       - name: Check ratings and search before publishing
-        run: node build/check-rating.mjs && node build/check-universe.mjs
+        run: node build/check-rating.mjs && node build/check-universe.mjs && node build/check-report.mjs
       - name: Stamp file references with the commit, so each release loads as one set
         run: node build/stamp.mjs "$(git rev-parse --short=12 HEAD)"
       - uses: actions/configure-pages@v6

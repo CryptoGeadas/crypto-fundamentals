@@ -19,3 +19,5 @@ jobs:
         run: node build/check-rating.mjs
       - name: Universe build and search behave as specified
         run: node build/check-universe.mjs
+      - name: Run report, sanity checks and alert decisions behave as specified
+        run: node build/check-report.mjs

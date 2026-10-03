@@ -107,3 +107,7 @@ section.sec { padding: 26px 0; border-top: 1px solid var(--border); margin-top: 
 .skel { height: 14px; border-radius: 6px; background: var(--border); opacity: 0.5; margin: 10px 0; }
 
 .foot { color: var(--tertiary); font-size: 12px; padding: 48px 24px 40px; line-height: 1.7; }
+.foot a { color: var(--muted); text-decoration: underline; }
+.health { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.health.ok { background: var(--success); }
+.health.warn { background: var(--warning); }

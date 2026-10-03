@@ -5,7 +5,7 @@
   "type": "module",
   "engines": { "node": ">=22" },
   "scripts": {
-    "check": "node build/check-rating.mjs && node build/check-universe.mjs",
+    "check": "node build/check-rating.mjs && node build/check-universe.mjs && node build/check-report.mjs",
     "build:universe": "node build/build-universe.mjs"
   }
 }
