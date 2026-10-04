@@ -4,11 +4,20 @@ import { METRICS, AREAS, AREAS_BY_TYPE, ruleText } from "./rating.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { TYPES } from "./classify.js";
 import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY } from "./explain.js";
+import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const areaName = (id) => AREAS.find((a) => a.id === id)?.name || id;
 const typeOrder = ["chain", "defi", "narrative", "meme"];
+
+// The rule as the reader sees it on a token page: a five-step scale, or a sentence when not rated.
+function ruleVisual(m) {
+  const r = HOUSE_RULES.metrics[m.id];
+  if (m.yard === "fixed" && r) return scaleHtml({ dir: r.dir, cuts: r.bands.map((x) => m.show(x)) });
+  if (m.yard === "peer") return peerScaleHtml({});
+  return `<p class="mrule-plain">${esc(rule(m))}</p>`;
+}
 
 function rule(m) {
   if (m.yard === "shown") return "Shown for context, never rated.";
@@ -35,9 +44,9 @@ function metricList() {
         const types = m.types ? ` Applies to: ${m.types.map((t) => TYPES[t]?.label || t).join(", ")}.` : "";
         const terms = (e.terms || []).filter((t) => GLOSSARY[t]).map((t) => `<a href="#g-${t}">${esc(GLOSSARY[t].name)}</a>`).join(", ");
         return `<article class="metric" id="m-${m.id}"><h4>${esc(m.label)}</h4>
-          <p>${esc(e.what)} ${esc(e.why)}</p>
+          <div class="mrule">${ruleVisual(m)}</div>
+          <p class="mwhat">${esc(e.what)} ${esc(e.why)}</p>
           <p class="meta"><span class="label">Source</span> ${esc(m.src)}.${esc(types)}</p>
-          <p class="meta"><span class="label">Rule</span> ${esc(rule(m))}</p>
           ${m.note ? `<p class="meta"><span class="label">Caveat</span> ${esc(m.note)}</p>` : ""}
           ${terms ? `<p class="meta"><span class="label">See also</span> ${terms}</p>` : ""}</article>`;
       }).join("")}</section>`;

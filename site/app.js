@@ -8,6 +8,7 @@ import { unlockChart, feesChart, holdersChart } from "./charts.js";
 import { fetchSecurity } from "./goplus.js";
 import { loadLlama } from "./llama.js";
 import { createCache, TTL } from "./cache.js";
+import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 
 const $ = (s) => document.querySelector(s);
 // Personal version only: the local server injects window.TF_PERSONAL. On the public site it is absent.
@@ -166,7 +167,28 @@ function backersLead(t, a) {
 }
 const LEADS = { valuation: valuationLead, holders: holdersLead, market: marketLead, security: securityLead, dev: devLead, backers: backersLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
 // Charts shown under an area's facts.
+// The peer group behind the valuation ratings, cheapest first, with this token highlighted.
+function peersBlock(t, a) {
+  const r = a.rows.find((x) => x.peer);
+  if (!r || !state.peers) return "";
+  const name = r.peer.group;
+  const list = name === "all fee-earning tokens" ? Object.values(state.peers.groups).flat() : state.peers.groups[name] || [];
+  if (!list.length) return "";
+  // This token's row always uses the live numbers shown on its cards, not the daily benchmark copy.
+  const mine = a.rows.find((x) => x.id === "feeMultiple"), myRev = a.rows.find((x) => x.id === "revenueMultiple");
+  const rows = [...list.filter((p) => p.id !== t.id), { id: t.id, pf: mine?.value ?? null, pr: myRev?.value ?? null }]
+    .sort((x, y) => (x.pf ?? Infinity) - (y.pf ?? Infinity));
+  const label = (id) => { const u = state.byId.get(id); return u ? `<b>${esc(u.sym)}</b> <span>${esc(u.name)}</span>` : `<b>${esc(id)}</b>`; };
+  return `<details class="chartbox peers"><summary><span class="label">See the peers: ${esc(name)} (${rows.length})</span><span class="peers-hint">who ${esc(t.sym)} is compared with, cheapest first${r.peer.fellBack ? `; its own category (${esc(state.peers.byToken?.[t.id]?.group || "unknown")}) has fewer than 8 projects, so it is compared with a wider group` : ""}</span></summary>
+    <div class="peerwrap"><table class="score peertable"><thead><tr><th scope="col">#</th><th scope="col">Token</th><th scope="col" class="num">FDV ÷ fees</th><th scope="col" class="num">FDV ÷ revenue</th></tr></thead><tbody>
+    ${rows.map((p, i) => `<tr${p.id === t.id ? ' class="me"' : ""}><td class="num">${i + 1}</td><td>${p.id === t.id ? label(p.id) : `<a href="?t=${encodeURIComponent(p.id)}">${label(p.id)}</a>`}</td>
+      <td class="num">${p.pf ? fmt.x(p.pf) : "—"}</td><td class="num">${p.pr ? fmt.x(p.pr) : "—"}</td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="muted small">Multiples from the daily benchmark build; this token's row uses today's live numbers. "—" means the project reports no fees or revenue.</p></details>`;
+}
+
 const CHARTS = {
+  valuation: (t, a) => peersBlock(t, a),
   holders: (t) => (t.security?.holders?.length ? `<div class="chartbox"><span class="label">Top 10 wallets, share of supply (GoPlus, ${esc(chainName(t.security.chain))})</span>${holdersChart(t.security.holders)}</div>` : ""),
   traction: (t) => (t.llama?.fees?.monthly?.length ? `<div class="chartbox"><span class="label">Fees and revenue per month (DefiLlama)</span>${feesChart(t.llama.fees.monthly, t.llama.revenue?.monthly)}</div>` : ""),
   dilution: (t) => (t.unlocks?.detail?.monthly ? `<div class="chartbox"><span class="label">Unlock schedule (DefiLlama)</span>${unlockChart(t.unlocks.detail, t.unlocks.max || t.unlocks.detail.maxSupply)}</div>` : ""),
@@ -199,8 +221,15 @@ function factCard(r, t) {
       <div class="vrow"><span class="vv">${esc(display)}</span>${strip(r)}</div>
       ${context ? `<div class="ex${r.peer ? " peer" : ""}">${esc(context)}</div>` : ""}
       ${checkLinks(r)}
-      <div class="rule" id="rule-${r.id}" role="tooltip">${r.hint ? `<span class="hint">${esc(r.hint)}</span>` : ""}${esc(r.rule)}${more ? `<span class="more">${esc(more)}</span>` : ""}<span class="src">Source: ${esc(r.src)}</span></div>
+      <div class="rule" id="rule-${r.id}" role="tooltip">${ruleBox(r)}${more ? `<span class="more">${esc(more)}</span>` : ""}${r.hint ? `<span class="hint">${esc(r.hint)}</span>` : ""}<span class="src">Source: ${esc(r.src)}</span></div>
     </div>`;
+}
+
+// The rule first, as a scale with this token's step marked; definitions and sources come after it.
+function ruleBox(r) {
+  if (r.scale) return scaleHtml({ ...r.scale, level: r.level });
+  if (r.peer) return peerScaleHtml(r.peer);
+  return `<span class="plain">${esc(r.rule)}</span>`;
 }
 
 // Rows with nothing to show (not tracked, not checked, doesn't apply) collapse into one line per
@@ -226,7 +255,7 @@ function factsheet(t, a) {
       ${sourceBanner(t, d.id)}
       ${cards.length ? `<div class="facts">${cards.map((r) => factCard(r, t)).join("")}</div>` : ""}
       ${gaps.length ? gapLine(t, gaps) : ""}
-      ${CHARTS[d.id] ? CHARTS[d.id](t) : ""}
+      ${CHARTS[d.id] ? CHARTS[d.id](t, a) : ""}
     </section>`;
   }).join("");
 }
@@ -240,8 +269,9 @@ function scoreTable(t, a) {
       <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>
       <td class="rt" title="${esc(r.rule)}">${strip(r)}${r.peer ? `<div class="ex">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}</td>
       <td class="src">${esc(r.src)}</td></tr>`).join("")}`).join("");
+  const peers = a.byArea.valuation ? peersBlock(t, a) : "";
   return `<div class="tablewrap"><table class="score"><thead><tr><th scope="col">Metric</th><th scope="col">Value</th><th scope="col">Rating</th><th scope="col" class="src">Source</th></tr></thead>
-    <tbody>${rows}</tbody></table></div>`;
+    <tbody>${rows}</tbody></table></div>${peers}`;
 }
 
 // Area verdicts sit in the same place in both views; each chip jumps to its area.
