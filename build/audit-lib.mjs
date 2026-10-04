@@ -4,6 +4,11 @@
 
 export const DRIFT_TITLE = "Data drift";
 
+// Kept in audit.json but left out of the issue: nothing to fix. Circulating disagreement is shown on the
+// page itself (#26); "FDV counts total supply" no longer affects the page, which uses max supply (#29).
+export const INFO_ONLY = new Set(["circulating", "fdvTotal"]);
+export const actionable = (items = []) => items.filter((it) => !INFO_ONLY.has(it.check));
+
 // Tolerances, as a share of the source's figure. Each says why it is that loose.
 export const TOL = {
   mcap: 0.03,   // CoinGecko updates price, supply and market cap at slightly different moments
@@ -77,7 +82,8 @@ export const keyOf = (it) => `${it.check}:${it.id}`;
 
 // What to do with the "Data drift" issue. New items (not in yesterday's list) earn a comment, which
 // notifies; otherwise the issue body is just refreshed quietly.
-export function decideDrift(items, previousKeys = [], openIssue = null) {
+export function decideDrift(allItems, previousKeys = [], openIssue = null) {
+  const items = actionable(allItems);
   const fresh = items.filter((it) => !previousKeys.includes(keyOf(it)));
   if (!items.length) return openIssue ? "close" : "none";
   if (!openIssue) return "create";
@@ -86,7 +92,8 @@ export function decideDrift(items, previousKeys = [], openIssue = null) {
 
 const LABEL = { mcap: "CoinGecko market cap", fdv: "CoinGecko FDV (contradiction)", fdvTotal: "FDV counts total, not max supply (page understates future dilution)", supply: "CoinGecko supply", circulating: "Circulating supply (sources disagree)", fees30: "30-day fees", tvl: "TVL" };
 
-export function driftBody(items, { runUrl = "", at = new Date().toISOString(), sampled = {} } = {}) {
+export function driftBody(allItems, { runUrl = "", at = new Date().toISOString(), sampled = {} } = {}) {
+  const items = actionable(allItems), info = allItems.length - items.length;
   const groups = {};
   for (const it of items) (groups[it.check] ||= []).push(it);
   // Systematic patterns can run to dozens of tokens: show 10 per group; the full list is in site/data/audit.json.
@@ -100,6 +107,7 @@ export function driftBody(items, { runUrl = "", at = new Date().toISOString(), s
     "Each line compares what the page uses with a figure the source publishes itself. Drift is a lead to a general rule to fix (as in #25–#27), not a per-token correction. Tolerances: `build/audit-lib.mjs`.",
     "",
     ...lines,
+    info ? `Also recorded in audit.json, needing no action: ${info} informational item(s) (sources disagreeing on circulating supply, CoinGecko FDV on total supply).` : "",
     sampled.fees || sampled.tvl ? `Sampled today: ${sampled.fees || 0} tokens for fees, ${sampled.tvl || 0} for TVL (rotating).` : "",
     runUrl ? `Run log: ${runUrl}` : "",
   ].join("\n");

@@ -6,7 +6,7 @@
 // Local dry run: node build/audit-issue.mjs --dry-run
 
 import { readFile } from "node:fs/promises";
-import { DRIFT_TITLE, decideDrift, driftBody, keyOf } from "./audit-lib.mjs";
+import { DRIFT_TITLE, decideDrift, driftBody, keyOf, actionable } from "./audit-lib.mjs";
 
 const dryRun = process.argv.includes("--dry-run");
 const repo = process.env.GITHUB_REPOSITORY || "CryptoGeadas/crypto-fundamentals";
@@ -34,8 +34,9 @@ async function main() {
   }
   const action = decideDrift(audit.items, audit.previousKeys, open);
   const body = driftBody(audit.items, { runUrl, at: audit.generated, sampled: audit.sampled });
-  const fresh = audit.items.filter((it) => !(audit.previousKeys || []).includes(keyOf(it)));
-  console.log(`Audit issue: ${action}${open ? ` (issue #${open.number})` : ""}; ${audit.items.length} item(s), ${fresh.length} new.`);
+  const items = actionable(audit.items);
+  const fresh = items.filter((it) => !(audit.previousKeys || []).includes(keyOf(it)));
+  console.log(`Audit issue: ${action}${open ? ` (issue #${open.number})` : ""}; ${items.length} actionable item(s), ${fresh.length} new; ${audit.items.length - items.length} info-only.`);
   if (dryRun) { if (action !== "none") console.log("\n" + body); return; }
 
   if (action === "create") {

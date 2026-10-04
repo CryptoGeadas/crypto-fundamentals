@@ -1,5 +1,7 @@
 // Pure logic for the daily universe build (no network), so it can be tested with fixtures.
 
+import { fdvOf } from "../site/fdv.js";
+
 export const TOP_N = 300;       // always in the universe
 export const MAX_RANK = 1500;   // beyond TOP_N, only tokens with a DefiLlama entry, up to this rank
 
@@ -62,7 +64,7 @@ export function buildUniverse(markets, llama, platformsById = {}) {
       img: m.image || "",
       llama: inLlama ? 1 : 0,
       mcap: m.market_cap || null,
-      fdv: m.fully_diluted_valuation || null,
+      fdv: fdvOf(m.current_price, m.max_supply, m.fully_diluted_valuation),   // same definition as the page (#29)
       addr: cleanPlatforms(platformsById[m.id]),
     });
   }

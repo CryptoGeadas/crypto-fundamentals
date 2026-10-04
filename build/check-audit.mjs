@@ -4,6 +4,7 @@
 
 import assert from "node:assert/strict";
 import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, decideDrift, driftBody, keyOf, TOL } from "./audit-lib.mjs";
+import { fdvOf } from "../site/fdv.js";
 
 const results = [];
 function check(name, fn) {
@@ -33,6 +34,21 @@ check("supply, fees and TVL comparisons use their own tolerances", () => {
   assert.equal(feeDrift("x", 5, 0).length, 0, "no published figure: nothing to compare");
   assert.ok(TOL.fees < TOL.tvl && TOL.tvl < TOL.supply);
 });
+check("info-only items stay in the data but never open, comment on or keep open the issue (#29)", () => {
+  const info = [{ check: "circulating", id: "spark-2", detail: "d" }, { check: "fdvTotal", id: "stargate-finance", detail: "d" }];
+  assert.equal(decideDrift(info, [], null), "none");
+  assert.equal(decideDrift(info, [], { number: 3 }), "close");
+  const body = driftBody([...info, { check: "tvl", id: "x", detail: "d" }]);
+  assert.match(body, /1 item\(s\) outside tolerance/);
+  assert.match(body, /2 informational item/);
+  assert.doesNotMatch(body, /stargate-finance/);
+});
+check("FDV is price × max supply when a max exists; CoinGecko's figure only for uncapped tokens (#29)", () => {
+  assert.equal(fdvOf(0.174, 1e9, 21.02e6), 174e6);       // Stargate: CoinGecko used total supply
+  assert.equal(fdvOf(121.5, null, 77.2e9), 77.2e9);       // Solana: uncapped
+  assert.equal(fdvOf(null, 1e9, 5e6), 5e6);
+  assert.equal(fdvOf(1, null, null), null);
+});
 check("rotation continues where it stopped, wraps, and covers everything", () => {
   const ids = ["e", "a", "d", "c", "b"];
   const r1 = rotate(ids, 0, 2), r2 = rotate(ids, r1.next, 2), r3 = rotate(ids, r2.next, 2);
@@ -53,7 +69,7 @@ check("the issue body groups items by check and names the tolerance file", () =>
   assert.match(body, /### TVL \(1\)/);
   assert.match(body, /`spark-2`: stored TVL/);
   assert.match(body, /build\/audit-lib\.mjs/);
-  const many = Array.from({ length: 14 }, (_, i) => ({ check: "circulating", id: `t${i}`, detail: "d" }));
+  const many = Array.from({ length: 14 }, (_, i) => ({ check: "tvl", id: `t${i}`, detail: "d" }));
   const long = driftBody(many);
   assert.equal((long.match(/^- `t/gm) || []).length, 10);
   assert.match(long, /and 4 more/);

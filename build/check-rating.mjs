@@ -269,6 +269,13 @@ check("attention: only the watchlist trend is rated; levels are shown; missing h
   const a = analyse(full(), HOUSE_RULES, { type: "defi" }), b = analyse(fresh, HOUSE_RULES, { type: "defi" });
   assert.equal(a.coverage.share, b.coverage.share);
 });
+check("FDV ÷ market cap uses max supply and names CoinGecko's total-supply figure when they differ (#29)", () => {
+  const stg = { circulatingSupply: 120.7e6, totalSupply: 120.8e6, maxSupply: 1e9, marketCap: 21e6, fdv: 174e6, fdvCoinGecko: 21.02e6 };
+  const r = row(stg, "fdvToMcap");
+  assert.equal(r.display, "8.29×");
+  assert.match(r.extra, /CoinGecko shows \$21\.0M \(total supply only\)/);
+  assert.doesNotMatch(row({ ...stg, fdvCoinGecko: 174e6 }, "fdvToMcap").extra, /CoinGecko shows/);
+});
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
     const rule = HOUSE_RULES.metrics[m.id];
