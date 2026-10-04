@@ -48,7 +48,7 @@ export function normalise(c) {
     price: usd(md.current_price),
     change30d: md.price_change_percentage_30d ?? null,
     marketCap: num(usd(md.market_cap)),
-    fdv: fdvOf(usd(md.current_price), num(md.max_supply), num(usd(md.fully_diluted_valuation))),   // price × max supply when one exists (#29)
+    fdv: fdvOf(usd(md.current_price), num(md.max_supply), num(md.total_supply)),   // price × max, else × total supply (#29, #31)
     fdvCoinGecko: num(usd(md.fully_diluted_valuation)),
     volume24h: num(usd(md.total_volume)),
     watchlist: num(c.watchlist_portfolio_users),   // CoinGecko users following it (attention area)

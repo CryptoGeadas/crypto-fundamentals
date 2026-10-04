@@ -43,10 +43,11 @@ check("info-only items stay in the data but never open, comment on or keep open 
   assert.match(body, /2 informational item/);
   assert.doesNotMatch(body, /stargate-finance/);
 });
-check("FDV is price × max supply when a max exists; CoinGecko's figure only for uncapped tokens (#29)", () => {
-  assert.equal(fdvOf(0.174, 1e9, 21.02e6), 174e6);       // Stargate: CoinGecko used total supply
-  assert.equal(fdvOf(121.5, null, 77.2e9), 77.2e9);       // Solana: uncapped
-  assert.equal(fdvOf(null, 1e9, 5e6), 5e6);
+check("FDV is price × max supply, else price × total supply; CoinGecko's FDV never used (#29, #31)", () => {
+  assert.equal(fdvOf(0.174, 1e9, 120.8e6), 174e6);       // Stargate: max supply wins over total
+  assert.equal(fdvOf(121.5, null, 635.2e6), 121.5 * 635.2e6); // Solana: uncapped → price × total
+  assert.equal(fdvOf(0.0023, null, 15e9), 0.0023 * 15e9); // Snowbank-style: CoinGecko's junk FDV never enters
+  assert.equal(fdvOf(null, 1e9, 5e6), null);
   assert.equal(fdvOf(1, null, null), null);
 });
 check("rotation continues where it stopped, wraps, and covers everything", () => {

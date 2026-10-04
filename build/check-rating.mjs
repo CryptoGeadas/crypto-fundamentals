@@ -269,12 +269,16 @@ check("attention: only the watchlist trend is rated; levels are shown; missing h
   const a = analyse(full(), HOUSE_RULES, { type: "defi" }), b = analyse(fresh, HOUSE_RULES, { type: "defi" });
   assert.equal(a.coverage.share, b.coverage.share);
 });
-check("FDV ÷ market cap uses max supply and names CoinGecko's total-supply figure when they differ (#29)", () => {
+check("FDV ÷ market cap uses the page's own FDV and names CoinGecko's figure when they differ (#29, #31)", () => {
   const stg = { circulatingSupply: 120.7e6, totalSupply: 120.8e6, maxSupply: 1e9, marketCap: 21e6, fdv: 174e6, fdvCoinGecko: 21.02e6 };
   const r = row(stg, "fdvToMcap");
   assert.equal(r.display, "8.29×");
-  assert.match(r.extra, /CoinGecko shows \$21\.0M \(total supply only\)/);
+  assert.match(r.extra, /FDV here = price × max supply; CoinGecko shows \$21\.0M$/);
   assert.doesNotMatch(row({ ...stg, fdvCoinGecko: 174e6 }, "fdvToMcap").extra, /CoinGecko shows/);
+  // Uncapped with a junk CoinGecko FDV (Snowbank-like): the page's price × total supply is used and named.
+  const junk = row({ circulatingSupply: 15e9, totalSupply: 15e9, maxSupply: null, marketCap: 34.5e6, fdv: 34.5e6, fdvCoinGecko: 3.45e22 }, "fdvToMcap");
+  assert.equal(junk.display, "1.00×");
+  assert.match(junk.extra, /price × total supply; CoinGecko shows/);
 });
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {

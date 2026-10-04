@@ -100,8 +100,8 @@ export const METRICS = [
     val: (t) => (t.fdv && t.marketCap ? t.fdv / t.marketCap : null),
     show: (v) => fmt.x(v),
     extra: (t) => (!t.fdv ? "" : `FDV ${fmt.usd(t.fdv)} vs market cap ${fmt.usd(t.marketCap)}` +
-      (t.maxSupply ? (t.fdvCoinGecko && Math.abs(t.fdv / t.fdvCoinGecko - 1) > 0.03 ? `. FDV here = price × max supply; CoinGecko shows ${fmt.usd(t.fdvCoinGecko)} (total supply only)` : "")
-        : ". No max cap: FDV only counts tokens that exist today, not future issuance")),
+      (t.fdvCoinGecko && Math.abs(t.fdv / t.fdvCoinGecko - 1) > 0.03 ? `. FDV here = price × ${t.maxSupply ? "max" : "total"} supply; CoinGecko shows ${fmt.usd(t.fdvCoinGecko)}` : "") +
+      (t.maxSupply ? "" : ". No max cap: FDV only counts tokens that exist today, not future issuance")),
   },
 ];
 

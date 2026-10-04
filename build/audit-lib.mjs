@@ -5,8 +5,9 @@
 export const DRIFT_TITLE = "Data drift";
 
 // Kept in audit.json but left out of the issue: nothing to fix. Circulating disagreement is shown on the
-// page itself (#26); "FDV counts total supply" no longer affects the page, which uses max supply (#29).
-export const INFO_ONLY = new Set(["circulating", "fdvTotal"]);
+// page itself (#26); CoinGecko's FDV (on total supply, or contradicting itself) is no longer used by the
+// page, which computes FDV from price and supply (#29, #31).
+export const INFO_ONLY = new Set(["circulating", "fdvTotal", "fdv"]);
 export const actionable = (items = []) => items.filter((it) => !INFO_ONLY.has(it.check));
 
 // Tolerances, as a share of the source's figure. Each says why it is that loose.
@@ -107,7 +108,7 @@ export function driftBody(allItems, { runUrl = "", at = new Date().toISOString()
     "Each line compares what the page uses with a figure the source publishes itself. Drift is a lead to a general rule to fix (as in #25–#27), not a per-token correction. Tolerances: `build/audit-lib.mjs`.",
     "",
     ...lines,
-    info ? `Also recorded in audit.json, needing no action: ${info} informational item(s) (sources disagreeing on circulating supply, CoinGecko FDV on total supply).` : "",
+    info ? `Also recorded in audit.json, needing no action: ${info} informational item(s) (sources disagreeing on circulating supply; CoinGecko FDV figures, which the page doesn't use).` : "",
     sampled.fees || sampled.tvl ? `Sampled today: ${sampled.fees || 0} tokens for fees, ${sampled.tvl || 0} for TVL (rotating).` : "",
     runUrl ? `Run log: ${runUrl}` : "",
   ].join("\n");
