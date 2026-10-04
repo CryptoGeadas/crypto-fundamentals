@@ -57,3 +57,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node build/alert.mjs
+
+      - name: Keep the "Data drift" issue in sync with the self-audit
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node build/audit-issue.mjs

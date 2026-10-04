@@ -16,6 +16,7 @@ import { defiStep } from "./step-defi.mjs";
 import { peersStep } from "./step-peers.mjs";
 import { metaStep } from "./step-meta.mjs";
 import { attentionStep } from "./step-attention.mjs";
+import { auditStep } from "./step-audit.mjs";
 
 const DATA = new URL("../site/data/", import.meta.url);
 const report = new Report();
@@ -43,7 +44,7 @@ const data = {
   },
 };
 
-const STEPS = [["universe", universeStep], ["unlocks", unlocksStep], ["defi", defiStep], ["peers", peersStep], ["meta", metaStep], ["attention", attentionStep]];
+const STEPS = [["universe", universeStep], ["unlocks", unlocksStep], ["defi", defiStep], ["peers", peersStep], ["meta", metaStep], ["attention", attentionStep], ["audit", auditStep]];
 
 async function main() {
   await mkdir(DATA, { recursive: true });
