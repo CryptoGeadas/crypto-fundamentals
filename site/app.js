@@ -9,6 +9,7 @@ import { fetchSecurity } from "./goplus.js";
 import { loadLlama } from "./llama.js";
 import { createCache, TTL } from "./cache.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
+import { trendingDays, watchChange } from "./attention.js";
 
 const $ = (s) => document.querySelector(s);
 // Personal version only: the local server injects window.TF_PERSONAL. On the public site it is absent.
@@ -19,7 +20,7 @@ const state = {
   id: new URLSearchParams(location.search).get("t"),
   defaultView: PERSONAL?.defaultView || "factsheet", viewFallback: null, current: null,
   personalIds: new Set((PERSONAL?.alwaysInclude || []).map((t) => t.id)),
-  universe: null, status: null, idmap: null, unlocks: null, defi: null, peers: null, meta: null, byId: new Map(), addrIdx: new Map(),
+  universe: null, status: null, idmap: null, unlocks: null, defi: null, peers: null, meta: null, attention: null, byId: new Map(), addrIdx: new Map(),
   sel: 0, hits: [], address: null, loadSeq: 0,
 };
 const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-solana", "arbitrum"];
@@ -428,6 +429,8 @@ async function load(id, via, { fresh = false } = {}) {
     const slowAts = [llama, security, firstPrice].filter((x) => entry || x !== llama).map((x) => x.at).filter(Boolean);
     t.dataAt = { market: market.at, slow: slowAts.length ? Math.min(...slowAts) : market.at };
     t.meta = state.meta?.[id] || null;
+    t.attention = { trending: trendingDays(id, state.attention?.trending), watch: t.watchlist ?? null,
+      change: watchChange(state.attention?.watch?.[id], t.watchlist) };
     t.defiExtra = state.defi?.[id] ? { hacks: state.defi[id].hacks || [], audits: state.defi[id].audits || null } : null;
     t.peers = state.peers ? { group: state.peers.byToken?.[id]?.group, groups: state.peers.groups, secondary: entry?.c ? "Chain" : null } : null;
     if (seq === state.loadSeq) renderToken(t, via);
@@ -549,7 +552,7 @@ async function start() {
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
   // Optional data: the page still works without them (type falls back to the meme/narrative rule).
-  const [status, idmap, unlocks, defi, peers, meta] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json", "peers.json", "meta.json"].map((f) =>
+  const [status, idmap, unlocks, defi, peers, meta, attention] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json", "peers.json", "meta.json", "attention.json"].map((f) =>
     fetch(`./data/${f}`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
   state.status = status;
   state.idmap = idmap?.map || null;
@@ -557,6 +560,7 @@ async function start() {
   state.defi = defi?.tokens || null;
   state.peers = peers || null;
   state.meta = meta?.tokens || null;
+  state.attention = attention || null;
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   const extra = (PERSONAL?.alwaysInclude || []).filter((t) => !state.byId.has(t.id))
     .map((t) => ({ id: t.id, sym: t.sym || t.id.toUpperCase(), name: t.name || t.id, rank: 9999, img: "", personal: true }));

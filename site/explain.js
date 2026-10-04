@@ -4,6 +4,7 @@
 // referenced glossary term is missing here.
 
 export const AREA_INTROS = {
+  attention: "Whether people are paying attention to the token, measured with free CoinGecko data: how often it appears in CoinGecko's trending searches and whether its watchlist is growing. A stand-in for social chatter, not Twitter data, which is not available for free.",
   valuation: "How expensive the token is compared with what the project earns, judged against similar projects rather than an absolute standard. A project can be excellent and still too expensive.",
   traction: "Whether the business behind the token is being used and growing: fees paid by users, revenue kept by the project, and money locked in it.",
   accrual: "Whether any of the money the project earns actually reaches people who hold the token. Many tokens have busy protocols behind them but no claim on the fees.",
@@ -152,6 +153,21 @@ export const METRIC_EXPLAIN = {
     why: "Rising or falling development activity, with the same caveats as the contributor count.",
     terms: ["commit"],
   },
+  trendingDays: {
+    what: "On how many of the last 30 days the coin was in CoinGecko's trending searches, checked once a day.",
+    why: "A sudden run of trending days usually means a wave of retail interest, often around news or hype. It is a proxy for social chatter, not Twitter data.",
+    terms: ["trending-searches"],
+  },
+  watchlist: {
+    what: "How many CoinGecko users follow the coin in a watchlist or portfolio, live.",
+    why: "A rough measure of how many people care about it. Large, old coins always lead on this, so it is context rather than a signal.",
+    terms: ["watchlist"],
+  },
+  watchTrend: {
+    what: "The change in watchlist users against a snapshot from about 30 days ago (recorded weekly by the daily job).",
+    why: "Growing interest shows up here before it shows up in fundamentals; a shrinking watchlist means people are moving on.",
+    terms: ["watchlist"],
+  },
   raised: {
     what: "The total raised in funding rounds recorded by DefiLlama, with the lead investors.",
     why: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule. DefiLlama's list is incomplete, so an empty record is shown as unknown, with links to check elsewhere.",
@@ -177,6 +193,8 @@ export const GLOSSARY = {
   exploit: { name: "Exploit (hack)", text: "An attack that drains funds by abusing a bug or weakness in a protocol, its contracts or its infrastructure." },
   fdv: { name: "FDV (fully diluted valuation)", text: "The token price multiplied by the maximum supply, or the total supply when there is no maximum. What the whole project would be worth if every token were already circulating." },
   fees: { name: "Fees", text: "Everything users pay to use a protocol or chain, such as trading fees, interest or gas." },
+  "trending-searches": { name: "Trending searches", text: "CoinGecko's list of the most-searched coins over the last 24 hours (about 15). Showing up there often means a burst of interest, sometimes hype." },
+  watchlist: { name: "Watchlist users", text: "How many CoinGecko users have added the coin to a watchlist or portfolio. Rising means more people are following it; the level mostly reflects size and age." },
   "funding-round": { name: "Funding round", text: "A sale of tokens or equity to investors, usually before the token launches, often at a discount and with a lock-up." },
   "holder-concentration": { name: "Holder concentration", text: "How much of the supply sits in a few wallets. High concentration means a few parties can move the price." },
   "holders-revenue": { name: "Holders revenue", text: "The part of a protocol's revenue that reaches token holders, through buybacks, burns or payments to stakers." },

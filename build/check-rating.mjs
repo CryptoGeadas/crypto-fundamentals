@@ -128,6 +128,7 @@ const full = (extra) => withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE
   meta: { orgs: ["aave", "aave-dao"], dev: { repos: ["aave-dao/seatbelt-gov-v3"], contributors90: 11, commits90: 120, commitsPrev90: 80, bots90: 2580 }, devAt: "2026-10-03T00:00:00Z",
     raises: [{ date: 1594771200, round: "Private", amount: 3, leads: ["Framework Ventures", "3AC"] }, { date: 1600000000, round: "Seed", amount: 4.5, leads: ["ParaFi"] }], raisesAt: "2026-10-03T00:00:00Z" },
   firstPriceTs: Date.now() / 1000 - 6 * 365 * 86400,
+  attention: { trending: { days: 3, of: 30 }, watch: 12000, change: { pct: 2.4, from: 11720, since: "2026-09-04", days: 30 } },
   defiExtra: { hacks: [{ date: 1773273600, name: "Aave V3", amount: 862000, returned: 862000 }, { date: 1724803200, name: "Aave", amount: 56000, returned: 0 }], audits: { count: 3 } }, ...extra });
 
 check("traction: trends are rated at display precision; fees and revenue are shown, not rated", () => {
@@ -224,6 +225,22 @@ check("no record is never 'none': empty lookups are unknown, unrated, missing, a
     if (/^None/.test(r.display) && r.display !== "None scheduled") assert.ok(allowed.has(r.id), `${r.id} shows "${r.display}"`);
   // Rounds on record with no disclosed amount are a real record, not "none".
   assert.equal(row(full({ meta: { orgs: [], raises: [{ date: 1, round: "Seed", amount: 0, leads: [] }], raisesAt: "x" } }), "raised").display, "Amount undisclosed");
+});
+check("attention: only the watchlist trend is rated; levels are shown; missing history is unknown, not zero", () => {
+  assert.equal(row(full(), "watchTrend").display, "+2.4%");
+  assert.equal(row(full(), "watchTrend").word, "High");
+  assert.equal(row(full(), "watchlist").level, null);
+  assert.equal(row(full(), "trendingDays").display, "3 days");
+  assert.equal(row(full(), "trendingDays").level, null);
+  const fresh = full({ attention: { trending: null, watch: 12000, change: null } });
+  for (const id of ["trendingDays", "watchTrend"]) {
+    assert.equal(row(fresh, id).display, "Not enough history yet", id);
+    assert.equal(row(fresh, id).missing, true, id);
+  }
+  // A memecoin gets the attention area too, and attention never moves the coverage badge.
+  assert.ok(analyse(full(), HOUSE_RULES, { type: "meme" }).byArea.attention);
+  const a = analyse(full(), HOUSE_RULES, { type: "defi" }), b = analyse(fresh, HOUSE_RULES, { type: "defi" });
+  assert.equal(a.coverage.share, b.coverage.share);
 });
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {

@@ -13,6 +13,7 @@ export const AREAS = [
   { id: "dilution", name: "Dilution" },
   { id: "holders", name: "Holders" },
   { id: "market", name: "Market health" },
+  { id: "attention", name: "Attention" },
   { id: "treasury", name: "Treasury" },
   { id: "security", name: "Security" },
   { id: "dev", name: "Development" },
@@ -21,10 +22,10 @@ export const AREAS = [
 
 // Which areas apply to each token type (decision 2 and the PRD metric set).
 export const AREAS_BY_TYPE = {
-  defi: ["valuation", "traction", "accrual", "dilution", "holders", "market", "treasury", "security", "dev", "backers"],
-  chain: ["valuation", "traction", "dilution", "holders", "market", "treasury", "security", "dev", "backers"],
-  narrative: ["dilution", "holders", "market", "security", "dev", "backers"],
-  meme: ["dilution", "holders", "market", "security"],
+  defi: ["valuation", "traction", "accrual", "dilution", "holders", "market", "attention", "treasury", "security", "dev", "backers"],
+  chain: ["valuation", "traction", "dilution", "holders", "market", "attention", "treasury", "security", "dev", "backers"],
+  narrative: ["dilution", "holders", "market", "attention", "security", "dev", "backers"],
+  meme: ["dilution", "holders", "market", "attention", "security"],
 };
 
 // Areas a token actually gets: its type's areas, plus value accrual for a chain whose
@@ -309,6 +310,29 @@ const DEV_BACKERS = [
 ];
 METRICS.push(...DEV_BACKERS);
 
+// ---------------------------------------------------------------- attention (issue #24)
+// t.attention = { trending: { days, of } | null, watch: watchlist users now (live CoinGecko), change: { pct, from, since, days } | null }
+// A proxy for social interest, not Twitter data. Only the trend is rated: big coins always win on level.
+const noHistory = (what) => ({ missing: true, display: "Not enough history yet",
+  rule: `The daily job started recording ${what} in October 2026; this appears once enough days are recorded.` });
+
+const ATTENTION = [
+  { id: "trendingDays", area: "attention", label: "Days in CoinGecko's trending searches (last 30)", yard: "shown", src: "CoinGecko trending",
+    unrated: (t) => (!t.attention?.trending ? noHistory("trending searches") : null),
+    val: (t) => t.attention?.trending?.days ?? null,
+    show: (v) => (v === 1 ? "1 day" : `${v} days`),
+    extra: (t) => { const x = t.attention?.trending; return x ? `out of ${x.of} recorded day${x.of > 1 ? "s" : ""}; the list is checked once a day` : ""; },
+    note: "A spike in searches often comes with hype; it is shown, not rated." },
+  { id: "watchlist", area: "attention", label: "CoinGecko watchlist users", yard: "shown", src: "CoinGecko",
+    val: (t) => t.attention?.watch ?? null, show: (v) => fmt.num(v),
+    note: "The level mostly reflects how big and old a coin is, so it is shown, not rated." },
+  { id: "watchTrend", precision: 1, area: "attention", label: "Watchlist users, change over ~30 days", yard: "fixed", src: "CoinGecko",
+    unrated: (t) => (t.attention?.watch && !t.attention?.change ? noHistory("watchlist counts") : null),
+    val: (t) => t.attention?.change?.pct ?? null, show: (v) => fmt.chg(v),
+    extra: (t) => { const c = t.attention?.change; return c ? `${fmt.num(c.from)} → ${fmt.num(t.attention.watch)} since ${c.since}` : ""; } },
+];
+METRICS.push(...ATTENTION);
+
 // ---------------------------------------------------------------- rating
 export function levelFromBands(v, bands) {
   let i = 0;
@@ -365,6 +389,8 @@ export function rate(m, token, rules) {
 // Memecoins are always "Market data only": fundamentals do not apply to them.
 export function coverageOf(rows, type) {
   // "Not tracked" (missing) counts as no data; "Uncapped" or "None scheduled" are real answers.
+  // Attention is a proxy, not a fundamental, so it doesn't count towards coverage.
+  rows = rows.filter((r) => r.area !== "attention");
   const share = rows.length ? rows.filter((r) => r.value != null || (r.unrated && !r.missing)).length / rows.length : 0;
   const level = type === "meme" ? "Market data only" : share >= 0.8 ? "Full" : share >= 0.45 ? "Partial" : "Market data only";
   return { level, share: Math.round(share * 100) };

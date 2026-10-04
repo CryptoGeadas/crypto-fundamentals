@@ -34,8 +34,8 @@ check("meme category detection is word-based", () => {
   assert.ok(!isMemeCategory(["Memento Protocol"]));
 });
 check("areas per type match the PRD", () => {
-  assert.equal(areasFor("defi").length, 10);
-  assert.deepEqual(areasFor("meme"), ["dilution", "holders", "market", "security"]);
+  assert.equal(areasFor("defi").length, 11);
+  assert.deepEqual(areasFor("meme"), ["dilution", "holders", "market", "attention", "security"]);
   assert.ok(!areasFor("narrative").includes("valuation"));
 });
 check("coverage: memecoins are always 'Market data only'; others by share of metrics with data", () => {
@@ -48,7 +48,7 @@ check("coverage: memecoins are always 'Market data only'; others by share of met
 check("analyse only rates the areas that apply to the type", () => {
   const t = { circulatingSupply: 5, maxSupply: 10, totalSupply: 10, marketCap: 1, fdv: 2 };
   const a = analyse(t, HOUSE_RULES, { type: "meme" });
-  assert.ok(Object.keys(a.byArea).every((k) => ["dilution", "holders", "market", "security"].includes(k)));
+  assert.ok(Object.keys(a.byArea).every((k) => ["dilution", "holders", "market", "attention", "security"].includes(k)));
 });
 check("fee earners map child protocols, parents and chains back to the token", () => {
   const parents = [{ id: "parent#aave", gecko_id: "aave" }];

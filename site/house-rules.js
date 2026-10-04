@@ -49,6 +49,9 @@ export const HOUSE_RULES = {
     // Development: % change in human commits, last 90 days vs the 90 days before.
     commitTrend: { bands: [-40, -15, 15, 40], dir: "up" },
 
+    // Attention: % change of CoinGecko watchlist users over ~30 days (a proxy for interest; issue #24).
+    watchTrend: { bands: [-5, -1, 1, 5], dir: "up" },
+
     // Traction: % change of the last 30 days against the 30 days ending 90 days earlier.
     feesTrend: { bands: [-30, -10, 10, 30], dir: "up" },
     revenueTrend: { bands: [-30, -10, 10, 30], dir: "up" },
