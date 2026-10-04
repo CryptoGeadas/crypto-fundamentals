@@ -241,3 +241,39 @@ a.mlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
 /* how old the live data is, with a Refresh button */
 .fresh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 14px 0 0; font-size: 12px; color: var(--muted); }
 .fresh .btn { padding: 2px 10px; }
+
+/* house rule as a five-step scale (tooltips and the methodology page) */
+.scale { margin: 0 0 4px; }
+.scale-dir { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.scale-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+.scale .seg { text-align: center; padding: 0 1px; opacity: .55; }
+.scale .seg i { display: block; height: 6px; border-radius: 3px; background: var(--tone); margin-bottom: 4px; }
+.scale .seg b { display: block; font-size: 10px; font-weight: 600; color: var(--tone); white-space: nowrap; }
+.scale .seg span { display: block; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scale .seg.on { opacity: 1; }
+.scale .seg.on i { height: 8px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--tone) 35%, transparent); }
+.scale .seg.on span { color: var(--text); font-weight: 600; }
+.scale-note { margin-top: 6px; font-size: 11px; color: var(--text); }
+.fact .rule { min-width: 330px; }
+.fact .rule .hint { display: block; margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--border); font-weight: 400; color: var(--muted); }
+
+/* the peer group behind the valuation ratings */
+.peers summary { cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.peers summary .label { color: var(--accent); }
+.peers-hint { font-size: 12px; color: var(--muted); }
+.peerwrap { max-height: 380px; overflow: auto; margin-top: 10px; border: 1px solid var(--border); border-radius: var(--r-card); }
+.peertable { width: 100%; font-size: 13px; }
+.peertable th { position: sticky; top: 0; background: var(--surface); }
+.peertable .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.peertable td span { color: var(--muted); }
+.peertable a { color: var(--text); text-decoration: none; }
+.peertable a:hover b { color: var(--accent); }
+.peertable tr.me td { background: var(--accent-tint); }
+.peertable tr.me td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* methodology: the rule leads each metric, the definition follows */
+.metric .mrule { max-width: 520px; margin: 8px 0 10px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); }
+.metric .mrule .scale .seg { opacity: 1; }
+.metric .mrule .scale .seg b, .metric .mrule .scale .seg span { font-size: 11px; }
+.metric .mrule-plain { margin: 0; font-size: 13px; color: var(--muted); }
+.metric .mwhat { font-size: 14px; color: var(--muted); max-width: 70ch; }

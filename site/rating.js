@@ -349,7 +349,7 @@ export function rate(m, token, rules) {
     out.level = p.level;
     out.word = LEVELS[p.level - 1];
     out.favour = favourOf(p.level, rule.dir);
-    out.peer = p;
+    out.peer = { ...p, key: m.peerKey };
     out.rule = `Peer rule: percentile among ${p.n} ${p.group}${p.fellBack ? ` (its own category, ${token.peers?.group || "unknown"}, has fewer than 8 peers)` : " peers"}. Cheaper than ${p.cheaperThan}% of them. Bottom 20% of the group = very low … top 20% = very high; lower is cheaper.`;
     return out;
   }
@@ -357,6 +357,7 @@ export function rate(m, token, rules) {
   out.word = LEVELS[out.level - 1];
   out.favour = favourOf(out.level, rule.dir);
   out.rule = ruleText(m, rule);
+  out.scale = { dir: rule.dir, cuts: rule.bands.map((x) => m.show(x)) }; // drawn as a five-step scale on the page
   return out;
 }
 
