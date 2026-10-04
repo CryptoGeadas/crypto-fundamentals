@@ -2,7 +2,7 @@
 // Run: node build/check-defi.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { tvlByToken, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
+import { tvlByToken, tvlFromSeries, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
 
 const results = [];
 const check = (name, fn) => { try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", `${name} — ${e.message}`]); } };
@@ -65,10 +65,18 @@ check("parent TVL leaves out what a child holds inside a sibling (DefiLlama's ex
   assert.equal(out["spark-2"].tvl, 7245e6);
   // Last month: Savings has its own split (700M); Liquidity Layer has none, so today's share (1559/2682) is applied.
   assert.equal(out["spark-2"].tvlPrevMonth, Math.round(5000e6 + (2000e6 - 2000e6 * 1559 / 2682) + (1000e6 - 700e6)));
+  assert.equal(out["spark-2"].estimated, true, "flagged: Liquidity Layer has no month-ago split");
   // A token mapped straight to the child itself keeps the child's whole TVL.
   const direct = tvlByToken({ protocols: [{ id: "2", slug: "spark-liquidity-layer", tvl: 2682e6 }],
     lite: [{ defillamaId: "2", chainTvls: { excludeParent: { tvl: 1559e6 } } }], idmap: { sll: { p: "spark-liquidity-layer" } }, ids: new Set(["sll"]) });
   assert.equal(direct.sll.tvl, 2682e6);
+});
+check("parent TVL history gives today's value and the value 30 days earlier (#27)", () => {
+  const day = (d) => NOW - d * DAY;
+  const s = tvlFromSeries([{ date: day(40), totalLiquidityUSD: 5.9e9 }, { date: day(30), totalLiquidityUSD: 6.24e9 }, { date: day(29), totalLiquidityUSD: 6.3e9 }, { date: day(0), totalLiquidityUSD: 7.244e9 }], NOW);
+  assert.deepEqual(s, { tvl: 7.244e9, tvlPrevMonth: 6.24e9 });
+  assert.equal(tvlFromSeries([], NOW), null);
+  assert.deepEqual(tvlFromSeries([{ date: day(3), totalLiquidityUSD: 1e9 }], NOW), { tvl: 1e9, tvlPrevMonth: null });
 });
 check("an incident whose DefiLlama id has left the protocols list is matched by exact name (Aave, Aug 2024)", () => {
   const h = hacksByToken({ parents: [{ id: "parent#aave", name: "Aave", gecko_id: "aave", chains: ["Ethereum", "Polygon"] }],

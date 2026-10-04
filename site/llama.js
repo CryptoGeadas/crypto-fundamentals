@@ -90,7 +90,7 @@ export async function loadLlama(id, entry, defi, cls, now = Date.now() / 1000) {
     jobs.push(settle(feeSummary(entry.p, "dailyFees")).then((v) => { out.fees = v; out.accrualFees = v; }));
     jobs.push(settle(feeSummary(entry.p, "dailyRevenue")).then((v) => (out.revenue = v)));
     jobs.push(settle(feeSummary(entry.p, "dailyHoldersRevenue")).then((v) => (out.holders = v)));
-    if (defi?.tvl) out.tvl = { now: defi.tvl, prev: defi.tvlPrevMonth };
+    if (defi?.tvl) out.tvl = { now: defi.tvl, prev: defi.tvlPrevMonth, estimated: Boolean(defi.estimated) };
   }
   if (defi?.treasury && !defi.treasury.none) out.treasury = defi.treasury;
   await Promise.all(jobs);

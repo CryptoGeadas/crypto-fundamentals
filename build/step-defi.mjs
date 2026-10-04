@@ -2,7 +2,7 @@
 // per-protocol endpoints are too heavy for a visitor's browser (/protocol/aave 3 MB, /treasury/aave 4 MB).
 //   site/data/defi.json   { tokens: { <gecko_id>: { tvl, tvlPrevMonth, treasury: { own, other, at } | null, hacks: [...], audits: { count, links } | null } } }
 
-import { tvlByToken, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
+import { tvlByToken, tvlFromSeries, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
 import { sleep } from "./net.mjs";
 
 const API = "https://api.llama.fi";
@@ -28,6 +28,23 @@ export async function defiStep({ report, net, data }) {
     report.datasets.defi = { status: "kept" };
     return;
   }
+
+  // Parents whose children hold TVL inside a sibling: DefiLlama has no month-ago split, so take both
+  // values from the parent's own history (one call each; ~16 tokens). The estimate stays as a fallback.
+  const estimated = Object.keys(tvl).filter((id) => tvl[id].estimated && idmap.map[id]?.p);
+  let fromHistory = 0;
+  for (const id of estimated) {
+    try {
+      const s = tvlFromSeries((await net.getJson(`${API}/protocol/${encodeURIComponent(idmap.map[id].p)}`, "defillama", { tries: 2 })).tvl);
+      if (s?.tvl > 0) { tvl[id] = s; fromHistory++; }
+    } catch (e) {
+      // DefiLlama's free API has no history for some parents (ether.fi, Kelp, Lombard, Origin answer
+      // "Protocol not found"): expected, so the estimate stays, labelled on the page, without an alert.
+      if (!/HTTP 40[04]/.test(e.message)) report.warn("defillama", `TVL history for ${id} unavailable (${e.message}); its month-ago TVL is estimated today.`);
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (estimated.length) console.log(`TVL from parent history: ${fromHistory} of ${estimated.length}`);
 
   // Treasuries: weekly rotation, like unlock schedules; protocols without one are parked for 30 days.
   const stored = prev?.tokens || {};

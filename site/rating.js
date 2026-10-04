@@ -223,7 +223,7 @@ const BUSINESS_METRICS = [
     hint: "Last 30 days against the 30 days ending 90 days earlier" },
   { id: "tvlTrend", precision: 1, area: "traction", label: "TVL trend (30 days)", yard: "fixed", src: "DefiLlama TVL",
     val: (t) => pctChange(t.llama?.tvl?.now, t.llama?.tvl?.prev), show: (v) => fmt.chg(v),
-    extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today` : "") },
+    extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today${t.llama.tvl.estimated ? "; last month's figure is estimated (DefiLlama publishes no history for this group)" : ""}` : "") },
   { id: "dex30", area: "traction", label: "DEX volume on the chain, 30 days", yard: "shown", types: ["chain"], src: "DefiLlama DEX volumes",
     val: (t) => t.llama?.chain?.dex30 ?? null, show: (v) => fmt.usd(v) },
   { id: "stablesTrend", precision: 1, area: "traction", label: "Stablecoins on the chain, 90-day trend", yard: "fixed", types: ["chain"], src: "DefiLlama stablecoins",

@@ -28,9 +28,20 @@ export function tvlByToken({ protocols = [], lite = [], parents = [], idmap = {}
     const e = (out[gecko] ||= { tvl: 0, tvlPrevMonth: 0 });
     e.tvl += p.tvl - exNow;
     e.tvlPrevMonth += prev - exPrev;
+    if (exNow && !Number(ex?.tvlPrevMonth)) e.estimated = true;   // the daily job replaces it from the parent's history
   }
   for (const e of Object.values(out)) { e.tvl = Math.round(e.tvl); e.tvlPrevMonth = Math.round(e.tvlPrevMonth) || null; }
   return out;
+}
+
+// A protocol's TVL history (/protocol/<slug> "tvl": [{ date, totalLiquidityUSD }]) → today's value and
+// the value 30 days before it. Used for parents whose month-ago split is only estimated (issue #27).
+export function tvlFromSeries(series = [], now = Date.now() / 1000) {
+  const pts = (series || []).filter((p) => p && p.totalLiquidityUSD > 0);
+  if (!pts.length) return null;
+  let prev = null;
+  for (const p of pts) if (p.date <= now - 30 * 86400) prev = p.totalLiquidityUSD;
+  return { tvl: Math.round(pts[pts.length - 1].totalLiquidityUSD), tvlPrevMonth: prev ? Math.round(prev) : null };
 }
 
 // /treasury/<slug> → { own, other }: value held in the project's own token vs everything else.
