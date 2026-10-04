@@ -50,7 +50,7 @@ async function devStats(orgs, now) {
 }
 
 export async function metaStep({ report, net, data }) {
-  const [idmap, universe, prev] = [await data.read("idmap.json"), await data.read("universe.json"), await data.read("meta.json")];
+  const [idmap, universe, prev, attention] = [await data.read("idmap.json"), await data.read("universe.json"), await data.read("meta.json"), await data.read("attention.json")];
   if (!idmap || !universe) { report.error("meta", "No identifier map or token list; development and backer data kept."); report.datasets.meta = { status: "kept" }; return; }
   const ids = new Set(universe.tokens.map((t) => t.id));
   const now = Date.now() / 1000;
@@ -59,7 +59,7 @@ export async function metaStep({ report, net, data }) {
   let orgs;
   try {
     const [protocols, lite] = await Promise.all([net.getJson(`${API}/protocols`, "defillama"), net.getJson(`${API}/lite/protocols2`, "defillama")]);
-    orgs = orgsByToken({ protocols, parents: lite.parentProtocols || [], idmap: idmap.map, ids });
+    orgs = orgsByToken({ protocols, parents: lite.parentProtocols || [], idmap: idmap.map, ids, cgGithub: attention?.github || {} });
   } catch (e) {
     report.error("defillama", `${e.message}; development and backer data kept.`);
     report.datasets.meta = { status: "kept" };

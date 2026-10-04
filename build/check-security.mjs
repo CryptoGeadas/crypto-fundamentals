@@ -18,7 +18,7 @@ check("unsupported home chain falls back to the first supported one, flagged as 
 check("EVM flags: owner powers, tax, proxy and unverified source; absent fields are not flags", () => {
   assert.deepEqual(evmFlags({ is_proxy: "1", buy_tax: "0", sell_tax: "0", is_honeypot: "0", is_open_source: "1" }), ["Upgradeable (proxy) contract"]);
   const bad = evmFlags({ is_honeypot: "1", is_mintable: "1", owner_change_balance: "1", buy_tax: "0.05", sell_tax: "0.1", is_open_source: "0" });
-  assert.deepEqual(bad, ["Honeypot (cannot sell)", "Owner can mint", "Owner can change balances", "Trading tax 5% buy / 10% sell", "Source code not verified"]);
+  assert.deepEqual(bad, ["Honeypot (cannot sell)", "Can mint new tokens", "Owner can change balances", "Trading tax 5% buy / 10% sell", "Source code not verified"]);
 });
 check("Solana flags: active mint and freeze authorities", () => {
   assert.deepEqual(solanaFlags({ mintable: { status: "0" }, freezable: { status: "0" }, transfer_fee: {} }), []);

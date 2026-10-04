@@ -94,6 +94,33 @@ const JUP_U = { circ: 3.457e9, max: 7e9, perDay: 0, next: null,
   detail: { cats: ["Airdrop"], monthly: [[NOW - 2 * Y, 3.0e9], [NOW - 0.2 * Y, 3.457e9]] } };
 const withU = (base, u, extra = {}) => ({ ...base, unlocks: u, sym: "X", price: 0.2, volume24h: 2.3e8, ...extra });
 
+check("unlocks (#12 spot-check): unpublished amounts, continuous emissions, uncapped tokens, two circulating figures", () => {
+  // Solana-like: uncapped, next event has no amount, schedule built on a modelled max.
+  const sol = withU({ circulatingSupply: 588e6, totalSupply: 635e6, maxSupply: null, marketCap: 7e10, fdv: 7.7e10 },
+    { circ: 650e6, max: 722.7e6, perDay: 0, next: { ts: NOW + 7 * 86400, amount: null, type: "linear" },
+      detail: { monthly: [[NOW - Y, 630e6], [NOW, 650e6], [NOW + Y, 669.3e6]] } });
+  const ns = row(sol, "nextUnlockShare");
+  assert.equal(ns.display, "Amount not published");
+  assert.equal(ns.level, null);
+  assert.equal(ns.missing, true);
+  assert.match(ns.extra, /^Linear unlock on /);
+  assert.equal(row(sol, "nextUnlockVsVolume").display, "Amount not published");
+  assert.equal(row(sol, "lockedBeyond12m").display, "Uncapped supply");
+  assert.equal(row(sol, "lockedBeyond12m").level, null);
+  assert.match(row(sol, "unlocks12m").display, /of circulating \(vesting only\)$/);
+  assert.equal(row(sol, "unlocks12m").level, null);
+  // Spark-like: no discrete event, ~821K a day; DefiLlama circulating 18% above CoinGecko's.
+  const spk = withU({ circulatingSupply: 3.42e9, totalSupply: 1e10, maxSupply: 1e10, marketCap: 8.4e7, fdv: 2.47e8 },
+    { circ: 4.03e9, max: 1e10, perDay: 821142, next: null, detail: { monthly: [[NOW, 4.03e9], [NOW + Y, 4.33e9]] } }, { price: 0.0247, volume24h: 7.2e6 });
+  const c = row(spk, "nextUnlockShare");
+  assert.equal(c.display, "Continuous");
+  assert.equal(c.level, null);
+  assert.equal(c.missing, false);
+  assert.match(c.extra, /^About 821\.1K X a day, 0\.020% of circulating/);
+  assert.match(row(spk, "nextUnlockVsVolume").extra, /^About \$20\.3K a day unlocking/);
+  assert.match(row(spk, "unlocks12m").extra, /DefiLlama's circulating 4\.03B \(CoinGecko counts 3\.42B\)/);
+  assert.ok(row(spk, "unlocks12m").level != null, "capped tokens keep their 12-month rating");
+});
 check("unlocks (ARB-like): next unlock 0.80% = Low, vs volume Very low, 12m 13.6% = High (bad), locked beyond 20% = Low", () => {
   const t = withU(FIXTURES.arbitrum, ARB_U);
   assert.equal(row(t, "nextUnlockShare").word, "Low");

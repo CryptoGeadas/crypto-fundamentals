@@ -14,6 +14,7 @@ export async function attentionStep({ report, net, data }) {
   const now = Date.now();
   let trending = prev?.trending || {};
   const watch = { ...(prev?.watch || {}) };
+  const github = { ...(prev?.github || {}) };   // CoinGecko's GitHub links, used by the meta step as a second source
 
   // Trending searches: one call. A short or empty list is suspicious, so today is skipped, not recorded as "nobody trending".
   try {
@@ -34,6 +35,8 @@ export async function attentionStep({ report, net, data }) {
       const c = await net.getJson(`${CG}/coins/${encodeURIComponent(id)}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`, "coingecko", { coingecko: true });
       const n = Number(c.watchlist_portfolio_users);
       if (n > 0) { watch[id] = recordWatch(watch[id], n, now); done++; }
+      const gh = (c.links?.repos_url?.github || []).filter((u) => typeof u === "string" && u.trim());
+      if (gh.length) github[id] = gh.slice(0, 5); else delete github[id];
     } catch (e) {
       report.warn("coingecko", `Watchlist snapshots paused after ${done} of ${due.length} (${e.message}); the rest are retried tomorrow.`);
       break;
@@ -42,6 +45,6 @@ export async function attentionStep({ report, net, data }) {
 
   const count = Object.keys(watch).length;
   await data.publish("attention", "attention.json",
-    { generated: new Date().toISOString(), started: prev?.started || dayKey(now), count, trending, watch }, count, prev?.count ?? null, 0);
+    { generated: new Date().toISOString(), started: prev?.started || dayKey(now), count, trending, watch, github }, count, prev?.count ?? null, 0);
   console.log(`Attention: ${Object.keys(trending).length} trending days kept; watchlist snapshots ${done}/${due.length} today; ${count} tokens tracked.`);
 }

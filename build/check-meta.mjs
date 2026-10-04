@@ -2,7 +2,7 @@
 // Run: node build/check-meta.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { orgsByToken, isBot, humanActivity, pickRepos, dueFor, summariseRaises } from "./meta-lib.mjs";
+import { orgsByToken, orgsFromUrls, isBot, humanActivity, pickRepos, dueFor, summariseRaises } from "./meta-lib.mjs";
 
 const results = [];
 const check = (name, fn) => { try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", `${name} — ${e.message}`]); } };
@@ -18,6 +18,17 @@ check("GitHub orgs come from the parent protocol first, then children; de-duplic
   assert.deepEqual(o.aave, ["aave", "aave-dao", "bgd-labs"]);
   assert.deepEqual(o["jupiter-exchange-solana"], ["jup-ag"]);
   assert.equal(o.x, undefined);
+});
+check("CoinGecko GitHub links are a second source, used only when DefiLlama links no organisation", () => {
+  const o = orgsByToken({
+    parents: [], protocols: [{ slug: "aave-v3", github: ["aave"] }],
+    idmap: { aave: { p: "aave-v3" }, solana: { c: "Solana" } }, ids: new Set(["aave", "solana"]),
+    cgGithub: { solana: ["https://github.com/solana-labs/solana", "https://github.com/anza-xyz/agave", "https://gitlab.com/x/y"], aave: ["https://github.com/aave/aave-protocol"], other: ["https://github.com/z"] },
+  });
+  assert.deepEqual(o.solana, ["solana-labs", "anza-xyz"]);
+  assert.deepEqual(o.aave, ["aave"]);
+  assert.equal(o.other, undefined);
+  assert.deepEqual(orgsFromUrls(["https://www.github.com/Org.Name/repo", "https://github.com/org.name", "nonsense"]), ["Org.Name"]);
 });
 check("bots are excluded: GitHub type Bot, [bot] logins, dependabot/renovate/actions names", () => {
   assert.ok(isBot({ author: { login: "dependabot[bot]", type: "Bot" } }));

@@ -134,9 +134,26 @@ export function unlocks12mAmount(u, now = nowSec()) {
 
 const nextEvent = (u) => (u?.next && u.next.ts > nowSec() ? u.next : null);
 const noSchedule = (t) => (!t.unlocks ? { missing: true, display: "Not tracked", rule: "DefiLlama does not track an unlock schedule for this token, so there is nothing to rate." } : null);
-const noneScheduled = (t) => noSchedule(t) || (!nextEvent(t.unlocks)
-  ? { display: "None scheduled", rule: "Not rated: no unlock is scheduled. That alone is not good news when supply is still locked; see \"Locked supply not unlocking within 12 months\"." }
-  : null);
+const continuous = (u) => !nextEvent(u) && u?.perDay > 0;
+const uncapped = (t) => !t.maxSupply && t.totalSupply;
+// Which circulating figure the unlock percentages use, when the two sources disagree by more than 5%.
+const circNote = (t) => {
+  const a = t.unlocks?.circ, b = t.circulatingSupply;
+  return a && b && Math.abs(a / b - 1) > 0.05 ? ` · % of DefiLlama's circulating ${fmt.num(a)} (CoinGecko counts ${fmt.num(b)})` : "";
+};
+const noneScheduled = (t) => {
+  const u = t.unlocks, n = nextEvent(u);
+  if (noSchedule(t)) return noSchedule(t);
+  if (n && !(n.amount > 0)) return { missing: true, display: "Amount not published",
+    rule: `DefiLlama lists a ${n.type || ""} unlock on ${fmtDay(n.ts)} but publishes no amount for it, so there is nothing to rate.`.replace("a  unlock", "an unlock") };
+  if (continuous(u)) return { display: "Continuous",
+    rule: "Not rated: supply unlocks a little every day rather than in separate events, so there is no single next unlock. The 12-month figure counts it." };
+  if (!n) return { display: "None scheduled", rule: "Not rated: no unlock is scheduled. That alone is not good news when supply is still locked; see \"Locked supply not unlocking within 12 months\"." };
+  return null;
+};
+// Uncapped tokens: new supply mostly comes from issuance, which DefiLlama's vesting schedule doesn't cover,
+// and its "max supply" is a modelled figure. The schedule is shown for what it is, never rated.
+const UNCAPPED_RULE = "Not rated: this token has no maximum supply, so new coins mainly come from issuance (inflation), which DefiLlama's unlock schedule doesn't cover. What is shown is its documented vesting only.";
 
 const UNLOCK_METRICS = [
   {
@@ -144,25 +161,37 @@ const UNLOCK_METRICS = [
     unrated: noneScheduled,
     val: (t) => { const n = nextEvent(t.unlocks); const c = t.unlocks?.circ; return n && c ? (n.amount / c) * 100 : null; },
     show: (v) => fmt.pct(v, 2),
-    extra: (t) => { const n = nextEvent(t.unlocks); return n ? `${fmt.num(n.amount)} ${t.sym} on ${fmtDay(n.ts)} (${n.type})` : ""; },
+    extra: (t) => {
+      const u = t.unlocks, n = nextEvent(u);
+      if (n) return n.amount > 0 ? `${fmt.num(n.amount)} ${t.sym} on ${fmtDay(n.ts)} (${n.type})${circNote(t)}` : `${n.type ? n.type[0].toUpperCase() + n.type.slice(1) + " unlock" : "Unlock"} on ${fmtDay(n.ts)}`;
+      return continuous(u) ? `About ${fmt.num(u.perDay)} ${t.sym} a day${u.circ ? `, ${fmt.pct((u.perDay / u.circ) * 100, 3)} of circulating` : ""}${circNote(t)}` : "";
+    },
   },
   {
     id: "nextUnlockVsVolume", area: "dilution", label: "Next unlock vs daily volume", yard: "fixed", src: "DefiLlama unlock page, CoinGecko",
     unrated: noneScheduled,
     val: (t) => { const n = nextEvent(t.unlocks); return n && t.volume24h && t.price ? (n.amount * t.price) / t.volume24h : null; },
     show: (v) => fmt.x(v),
-    extra: (t) => { const n = nextEvent(t.unlocks); return n && t.price ? `${fmt.usd(n.amount * t.price)} unlocking vs ${fmt.usd(t.volume24h)} traded in 24h` : ""; },
+    extra: (t) => {
+      const u = t.unlocks, n = nextEvent(u);
+      if (n && n.amount > 0 && t.price) return `${fmt.usd(n.amount * t.price)} unlocking vs ${fmt.usd(t.volume24h)} traded in 24h`;
+      return continuous(u) && t.price && t.volume24h ? `About ${fmt.usd(u.perDay * t.price)} a day unlocking vs ${fmt.usd(t.volume24h)} traded in 24h` : "";
+    },
   },
   {
     id: "unlocks12m", area: "dilution", label: "Unlocks due in the next 12 months", yard: "fixed", src: "DefiLlama unlock page",
-    unrated: noSchedule,
+    unrated: (t) => {
+      if (noSchedule(t) || !uncapped(t)) return noSchedule(t);
+      const a = unlocks12mAmount(t.unlocks), c = t.unlocks?.circ;
+      return { display: a != null && c ? `${fmt.pct((a / c) * 100, 1)} of circulating (vesting only)` : "Uncapped supply", rule: UNCAPPED_RULE };
+    },
     val: (t) => { const a = unlocks12mAmount(t.unlocks); const c = t.unlocks?.circ; return a != null && c ? (a / c) * 100 : null; },
     show: (v) => fmt.pct(v, 1) + " of circulating",
-    extra: (t) => { const a = unlocks12mAmount(t.unlocks); return a != null ? `${fmt.num(a)} ${t.sym} on the published schedule` : t.unlocks ? "Full schedule not fetched yet" : ""; },
+    extra: (t) => { const a = unlocks12mAmount(t.unlocks); return a != null ? `${fmt.num(a)} ${t.sym} on the published schedule${circNote(t)}` : t.unlocks ? "Full schedule not fetched yet" : ""; },
   },
   {
     id: "lockedBeyond12m", area: "dilution", label: "Locked supply not unlocking within 12 months", yard: "fixed", src: "DefiLlama unlock page",
-    unrated: noSchedule,
+    unrated: (t) => noSchedule(t) || (uncapped(t) ? { display: "Uncapped supply", rule: UNCAPPED_RULE } : null),
     val: (t) => {
       const u = t.unlocks, a = unlocks12mAmount(u), max = u?.max || u?.detail?.maxSupply;
       return a != null && max && u.circ != null ? Math.max(0, ((max - u.circ - a) / max) * 100) : null;
@@ -283,7 +312,7 @@ METRICS.push(...HOLDER_MARKET_SECURITY);
 // t.meta from data/meta.json: { orgs, dev: { repos, contributors90, commits90, commitsPrev90, bots90 } | null, devAt, raises: [...] }
 // t.firstPriceTs from DefiLlama coins /prices/first (live).
 const noRepo = (t) => (!t.meta?.orgs?.length
-  ? { missing: true, notOnRecord: true, display: "No GitHub link on file", rule: "Neither DefiLlama nor CoinGecko links a GitHub organisation for this project. It may still have one; use the link to check." }
+  ? { missing: true, notOnRecord: true, display: "No GitHub link on file", rule: "Neither DefiLlama nor CoinGecko (checked weekly) links a GitHub organisation for this project. It may still have one; use the link to check." }
   : t.meta.devAt && !t.meta.dev ? { missing: true, display: "No public repositories", rule: "Its GitHub organisations have no live public repositories." }
   : !t.meta.devAt ? { missing: true, display: "Not measured yet", rule: "The daily job measures development activity on a weekly rotation; this project is still queued." } : null);
 

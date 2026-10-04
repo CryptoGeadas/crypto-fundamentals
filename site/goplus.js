@@ -25,7 +25,7 @@ export function evmFlags(r) {
   const f = [];
   if (on(r.is_honeypot)) f.push("Honeypot (cannot sell)");
   if (on(r.cannot_sell_all)) f.push("Cannot sell all");
-  if (on(r.is_mintable)) f.push("Owner can mint");
+  if (on(r.is_mintable)) f.push("Can mint new tokens");
   if (on(r.owner_change_balance)) f.push("Owner can change balances");
   if (on(r.hidden_owner)) f.push("Hidden owner");
   if (on(r.can_take_back_ownership)) f.push("Ownership can be reclaimed");

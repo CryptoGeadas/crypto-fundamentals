@@ -6,7 +6,19 @@ const DAY = 86_400;
 
 // GitHub organisations per token, from DefiLlama: parent protocols and child protocols both carry
 // a `github` list. A parent's orgs win (they describe the whole project).
-export function orgsByToken({ protocols = [], parents = [], idmap = {}, ids = new Set() }) {
+// GitHub organisations from CoinGecko's repository links ("https://github.com/solana-labs/solana" → "solana-labs").
+export function orgsFromUrls(urls = []) {
+  const out = [];
+  for (const u of urls || []) {
+    const m = /^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)/i.exec(String(u).trim());
+    if (m && !out.some((o) => o.toLowerCase() === m[1].toLowerCase())) out.push(m[1]);
+  }
+  return out;
+}
+
+// cgGithub: { gecko id: [GitHub URLs from CoinGecko] }, recorded weekly by the attention step; used
+// when DefiLlama links no organisation.
+export function orgsByToken({ protocols = [], parents = [], idmap = {}, ids = new Set(), cgGithub = {} }) {
   const slugToGecko = {};
   for (const [g, e] of Object.entries(idmap)) if (e.p && ids.has(g)) slugToGecko[e.p] = g;
   const out = {};
@@ -20,6 +32,7 @@ export function orgsByToken({ protocols = [], parents = [], idmap = {}, ids = ne
   };
   for (const p of parents) add(slugToGecko[String(p.id).replace(/^parent#/, "")], p.github);
   for (const p of protocols) add(slugToGecko[p.parentProtocolSlug] || slugToGecko[p.slug], p.github);
+  for (const [g, urls] of Object.entries(cgGithub || {})) if (ids.has(g) && !out[g]?.length) add(g, orgsFromUrls(urls));
   for (const k of Object.keys(out)) out[k] = out[k].slice(0, 3);
   return out;
 }
