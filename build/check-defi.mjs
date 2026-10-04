@@ -47,6 +47,39 @@ check("hacks attach through child or parent protocol ids; unattributable inciden
   assert.equal(h.aave[0].name, "Aave V3");            // newest first
   assert.equal(h.aave[1].returned, 0);
 });
+check("parent TVL leaves out what a child holds inside a sibling (DefiLlama's excludeParent), now and a month ago", () => {
+  // Shaped like Spark on 4 Oct 2026: children sum to $9.64B, DefiLlama's parent figure is $7.24B.
+  const out = tvlByToken({
+    protocols: [
+      { id: "1", slug: "sparklend", parentProtocolSlug: "spark", tvl: 5607e6 },
+      { id: "2", slug: "spark-liquidity-layer", parentProtocolSlug: "spark", tvl: 2682e6 },
+      { id: "3", slug: "spark-savings", parentProtocolSlug: "spark", tvl: 1351e6 },
+    ],
+    lite: [
+      { defillamaId: "1", tvlPrevMonth: 5000e6 },
+      { defillamaId: "2", tvlPrevMonth: 2000e6, chainTvls: { excludeParent: { tvl: 1559e6, tvlPrevMonth: 0 } } },
+      { defillamaId: "3", tvlPrevMonth: 1000e6, chainTvls: { excludeParent: { tvl: 836e6, tvlPrevMonth: 700e6 } } },
+    ],
+    idmap: { "spark-2": { p: "spark", f: 1 } }, ids: new Set(["spark-2"]),
+  });
+  assert.equal(out["spark-2"].tvl, 7245e6);
+  // Last month: Savings has its own split (700M); Liquidity Layer has none, so today's share (1559/2682) is applied.
+  assert.equal(out["spark-2"].tvlPrevMonth, Math.round(5000e6 + (2000e6 - 2000e6 * 1559 / 2682) + (1000e6 - 700e6)));
+  // A token mapped straight to the child itself keeps the child's whole TVL.
+  const direct = tvlByToken({ protocols: [{ id: "2", slug: "spark-liquidity-layer", tvl: 2682e6 }],
+    lite: [{ defillamaId: "2", chainTvls: { excludeParent: { tvl: 1559e6 } } }], idmap: { sll: { p: "spark-liquidity-layer" } }, ids: new Set(["sll"]) });
+  assert.equal(direct.sll.tvl, 2682e6);
+});
+check("an incident whose DefiLlama id has left the protocols list is matched by exact name (Aave, Aug 2024)", () => {
+  const h = hacksByToken({ parents: [{ id: "parent#aave", name: "Aave", gecko_id: "aave", chains: ["Ethereum", "Polygon"] }],
+    protocols: [{ id: "1599", name: "Aave V3", parentProtocol: "parent#aave" }, { id: "7", name: "Rain", gecko_id: "rain", chains: ["Arbitrum"] }],
+    hacks: [{ date: 1724803200, name: "Aave", defillamaId: "1", chain: ["Ethereum"], amount: 56000, returnedFunds: null, classification: "Access Control" },
+            { date: 1724803200, name: "Aave Fork Finance", defillamaId: "999", chain: ["Ethereum"], amount: 1 },
+            { date: 1712000000, name: "Rain", defillamaId: "998", chain: ["Bitcoin", "Ethereum"], amount: 14.8e6 }] });
+  assert.equal(h.aave.length, 1);
+  assert.equal(h.aave[0].amount, 56000);
+  assert.equal(h.rain, undefined, "a same-named project on other chains is not the same project");
+});
 check("audit links are de-duplicated across child protocols", () => {
   const a = auditsByToken({ parents: [{ id: "parent#x", gecko_id: "x" }], protocols: [
     { id: "1", parentProtocol: "parent#x", audit_links: ["https://a.io/1", "https://a.io/2"] },

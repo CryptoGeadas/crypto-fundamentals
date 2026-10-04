@@ -11,14 +11,23 @@ export function tvlByToken({ protocols = [], lite = [], parents = [], idmap = {}
   const slugToGecko = {};
   for (const [gecko, e] of Object.entries(idmap)) if (e.p && ids.has(gecko)) slugToGecko[e.p] = gecko;
   const parentSlug = Object.fromEntries(parents.map((p) => [p.id, String(p.id).replace(/^parent#/, "")]));
-  const prevMonth = Object.fromEntries(lite.map((p) => [String(p.defillamaId), p.tvlPrevMonth]));
+  const liteById = Object.fromEntries(lite.map((p) => [String(p.defillamaId), p]));
   const out = {};
   for (const p of protocols) {
-    const gecko = slugToGecko[p.parentProtocolSlug] || slugToGecko[parentSlug[p.parentProtocol]] || slugToGecko[p.slug];
+    const viaParent = slugToGecko[p.parentProtocolSlug] || slugToGecko[parentSlug[p.parentProtocol]];
+    const gecko = viaParent || slugToGecko[p.slug];
     if (!gecko || !(p.tvl > 0)) continue;
+    const l = liteById[String(p.id)];
+    const prev = Number(l?.tvlPrevMonth) || 0;
+    // A child's "excludeParent" TVL sits inside a sibling product and is already counted there, so
+    // DefiLlama leaves it out of the parent's total (Spark Liquidity Layer → SparkLend). Same here.
+    // DefiLlama often has no split for last month; then assume the same share as today.
+    const ex = viaParent ? l?.chainTvls?.excludeParent : null;
+    const exNow = Number(ex?.tvl) || 0;
+    const exPrev = Number(ex?.tvlPrevMonth) || (exNow ? prev * (exNow / p.tvl) : 0);
     const e = (out[gecko] ||= { tvl: 0, tvlPrevMonth: 0 });
-    e.tvl += p.tvl;
-    e.tvlPrevMonth += Number(prevMonth[String(p.id)]) || 0;
+    e.tvl += p.tvl - exNow;
+    e.tvlPrevMonth += prev - exPrev;
   }
   for (const e of Object.values(out)) { e.tvl = Math.round(e.tvl); e.tvlPrevMonth = Math.round(e.tvlPrevMonth) || null; }
   return out;
@@ -52,13 +61,24 @@ function protocolGecko(protocols, parents) {
   return (id, parentId) => byId[String(id)] || parentGecko[parentId] || parentGecko[id] || null;
 }
 
-// /hacks → { gecko: [{ date, name, amount, returned, cls }] }, newest first. Incidents with no
-// DefiLlama protocol id (e.g. an exchange's regional entity) cannot be attributed and are skipped.
+// /hacks → { gecko: [{ date, name, amount, returned, cls }] }, newest first. Incidents are matched by
+// DefiLlama protocol id, else by exact name; anything else (e.g. an exchange's regional entity) is skipped.
 export function hacksByToken({ hacks = [], protocols = [], parents = [] }) {
   const geckoOf = protocolGecko(protocols, parents);
+  // Fallback for incidents whose DefiLlama id is no longer in the protocols list (e.g. Aave's
+  // Aug 2024 incident, id "1"): an exact, case-insensitive name match to a parent or protocol that
+  // also runs on a chain the incident happened on (names get reused: "Rain", "swapX").
+  const byName = {};
+  const keep = (p, gecko) => { if (gecko) byName[String(p.name).toLowerCase()] ||= { gecko, chains: new Set(p.chains || []) }; };
+  for (const p of parents) keep(p, p.gecko_id);
+  for (const p of protocols) keep(p, p.gecko_id);
+  const nameMatch = (h) => {
+    const m = byName[String(h.name || "").toLowerCase()];
+    return m && (h.chain || []).some((c) => m.chains.has(c)) ? m.gecko : null;
+  };
   const out = {};
   for (const h of hacks) {
-    const g = h.defillamaId ? geckoOf(h.defillamaId, h.parentProtocolId) : null;
+    const g = (h.defillamaId ? geckoOf(h.defillamaId, h.parentProtocolId) : null) || nameMatch(h);
     if (!g) continue;
     (out[g] ||= []).push({ date: h.date, name: h.name, amount: Number(h.amount) || 0, returned: Number(h.returnedFunds) || 0, cls: h.classification || "" });
   }
