@@ -3,7 +3,7 @@ name: refresh-data
 on:
   schedule:
     - cron: "17 6 * * *"    # daily, 06:17 UTC (off the top of the hour, which GitHub delays most)
-    - cron: "17 14 * * *"   # catch-up: builds only if today's data wasn't built (build/should-build.mjs)
+    - cron: "17 14 * * *"   # catch-up; either slot builds only if today's data wasn't built (build/should-build.mjs)
   workflow_dispatch:
     inputs:
       simulate_problem:
@@ -25,15 +25,17 @@ jobs:
     outputs:
       build: ${{ steps.decide.outputs.build }}
     steps:
+      # Latest main, not the trigger-time commit: a queued or late run must see what earlier runs committed.
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - name: Build today? (the catch-up slot skips when today's data already exists)
+      - name: Build today? (scheduled runs skip when today's data already exists)
         id: decide
         env:
           EVENT: ${{ github.event_name }}
-          SCHEDULE: ${{ github.event.schedule }}
         run: node build/should-build.mjs | tee -a "$GITHUB_OUTPUT"
 
   refresh:
@@ -42,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
 
       - uses: actions/setup-node@v7
         with:
@@ -68,6 +72,7 @@ jobs:
             echo "no change"
           else
             git commit -m "data: daily refresh ($(date -u +%FT%TZ))"
+            git pull --rebase origin main   # code may have been pushed while the job ran
             git push
           fi
 

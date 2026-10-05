@@ -1,22 +1,21 @@
-// Gate for the daily workflow (issue #33): the 06:17 UTC schedule and manual runs always build; the
-// 14:17 UTC catch-up builds only when today's data hasn't been built successfully yet (GitHub delays
-// or drops scheduled runs at busy times). "Built" = the token list was published today.
+// Gate for the daily workflow (issues #33, #35): GitHub delays or drops scheduled runs at busy times, so
+// there are two daily slots (06:17 and 14:17 UTC). A scheduled run builds only if today's data hasn't
+// been built yet, whichever slot it is (a morning run delayed past the catch-up must not build twice);
+// manual runs always build. "Built" = the token list was published today. The workflow checks out the
+// latest main before deciding, so a queued or late run sees what earlier runs committed.
 //
-// Run (in CI): EVENT=schedule SCHEDULE="17 14 * * *" node build/should-build.mjs   → prints build=true|false
+// Run (in CI): EVENT=schedule node build/should-build.mjs   → prints build=true|false
 
 import { readFile } from "node:fs/promises";
 
-export const CATCH_UP = "17 14 * * *";
-
-export function shouldBuild({ event, schedule, status, now = new Date() }) {
-  if (event !== "schedule" || schedule !== CATCH_UP) return true;
+export function shouldBuild({ event, status, now = new Date() }) {
+  if (event !== "schedule") return true;
   const last = status?.datasets?.universe?.lastSuccess;
   return !(last && last.slice(0, 10) === now.toISOString().slice(0, 10));
 }
 
-if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("should-build.mjs")) {
+if (process.argv[1]?.endsWith("should-build.mjs")) {
   let status = null;
   try { status = JSON.parse(await readFile(new URL("../site/data/status.json", import.meta.url), "utf8")); } catch { /* no status yet: build */ }
-  const build = shouldBuild({ event: process.env.EVENT, schedule: process.env.SCHEDULE, status });
-  console.log(`build=${build}`);
+  console.log(`build=${shouldBuild({ event: process.env.EVENT, status })}`);
 }
