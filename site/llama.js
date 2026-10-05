@@ -28,20 +28,23 @@ export function monthlySums(chart, months = 12) {
   return [...by.keys()].sort().slice(-months).map((m) => ({ m, v: Math.round(by.get(m)) }));
 }
 
-// A series whose newest complete day ended more than this long ago has stopped updating (#32): its
-// figures are reported as stale, never shown as current.
-export const STALE_AFTER = 3 * DAY;
+// Stale (#32, #41): DefiLlama itself reports no figure for the latest day (total24h missing, the signal
+// #34 uses for the benchmarks), or the newest day ended more than 14 days ago. Batch publishers that are
+// a few days behind (Canton: weekly) are current; their rows say which day the figures run to.
+export const STALE_AFTER = 14 * DAY;
+export const LAG_NOTE_AFTER = 2 * DAY;
 
 // The last 30 complete days and the 30 days ending 90 days before them. Anchored to the latest
 // complete data point, not the clock: some series publish a day late (a clock window would hold 29
 // days), others already carry today's unfinished day (dropped). Points are stamped at the start of
 // their day (UTC).
-export function feeWindows(chart = [], now = Date.now() / 1000) {
+export function feeWindows(chart = [], now = Date.now() / 1000, { reportsLatestDay = true } = {}) {
   const done = chart.filter(([t]) => t + DAY <= now);
   if (!done.length) return { d30: null, prev: null };
-  const end = done[done.length - 1][0] + DAY;
-  if (now - end > STALE_AFTER) return { d30: null, prev: null, stale: done[done.length - 1][0] };
-  return { d30: windowSum(done, end - 30 * DAY, end), prev: windowSum(done, end - 120 * DAY, end - 90 * DAY) };
+  const last = done[done.length - 1][0], end = last + DAY;
+  if (!reportsLatestDay || now - end > STALE_AFTER) return { d30: null, prev: null, stale: last };
+  return { d30: windowSum(done, end - 30 * DAY, end), prev: windowSum(done, end - 120 * DAY, end - 90 * DAY),
+    ...(now - end > LAG_NOTE_AFTER ? { through: last } : {}) };
 }
 
 // Fees / revenue / holders revenue for a protocol slug or chain: last 30 days, the 30 days ending
@@ -49,7 +52,7 @@ export function feeWindows(chart = [], now = Date.now() / 1000) {
 export async function feeSummary(slug, dataType) {
   const d = await json(`${API}/summary/fees/${encodeURIComponent(slug)}?dataType=${dataType}`);
   const chart = d.totalDataChart || [];
-  return { ...feeWindows(chart), monthly: monthlySums(chart) };
+  return { ...feeWindows(chart, undefined, { reportsLatestDay: d.total24h != null }), monthly: monthlySums(chart) };
 }
 
 const chainSlug = (name) => name.toLowerCase().replace(/\s+/g, "-");

@@ -211,6 +211,9 @@ METRICS.push(...UNLOCK_METRICS);
 // ---------------------------------------------------------------- traction, value accrual, treasury (issue #6)
 // t.llama comes from site/llama.js: { fees, revenue, holders, accrualFees: {d30, prev, monthly}, tvl: {now, prev},
 // chain: {dex30, stables, stables90}, treasury: {own, other} }; any piece may be null.
+// DefiLlama publishes some series in batches (#41): say which day the 30 days run to when it's not yesterday.
+const throughNote = (series) => (series?.through ? `30 days to ${fmtDay(series.through)} (DefiLlama's latest figures)` : "");
+
 // For "Chain + DeFi" tokens TVL is the protocol's, like their fees (#40); the chain's own TVL is named.
 const tvlFrom = (t) => (t.llama?.tvl?.from === "protocol"
   ? `; from the protocol, the business behind the token${t.llama.chainTvl?.now != null ? `; the chain itself holds ${fmt.usd(t.llama.chainTvl.now)}` : ""}` : "");
@@ -230,10 +233,11 @@ export const pctChange = (now, before) => (now != null && before ? (now / before
 const BUSINESS_METRICS = [
   { id: "fees30", area: "traction", label: "Fees, last 30 days", yard: "shown", src: "DefiLlama fees",
     val: (t) => t.llama?.fees?.d30 ?? null, show: (v) => fmt.usd(v),
-    extra: (t) => (t.llama?.feesFrom === "protocol"
-      ? `From the protocol, the business behind the token${t.llama.chainFees?.d30 != null ? `; the chain itself earned ${fmt.usd(t.llama.chainFees.d30)} in gas fees` : ""}` : "") },
+    extra: (t) => [t.llama?.feesFrom === "protocol"
+      ? `From the protocol, the business behind the token${t.llama.chainFees?.d30 != null ? `; the chain itself earned ${fmt.usd(t.llama.chainFees.d30)} in gas fees` : ""}` : "",
+      throughNote(t.llama?.fees)].filter(Boolean).join("; ") },
   { id: "revenue30", area: "traction", label: "Revenue, last 30 days", yard: "shown", src: "DefiLlama revenue",
-    val: (t) => t.llama?.revenue?.d30 ?? null, show: (v) => fmt.usd(v),
+    val: (t) => t.llama?.revenue?.d30 ?? null, show: (v) => fmt.usd(v), extra: (t) => throughNote(t.llama?.revenue),
     hint: "The part of fees the protocol or chain keeps, rather than paying out to liquidity providers or validators" },
   { id: "feesTrend", precision: 1, area: "traction", label: "Fees trend", yard: "fixed", src: "DefiLlama fees",
     val: (t) => pctChange(t.llama?.fees?.d30, t.llama?.fees?.prev), show: (v) => fmt.chg(v),

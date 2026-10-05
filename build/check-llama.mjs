@@ -28,12 +28,17 @@ check("today's unfinished day is left out; the window ends at the last complete 
   const withToday = [...chart, [START + 160 * DAY, 0.3]];
   assert.equal(feeWindows(withToday, AFTER).d30, 30);
 });
-check("a series that stopped updating is stale, never current; one published a day late is current (#32)", () => {
+check("stale only on DefiLlama's own signal or after 14 days; batch publishers a few days behind are current (#41)", () => {
   const lastEnd = START + 160 * DAY;
-  assert.equal(feeWindows(chart, lastEnd + DAY + 3600).d30, 30);           // newest day ended ~1 day ago
-  const stale = feeWindows(chart, lastEnd + 4 * DAY);                       // ended 4 days ago
-  assert.equal(stale.d30, null);
-  assert.equal(stale.stale, START + 159 * DAY);
+  assert.equal(feeWindows(chart, lastEnd + DAY + 3600).d30, 30);                          // a day late: current, no note
+  assert.equal(feeWindows(chart, lastEnd + DAY + 3600).through, undefined);
+  const batch = feeWindows(chart, lastEnd + 6 * DAY);                                     // Canton-like: 6 days behind
+  assert.equal(batch.d30, 30);
+  assert.equal(batch.through, START + 159 * DAY);
+  assert.equal(feeWindows(chart, lastEnd + 15 * DAY).stale, START + 159 * DAY);           // over 14 days: stale
+  const quiet = feeWindows(chart, lastEnd + DAY + 3600, { reportsLatestDay: false });     // Chutes-like: no latest day
+  assert.equal(quiet.d30, null);
+  assert.equal(quiet.stale, START + 159 * DAY);
 });
 check("a gap in the data is summed as reported, never stretched", () => {
   const gappy = chart.filter((_, i) => i !== 150);
