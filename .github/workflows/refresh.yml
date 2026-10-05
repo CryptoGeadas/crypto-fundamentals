@@ -2,7 +2,8 @@ name: refresh-data
 
 on:
   schedule:
-    - cron: "0 6 * * *"   # daily, 06:00 UTC
+    - cron: "17 6 * * *"    # daily, 06:17 UTC (off the top of the hour, which GitHub delays most)
+    - cron: "17 14 * * *"   # catch-up: builds only if today's data wasn't built (build/should-build.mjs)
   workflow_dispatch:
     inputs:
       simulate_problem:
@@ -19,7 +20,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Build today? (the catch-up slot skips when today's data already exists)
+        id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: node build/should-build.mjs | tee -a "$GITHUB_OUTPUT"
+
   refresh:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

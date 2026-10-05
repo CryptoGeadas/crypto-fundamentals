@@ -6,7 +6,7 @@ It runs entirely in your browser on free, keyless public data (DefiLlama, CoinGe
 
 ## How the data stays healthy
 
-A daily GitHub Action (`refresh-data`, 06:00 UTC) rebuilds the data. It sanity-checks everything before saving and never overwrites good data with a suspicious result; when something is off, the page keeps the last good data and says how old it is. Every problem from a run, large or small, is posted to a single open issue titled **"Daily update problems"** (label `pipeline`). The next fully clean run closes it. The footer of the page shows the same health line.
+A daily GitHub Action (`refresh-data`, 06:17 UTC, with a 14:17 UTC catch-up that only builds if the morning run never happened) rebuilds the data. It sanity-checks everything before saving and never overwrites good data with a suspicious result; when something is off, the page keeps the last good data and says how old it is. Every problem from a run, large or small, is posted to a single open issue titled **"Daily update problems"** (label `pipeline`). The next fully clean run closes it. The footer of the page shows the same health line.
 
 **One-time setup for the owner:** make sure GitHub emails you about issues on your own repositories (GitHub → Settings → Notifications → enable email for "Participating, @mentions and custom" and "Watching", and watch this repository). That is how a problem reaches your inbox. A crashed run also triggers GitHub's standard "workflow failed" email.
 

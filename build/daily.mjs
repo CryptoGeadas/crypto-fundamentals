@@ -1,4 +1,4 @@
-// The daily job (run by .github/workflows/refresh.yml at 06:00 UTC).
+// The daily job (run by .github/workflows/refresh.yml at 06:17 UTC, with a 14:17 catch-up; see build/should-build.mjs).
 // Runs each data step with one shared run report, publishes only data that passes its sanity
 // checks (previous good files are kept otherwise), and always writes site/data/status.json,
 // which the page footer and the alert step read. Keyless public sources only.

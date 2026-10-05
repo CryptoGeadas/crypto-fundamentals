@@ -3,6 +3,7 @@
 
 import assert from "node:assert/strict";
 import { Report, sanityCheck, decideAlert, alertBody } from "./report.mjs";
+import { shouldBuild, CATCH_UP } from "./should-build.mjs";
 
 const results = [];
 const check = (name, fn) => { try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", `${name} — ${e.message}`]); } };
@@ -39,6 +40,16 @@ check("report: a retry that recovers is logged but never alerts", () => {
   assert.equal(st.sources.coingecko, "ok");
   assert.equal(st.retries.length, 1);
   assert.equal(decideAlert(st, null), "none");
+});
+check("schedule: 06:17 and manual runs always build; the catch-up only when today wasn't built (#33)", () => {
+  const now = new Date("2026-10-05T14:17:00Z");
+  const builtToday = { datasets: { universe: { lastSuccess: "2026-10-05T06:40:00Z" } } };
+  const builtYesterday = { datasets: { universe: { lastSuccess: "2026-10-04T21:32:00Z" } } };
+  assert.equal(shouldBuild({ event: "schedule", schedule: "17 6 * * *", status: builtToday, now }), true);
+  assert.equal(shouldBuild({ event: "workflow_dispatch", schedule: "", status: builtToday, now }), true);
+  assert.equal(shouldBuild({ event: "schedule", schedule: CATCH_UP, status: builtToday, now }), false);
+  assert.equal(shouldBuild({ event: "schedule", schedule: CATCH_UP, status: builtYesterday, now }), true);
+  assert.equal(shouldBuild({ event: "schedule", schedule: CATCH_UP, status: null, now }), true);
 });
 check("report: a kept dataset keeps its last success time from the previous status", () => {
   const r = new Report();
