@@ -20,6 +20,8 @@ check("CoinGecko: consistent rows pass; market cap, FDV and supply contradiction
   const stg = { id: "stargate-finance", current_price: 0.174, market_cap: 21e6, circulating_supply: 120.7e6, total_supply: 120.8e6, max_supply: 1e9, fully_diluted_valuation: 21.02e6 };
   assert.deepEqual(coingeckoDrift(stg).map((x) => x.check), ["fdvTotal"]);
   assert.deepEqual(coingeckoDrift({ ...ok, circulating_supply: 17e6, market_cap: 180 * 17e6 }).map((x) => x.check), ["supply"]);
+  // #36: the page's own FDV must stay plausible (junk max supply → absurd FDV).
+  assert.deepEqual(coingeckoDrift({ ...ok, max_supply: 1e15, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).sort(), ["fdvTotal", "pageFdv"]);
   // Uncapped: FDV is checked against total supply.
   assert.deepEqual(coingeckoDrift({ ...ok, max_supply: null, total_supply: 16e6 }), []);
   assert.deepEqual(coingeckoDrift({ id: "x", current_price: 0 }), []);

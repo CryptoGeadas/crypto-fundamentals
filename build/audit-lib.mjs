@@ -2,6 +2,8 @@
 // sources publish themselves. The step (build/step-audit.mjs) fetches; build/audit-issue.mjs keeps the
 // "Data drift" issue in sync. Drift is reported, never acted on: it doesn't change data or fail a run.
 
+import { fdvOf } from "../site/fdv.js";
+
 export const DRIFT_TITLE = "Data drift";
 
 // Kept in audit.json but left out of the issue: nothing to fix. Circulating disagreement is shown on the
@@ -15,6 +17,7 @@ export const TOL = {
   mcap: 0.03,   // CoinGecko updates price, supply and market cap at slightly different moments
   fdv: 0.03,    // same as above
   fdvMax: 0.10, // max supply this much above total before "FDV counts total supply" is worth a mention
+  fdvRatio: 50, // the page's own FDV over 50× market cap: under 2% circulating is rare enough to check by hand
   supply: 0.25, // DefiLlama and CoinGecko define "circulating" differently (treasury, staking); only big gaps matter
   fees: 0.01,   // same source, same days: anything beyond rounding is a calculation error on our side
   tvl: 0.05,    // the job's TVL can be up to a day older than DefiLlama's live figure
@@ -43,6 +46,12 @@ export function coingeckoDrift(m) {
     else if (okTotal && !okMax && m.max_supply > m.total_supply * (1 + TOL.fdvMax)) {
       out.push({ check: "fdvTotal", id: m.id, detail: `FDV ${n(fdv)} counts total supply ${n(m.total_supply)}; max supply ${n(m.max_supply)} would give ${n(p * m.max_supply)}` });
     }
+  }
+  // The page's own FDV (price × max, else × total supply; #31) must stay plausible: a junk max supply
+  // would otherwise drive the dilution and valuation ratings unnoticed (#36).
+  const ours = fdvOf(p, m.max_supply, m.total_supply);
+  if (ours && m.market_cap > 0 && ours / m.market_cap > TOL.fdvRatio) {
+    out.push({ check: "pageFdv", id: m.id, detail: `page FDV ${n(ours)} is ${Math.round(ours / m.market_cap)}× market cap ${n(m.market_cap)} (${m.max_supply ? "max" : "total"} supply ${n(m.max_supply || m.total_supply)})` });
   }
   if (m.max_supply > 0 && m.circulating_supply > m.max_supply * 1.001) {
     out.push({ check: "supply", id: m.id, detail: `circulating ${n(m.circulating_supply)} is above max supply ${n(m.max_supply)}` });
@@ -91,7 +100,7 @@ export function decideDrift(allItems, previousKeys = [], openIssue = null) {
   return fresh.length ? "update+comment" : "update";
 }
 
-const LABEL = { mcap: "CoinGecko market cap", fdv: "CoinGecko FDV (contradiction)", fdvTotal: "FDV counts total, not max supply (page understates future dilution)", supply: "CoinGecko supply", circulating: "Circulating supply (sources disagree)", fees30: "30-day fees", tvl: "TVL" };
+const LABEL = { pageFdv: "Page FDV implausible (FDV ÷ market cap)", mcap: "CoinGecko market cap", fdv: "CoinGecko FDV (contradiction)", fdvTotal: "FDV counts total, not max supply (page understates future dilution)", supply: "CoinGecko supply", circulating: "Circulating supply (sources disagree)", fees30: "30-day fees", tvl: "TVL" };
 
 export function driftBody(allItems, { runUrl = "", at = new Date().toISOString(), sampled = {} } = {}) {
   const items = actionable(allItems), info = allItems.length - items.length;

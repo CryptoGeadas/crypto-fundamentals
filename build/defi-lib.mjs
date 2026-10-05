@@ -21,7 +21,9 @@ export function tvlByToken({ protocols = [], lite = [], parents = [], idmap = {}
     const prev = Number(l?.tvlPrevMonth) || 0;
     // A child's "excludeParent" TVL sits inside a sibling product and is already counted there, so
     // DefiLlama leaves it out of the parent's total (Spark Liquidity Layer → SparkLend). Same here.
-    // DefiLlama often has no split for last month; then assume the same share as today.
+    // DefiLlama doesn't record last month's split: on 5 Oct 2026 all 38 protocols with excludeParent TVL
+    // reported tvlPrevMonth 0, and 37 reported tvlPrevWeek 0 with tvlPrevDay > 0. So 0 means "not
+    // recorded", and today's share is assumed (#36); the daily job then replaces it from the parent's history.
     const ex = viaParent ? l?.chainTvls?.excludeParent : null;
     const exNow = Number(ex?.tvl) || 0;
     const exPrev = Number(ex?.tvlPrevMonth) || (exNow ? prev * (exNow / p.tvl) : 0);

@@ -29,6 +29,8 @@ check("CoinGecko GitHub links are a second source, used only when DefiLlama link
   assert.deepEqual(o.aave, ["aave"]);
   assert.equal(o.other, undefined);
   assert.deepEqual(orgsFromUrls(["https://www.github.com/Org.Name/repo", "https://github.com/org.name", "nonsense"]), ["Org.Name"]);
+  // #36: org in the second segment for /orgs/ and /users/; GitHub's own pages name no org.
+  assert.deepEqual(orgsFromUrls(["https://github.com/orgs/foo/repositories", "https://github.com/users/bar", "https://github.com/sponsors/baz", "https://github.com/orgs"]), ["foo", "bar"]);
 });
 check("bots are excluded: GitHub type Bot, [bot] logins, dependabot/renovate/actions names", () => {
   assert.ok(isBot({ author: { login: "dependabot[bot]", type: "Bot" } }));

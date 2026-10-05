@@ -7,11 +7,19 @@ const DAY = 86_400;
 // GitHub organisations per token, from DefiLlama: parent protocols and child protocols both carry
 // a `github` list. A parent's orgs win (they describe the whole project).
 // GitHub organisations from CoinGecko's repository links ("https://github.com/solana-labs/solana" → "solana-labs").
+// "github.com/orgs/<org>/…" and "github.com/users/<org>" name the org in the second segment; GitHub's own
+// pages (sponsors, topics, …) name no org at all (#36).
+const GITHUB_PREFIX = new Set(["orgs", "users"]);
+const GITHUB_PAGES = new Set(["sponsors", "topics", "collections", "features", "marketplace", "apps", "settings", "login",
+  "about", "enterprise", "pricing", "explore", "search", "notifications", "trending", "events", "site", "security", "readme"]);
 export function orgsFromUrls(urls = []) {
   const out = [];
   for (const u of urls || []) {
-    const m = /^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)/i.exec(String(u).trim());
-    if (m && !out.some((o) => o.toLowerCase() === m[1].toLowerCase())) out.push(m[1]);
+    const m = /^https?:\/\/(?:www\.)?github\.com\/([\w.-]+)(?:\/([\w.-]+))?/i.exec(String(u).trim());
+    if (!m) continue;
+    const org = GITHUB_PREFIX.has(m[1].toLowerCase()) ? m[2] : m[1];
+    if (!org || GITHUB_PAGES.has(org.toLowerCase()) || GITHUB_PREFIX.has(org.toLowerCase())) continue;
+    if (!out.some((o) => o.toLowerCase() === org.toLowerCase())) out.push(org);
   }
   return out;
 }
