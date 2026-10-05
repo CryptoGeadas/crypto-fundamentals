@@ -28,14 +28,14 @@ export function monthlySums(chart, months = 12) {
   return [...by.keys()].sort().slice(-months).map((m) => ({ m, v: Math.round(by.get(m)) }));
 }
 
-// The last 30 complete days and the 30 days ending 90 days before them. Anchored to the latest
-// complete data point, not the clock: some series publish a day late (a clock window would hold 29
-// days), others already carry today's unfinished day (dropped). Points are stamped at the start of
-// their day (UTC).
 // A series whose newest complete day ended more than this long ago has stopped updating (#32): its
 // figures are reported as stale, never shown as current.
 export const STALE_AFTER = 3 * DAY;
 
+// The last 30 complete days and the 30 days ending 90 days before them. Anchored to the latest
+// complete data point, not the clock: some series publish a day late (a clock window would hold 29
+// days), others already carry today's unfinished day (dropped). Points are stamped at the start of
+// their day (UTC).
 export function feeWindows(chart = [], now = Date.now() / 1000) {
   const done = chart.filter(([t]) => t + DAY <= now);
   if (!done.length) return { d30: null, prev: null };
@@ -54,6 +54,15 @@ export async function feeSummary(slug, dataType) {
 
 const chainSlug = (name) => name.toLowerCase().replace(/\s+/g, "-");
 
+// Which DefiLlama series a token's fees and revenue come from: a chain's own fees, except "Chain + DeFi"
+// tokens (Hyperliquid, Arbitrum), whose business is the protocol side; otherwise the protocol. Shared
+// with the self-audit (build/step-audit.mjs) so it checks exactly what the page shows (#37).
+export function feeSource(entry, cls) {
+  if (!entry) return null;
+  if (cls.type === "chain" && entry.c) return cls.alsoDefi && entry.p ? entry.p : chainSlug(entry.c);
+  return entry.p || null;
+}
+
 // Everything the traction / accrual / treasury areas need for one token. Each piece may be null.
 export async function loadLlama(id, entry, defi, cls, now = Date.now() / 1000) {
   if (!entry) return null;
@@ -64,15 +73,16 @@ export async function loadLlama(id, entry, defi, cls, now = Date.now() / 1000) {
   const jobs = [];
   if (cls.type === "chain" && entry.c) {
     const c = chainSlug(entry.c);
+    const src = feeSource(entry, cls);
     if (cls.alsoDefi && entry.p) {
       // "Chain + DeFi" (Hyperliquid, Arbitrum): the protocol side is the business behind the token, so
       // fees and revenue come from it; the chain's own gas fees are kept for context only.
-      jobs.push(settle(feeSummary(entry.p, "dailyFees")).then((v) => { out.fees = v; out.accrualFees = v; out.feesFrom = "protocol"; }));
-      jobs.push(settle(feeSummary(entry.p, "dailyRevenue")).then((v) => (out.revenue = v)));
+      jobs.push(settle(feeSummary(src, "dailyFees")).then((v) => { out.fees = v; out.accrualFees = v; out.feesFrom = "protocol"; }));
+      jobs.push(settle(feeSummary(src, "dailyRevenue")).then((v) => (out.revenue = v)));
       jobs.push(settle(feeSummary(c, "dailyFees")).then((v) => (out.chainFees = v)));
     } else {
-      jobs.push(settle(feeSummary(c, "dailyFees")).then((v) => (out.fees = v)));
-      jobs.push(settle(feeSummary(c, "dailyRevenue")).then((v) => (out.revenue = v)));
+      jobs.push(settle(feeSummary(src, "dailyFees")).then((v) => (out.fees = v)));
+      jobs.push(settle(feeSummary(src, "dailyRevenue")).then((v) => (out.revenue = v)));
     }
     jobs.push(settle(json(`${API}/v2/historicalChainTvl/${encodeURIComponent(entry.c)}`)).then((h) => {
       if (!h?.length) return;
@@ -91,10 +101,11 @@ export async function loadLlama(id, entry, defi, cls, now = Date.now() / 1000) {
     if (cls.alsoDefi && entry.p) {
       jobs.push(settle(feeSummary(entry.p, "dailyHoldersRevenue")).then((v) => (out.holders = v)));
     }
-  } else if (entry.p) {
-    jobs.push(settle(feeSummary(entry.p, "dailyFees")).then((v) => { out.fees = v; out.accrualFees = v; }));
-    jobs.push(settle(feeSummary(entry.p, "dailyRevenue")).then((v) => (out.revenue = v)));
-    jobs.push(settle(feeSummary(entry.p, "dailyHoldersRevenue")).then((v) => (out.holders = v)));
+  } else if (feeSource(entry, cls)) {
+    const src = feeSource(entry, cls);
+    jobs.push(settle(feeSummary(src, "dailyFees")).then((v) => { out.fees = v; out.accrualFees = v; }));
+    jobs.push(settle(feeSummary(src, "dailyRevenue")).then((v) => (out.revenue = v)));
+    jobs.push(settle(feeSummary(src, "dailyHoldersRevenue")).then((v) => (out.holders = v)));
     if (defi?.tvl) out.tvl = { now: defi.tvl, prev: defi.tvlPrevMonth, estimated: Boolean(defi.estimated) };
   }
   if (defi?.treasury && !defi.treasury.none) out.treasury = defi.treasury;

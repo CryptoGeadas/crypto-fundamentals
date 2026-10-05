@@ -4,8 +4,6 @@ export const DEV_MAX_AGE_DAYS = 7;
 export const RAISES_MAX_AGE_DAYS = 30;
 const DAY = 86_400;
 
-// GitHub organisations per token, from DefiLlama: parent protocols and child protocols both carry
-// a `github` list. A parent's orgs win (they describe the whole project).
 // GitHub organisations from CoinGecko's repository links ("https://github.com/solana-labs/solana" → "solana-labs").
 // "github.com/orgs/<org>/…" and "github.com/users/<org>" name the org in the second segment; GitHub's own
 // pages (sponsors, topics, …) name no org at all (#36).
@@ -24,6 +22,8 @@ export function orgsFromUrls(urls = []) {
   return out;
 }
 
+// GitHub organisations per token, from DefiLlama: parent protocols and child protocols both carry
+// a `github` list. A parent's orgs win (they describe the whole project).
 // cgGithub: { gecko id: [GitHub URLs from CoinGecko] }, recorded weekly by the attention step; used
 // when DefiLlama links no organisation.
 export function orgsByToken({ protocols = [], parents = [], idmap = {}, ids = new Set(), cgGithub = {} }) {

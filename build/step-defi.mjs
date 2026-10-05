@@ -31,12 +31,21 @@ export async function defiStep({ report, net, data }) {
 
   // Parents whose children hold TVL inside a sibling: DefiLlama has no month-ago split, so take both
   // values from the parent's own history (one call each; ~16 tokens). The estimate stays as a fallback.
+  // A second run on the same day (catch-up, manual) reuses today's values instead of re-downloading
+  // the heavy history (#37).
   const estimated = Object.keys(tvl).filter((id) => tvl[id].estimated && idmap.map[id]?.p);
-  let fromHistory = 0;
+  const today = new Date().toISOString().slice(0, 10);
+  let fromHistory = 0, reused = 0;
   for (const id of estimated) {
+    const before = prev?.tokens?.[id];
+    if (before?.historyAt?.slice(0, 10) === today && before.tvl > 0) {
+      tvl[id] = { tvl: before.tvl, tvlPrevMonth: before.tvlPrevMonth, historyAt: before.historyAt };
+      reused++;
+      continue;
+    }
     try {
       const s = tvlFromSeries((await net.getJson(`${API}/protocol/${encodeURIComponent(idmap.map[id].p)}`, "defillama", { tries: 2 })).tvl);
-      if (s?.tvl > 0) { tvl[id] = s; fromHistory++; }
+      if (s?.tvl > 0) { tvl[id] = { ...s, historyAt: new Date().toISOString() }; fromHistory++; }
     } catch (e) {
       // DefiLlama's free API has no history for some parents (ether.fi, Kelp, Lombard, Origin answer
       // "Protocol not found"): expected, so the estimate stays, labelled on the page, without an alert.
@@ -44,7 +53,7 @@ export async function defiStep({ report, net, data }) {
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  if (estimated.length) console.log(`TVL from parent history: ${fromHistory} of ${estimated.length}`);
+  if (estimated.length) console.log(`TVL from parent history: ${fromHistory} fetched, ${reused} reused from earlier today, of ${estimated.length}`);
 
   // Treasuries: weekly rotation, like unlock schedules; protocols without one are parked for 30 days.
   const stored = prev?.tokens || {};

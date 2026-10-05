@@ -4,13 +4,13 @@
 //   site/data/audit.json  { generated, cursor: { fees, tvl }, sampled: { fees, tvl }, items: [{ check, id, detail }], previousKeys }
 
 import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, keyOf } from "./audit-lib.mjs";
-import { feeWindows } from "../site/llama.js";
+import { feeWindows, feeSource } from "../site/llama.js";
+import { classify } from "../site/classify.js";
 import { sleep } from "./net.mjs";
 
 const CG = "https://api.coingecko.com/api/v3";
 const API = "https://api.llama.fi";
 const SAMPLE = Number(process.env.AUDIT_SAMPLE) || 30;
-const chainSlug = (name) => name.toLowerCase().replace(/\s+/g, "-");
 
 export async function auditStep({ net, data }) {
   const [universe, idmapFile, unlocksFile, defiFile, prev] = await Promise.all(
@@ -35,7 +35,8 @@ export async function auditStep({ net, data }) {
   for (const [id, u] of Object.entries(unlocks)) items.push(...supplyDrift(id, u.circ, markets[id]?.circulating_supply));
 
   // 3. Fee windows, rotating sample: the page's own 30-day calculation vs DefiLlama's 30-day total.
-  const feeSlug = (e) => (e?.f && e.p ? e.p : e?.fc && e.c ? chainSlug(e.c) : null);
+  // Same series the page uses (shared rule); only tokens DefiLlama marks as fee earners.
+  const feeSlug = (e) => (e?.f || e?.fc ? feeSource(e, classify(e, [])) : null);
   const feeIds = ids.filter((id) => feeSlug(idmap[id]));
   const fees = rotate(feeIds, prev?.cursor?.fees, SAMPLE);
   for (const id of fees.pick) {
