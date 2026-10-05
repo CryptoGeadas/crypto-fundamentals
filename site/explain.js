@@ -19,8 +19,8 @@ export const AREA_INTROS = {
 
 export const METRIC_EXPLAIN = {
   circulatingShare: {
-    what: "The share of the token's maximum supply that is already in circulation.",
-    why: "The rest will be released over time and dilute holders. A token with a small share circulating has most of its dilution still ahead. Tokens without a maximum supply are not rated here, because their circulating share of today's supply is always close to 100% and says nothing about future issuance.",
+    what: "The share of the token's total supply (everything that exists now, locked or not) that is already in circulation.",
+    why: "The rest is locked and will be released over time, diluting holders. A maximum supply above the total is noted but not used: the difference may be supply still to be minted or supply already burned. A token with a small share circulating has most of its dilution still ahead. Tokens without a maximum supply are not rated here, because their circulating share of today's supply is always close to 100% and says nothing about future issuance.",
     terms: ["circulating-supply", "max-supply", "dilution"],
   },
   fdvToMcap: {
@@ -191,7 +191,7 @@ export const GLOSSARY = {
   dex: { name: "DEX (decentralised exchange)", text: "An exchange that runs on smart contracts, where people trade directly from their own wallets." },
   dilution: { name: "Dilution", text: "The fall in each token's share of the whole as new tokens are released. If supply doubles and value stays the same, each token is worth half as much." },
   exploit: { name: "Exploit (hack)", text: "An attack that drains funds by abusing a bug or weakness in a protocol, its contracts or its infrastructure." },
-  fdv: { name: "FDV (fully diluted valuation)", text: "The token price multiplied by the maximum supply, or the total supply when there is no maximum. What the whole project would be worth if every token were already circulating. CoinGecko sometimes uses the total supply even when a maximum exists, which hides supply still to come; this page always uses the maximum and shows CoinGecko's figure when they differ." },
+  fdv: { name: "FDV (fully diluted valuation)", text: "The token price multiplied by the total supply: what the whole project would be worth if every token that exists today were circulating. This page uses the total supply (what exists now, locked or not). When the maximum supply is higher, the difference may be supply still to be minted or supply already burned, and no free source says which, so the figure at maximum supply is shown as a note." },
   fees: { name: "Fees", text: "Everything users pay to use a protocol or chain, such as trading fees, interest or gas." },
   "trending-searches": { name: "Trending searches", text: "CoinGecko's list of the most-searched coins over the last 24 hours (about 15). Showing up there often means a burst of interest, sometimes hype." },
   watchlist: { name: "Watchlist users", text: "How many CoinGecko users have added the coin to a watchlist or portfolio. Rising means more people are following it; the level mostly reflects size and age." },

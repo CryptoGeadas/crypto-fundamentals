@@ -21,7 +21,7 @@ check("CoinGecko: consistent rows pass; market cap, FDV and supply contradiction
   assert.deepEqual(coingeckoDrift(stg).map((x) => x.check), ["fdvTotal"]);
   assert.deepEqual(coingeckoDrift({ ...ok, circulating_supply: 17e6, market_cap: 180 * 17e6 }).map((x) => x.check), ["supply"]);
   // #36: the page's own FDV must stay plausible (junk max supply → absurd FDV).
-  assert.deepEqual(coingeckoDrift({ ...ok, max_supply: 1e15, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).sort(), ["fdvTotal", "pageFdv"]);
+  assert.ok(coingeckoDrift({ ...ok, total_supply: 1e15, max_supply: null, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).includes("pageFdv"));
   // Uncapped: FDV is checked against total supply.
   assert.deepEqual(coingeckoDrift({ ...ok, max_supply: null, total_supply: 16e6 }), []);
   assert.deepEqual(coingeckoDrift({ id: "x", current_price: 0 }), []);
@@ -45,8 +45,9 @@ check("info-only items stay in the data but never open, comment on or keep open 
   assert.match(body, /2 informational item/);
   assert.doesNotMatch(body, /stargate-finance/);
 });
-check("FDV is price × max supply, else price × total supply; CoinGecko's FDV never used (#29, #31)", () => {
-  assert.equal(fdvOf(0.174, 1e9, 120.8e6), 174e6);       // Stargate: max supply wins over total
+check("FDV is price × total supply, else × max; CoinGecko's FDV never used (#31, #39)", () => {
+  assert.equal(fdvOf(0.174, 1e9, 120.8e6), 0.174 * 120.8e6); // Stargate: total supply (the gap to max was burned) (#39)
+  assert.equal(fdvOf(870, 200e6, 133.2e6), 870 * 133.2e6);    // BNB: burned supply never counts
   assert.equal(fdvOf(121.5, null, 635.2e6), 121.5 * 635.2e6); // Solana: uncapped → price × total
   assert.equal(fdvOf(0.0023, null, 15e9), 0.0023 * 15e9); // Snowbank-style: CoinGecko's junk FDV never enters
   assert.equal(fdvOf(null, 1e9, 5e6), null);

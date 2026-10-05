@@ -37,6 +37,7 @@ export function areasFor(type, alsoDefi = false) {
 
 import { peerPercentile } from "./peers.js";
 import { HOUSE_RULES } from "./house-rules.js";
+import { maxGap } from "./fdv.js";
 
 // ---------------------------------------------------------------- formatters
 export const fmt = {
@@ -80,7 +81,7 @@ export const METRICS = [
   {
     id: "circulatingShare",
     area: "dilution",
-    label: "Circulating share of eventual supply",
+    label: "Circulating share of total supply",
     yard: "fixed",
     src: "CoinGecko",
     // Without a max cap, circulating ÷ today's total is ~100% by construction and says nothing
@@ -88,9 +89,11 @@ export const METRICS = [
     unrated: (t) => (!t.maxSupply && t.totalSupply
       ? { display: "Uncapped supply", rule: "Not rated: with no maximum supply, the share of today's total that circulates is always close to 100% and says nothing about future dilution. Issuance rate matters instead." }
       : null),
-    val: (t) => (t.circulatingSupply && t.maxSupply ? Math.min(100, (t.circulatingSupply / t.maxSupply) * 100) : null),
+    // Total supply = what exists now, locked or not (#39); the gap to max supply can be unminted or burned.
+    val: (t) => { const base = t.totalSupply || t.maxSupply; return t.circulatingSupply && base ? Math.min(100, (t.circulatingSupply / base) * 100) : null; },
     show: (v) => fmt.pct(v, 1),
-    extra: (t) => (t.maxSupply ? `of ${fmt.num(t.maxSupply)} max supply` : t.totalSupply ? `${fmt.num(t.totalSupply)} in existence today, no max cap` : ""),
+    extra: (t) => (!t.maxSupply ? (t.totalSupply ? `${fmt.num(t.totalSupply)} in existence today, no max cap` : "")
+      : `of ${fmt.num(t.totalSupply || t.maxSupply)} total supply${maxGap(t.maxSupply, t.totalSupply) ? `; max supply ${fmt.num(t.maxSupply)} (the difference may be unminted or already burned)` : ""}`),
   },
   {
     id: "fdvToMcap",
@@ -101,7 +104,8 @@ export const METRICS = [
     val: (t) => (t.fdv && t.marketCap ? t.fdv / t.marketCap : null),
     show: (v) => fmt.x(v),
     extra: (t) => (!t.fdv ? "" : `FDV ${fmt.usd(t.fdv)} vs market cap ${fmt.usd(t.marketCap)}` +
-      (t.fdvCoinGecko && Math.abs(t.fdv / t.fdvCoinGecko - 1) > 0.03 ? `. FDV here = price × ${t.maxSupply ? "max" : "total"} supply; CoinGecko shows ${fmt.usd(t.fdvCoinGecko)}` : "") +
+      (maxGap(t.maxSupply, t.totalSupply) && t.price ? `. At max supply it would be ${fmt.usd(t.price * t.maxSupply)} (the difference may be unminted or already burned)` : "") +
+      (t.fdvCoinGecko && Math.abs(t.fdv / t.fdvCoinGecko - 1) > 0.03 ? `. CoinGecko shows ${fmt.usd(t.fdvCoinGecko)}` : "") +
       (t.maxSupply ? "" : ". No max cap: FDV only counts tokens that exist today, not future issuance")),
   },
 ];

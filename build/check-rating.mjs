@@ -42,7 +42,7 @@ check("ARB: 70% circulating = High (good), FDV/MCap 1.48× = Low (good)", () => 
   assert.equal(row(FIXTURES.arbitrum, "fdvToMcap").favour, 1);
   assert.equal(analyse(FIXTURES.arbitrum, HOUSE_RULES).byArea.dilution.word, "Strong");
 });
-check("JUP: 33% circulating = Low (bad), FDV/MCap 2.07× = High (bad), area Poor", () => {
+check("JUP: 47% of total supply circulating = Low (bad), FDV/MCap 2.07× = High (bad), area Poor", () => {
   assert.equal(row(FIXTURES.jupiter, "circulatingShare").word, "Low");
   assert.equal(row(FIXTURES.jupiter, "fdvToMcap").word, "High");
   assert.equal(row(FIXTURES.jupiter, "fdvToMcap").favour, -1);
@@ -269,16 +269,20 @@ check("attention: only the watchlist trend is rated; levels are shown; missing h
   const a = analyse(full(), HOUSE_RULES, { type: "defi" }), b = analyse(fresh, HOUSE_RULES, { type: "defi" });
   assert.equal(a.coverage.share, b.coverage.share);
 });
-check("FDV ÷ market cap uses the page's own FDV and names CoinGecko's figure when they differ (#29, #31)", () => {
-  const stg = { circulatingSupply: 120.7e6, totalSupply: 120.8e6, maxSupply: 1e9, marketCap: 21e6, fdv: 174e6, fdvCoinGecko: 21.02e6 };
+check("supply basis is total supply: burned or unminted max supply is a note, never the FDV (#39)", () => {
+  // Stargate-like: total 120.8M, max 1B (the gap was burned): FDV ÷ market cap ~1×, max supply named in a note.
+  const stg = { circulatingSupply: 120.7e6, totalSupply: 120.8e6, maxSupply: 1e9, price: 0.174, marketCap: 21e6, fdv: 0.174 * 120.8e6, fdvCoinGecko: 21.02e6 };
   const r = row(stg, "fdvToMcap");
-  assert.equal(r.display, "8.29×");
-  assert.match(r.extra, /FDV here = price × max supply; CoinGecko shows \$21\.0M$/);
-  assert.doesNotMatch(row({ ...stg, fdvCoinGecko: 174e6 }, "fdvToMcap").extra, /CoinGecko shows/);
-  // Uncapped with a junk CoinGecko FDV (Snowbank-like): the page's price × total supply is used and named.
+  assert.equal(r.display, "1.00×");
+  assert.match(r.extra, /At max supply it would be \$174\.0M \(the difference may be unminted or already burned\)/);
+  assert.doesNotMatch(r.extra, /CoinGecko shows/);
+  const share = row(stg, "circulatingShare");
+  assert.equal(share.display, "99.9%");
+  assert.match(share.extra, /of 120\.8M total supply; max supply 1\.00B/);
+  // Uncapped with a junk CoinGecko FDV (Snowbank-like): the page's price × total supply is used, CoinGecko's named.
   const junk = row({ circulatingSupply: 15e9, totalSupply: 15e9, maxSupply: null, marketCap: 34.5e6, fdv: 34.5e6, fdvCoinGecko: 3.45e22 }, "fdvToMcap");
   assert.equal(junk.display, "1.00×");
-  assert.match(junk.extra, /price × total supply; CoinGecko shows/);
+  assert.match(junk.extra, /CoinGecko shows/);
 });
 check("stale DefiLlama series: every metric built on it says since when, unrated and missing (#32)", () => {
   const sep6 = Date.UTC(2026, 8, 6) / 1000;

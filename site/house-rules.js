@@ -15,7 +15,7 @@ export const HOUSE_RULES = {
   // cap; below it, TVL likely misses what the chain is mainly used for (#38).
   chainTvlMinSharePct: 1,
   metrics: {
-    // Share of the eventual supply already circulating, in % (circulating ÷ max, or ÷ total when uncapped).
+    // Share of the total supply (what exists now) already circulating, in % (#39).
     circulatingShare: { bands: [30, 50, 70, 90], dir: "up" },
     // Fully diluted valuation ÷ market cap, as a multiple.
     fdvToMcap: { bands: [1.1, 1.5, 2, 3], dir: "down" },
