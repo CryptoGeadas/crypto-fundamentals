@@ -140,7 +140,12 @@ export function unlocks12mAmount(u, now = nowSec()) {
 
 const nextEvent = (u) => (u?.next && u.next.ts > nowSec() ? u.next : null);
 const noSchedule = (t) => (!t.unlocks ? { missing: true, display: "Not tracked", rule: "DefiLlama does not track an unlock schedule for this token, so there is nothing to rate." } : null);
-const continuous = (u) => !nextEvent(u) && u?.perDay > 0;
+// Continuous release: a daily rate and either no discrete next event, or a next event that is a linear
+// stream DefiLlama gives no single amount for (Canton: ~9.07M CC a day) (#26, #42).
+const continuous = (u) => u?.perDay > 0 && (!nextEvent(u) || (nextEvent(u).type === "linear" && !(nextEvent(u).amount > 0)));
+// Share of max supply DefiLlama marks "to be decided" (no published schedule) (#42).
+const tbdShare = (u) => { const tbd = u?.detail?.tbd, max = u?.max || u?.detail?.maxSupply; return tbd > 0 && max ? (tbd / max) * 100 : 0; };
+const TBD_LIMIT = 5;
 const uncapped = (t) => !t.maxSupply && t.totalSupply;
 // Which circulating figure the unlock percentages use, when the two sources disagree by more than 5%.
 const circNote = (t) => {
@@ -150,6 +155,8 @@ const circNote = (t) => {
 const noneScheduled = (t) => {
   const u = t.unlocks, n = nextEvent(u);
   if (noSchedule(t)) return noSchedule(t);
+  if (continuous(u)) return { display: "Continuous",
+    rule: "Not rated: supply unlocks a little every day rather than in separate events, so there is no single next unlock. The 12-month figure counts it." };
   if (n && !(n.amount > 0)) return { missing: true, display: "Amount not published",
     rule: `DefiLlama lists a ${n.type || ""} unlock on ${fmtDay(n.ts)} but publishes no amount for it, so there is nothing to rate.`.replace("a  unlock", "an unlock") };
   if (continuous(u)) return { display: "Continuous",
@@ -169,6 +176,7 @@ const UNLOCK_METRICS = [
     show: (v) => fmt.pct(v, 2),
     extra: (t) => {
       const u = t.unlocks, n = nextEvent(u);
+      if (continuous(u)) return `About ${fmt.num(u.perDay)} ${t.sym} a day${u.circ ? `, ${fmt.pct((u.perDay / u.circ) * 100, 3)} of circulating` : ""}${circNote(t)}`;
       if (n) return n.amount > 0 ? `${fmt.num(n.amount)} ${t.sym} on ${fmtDay(n.ts)} (${n.type})${circNote(t)}` : `${n.type ? n.type[0].toUpperCase() + n.type.slice(1) + " unlock" : "Unlock"} on ${fmtDay(n.ts)}`;
       return continuous(u) ? `About ${fmt.num(u.perDay)} ${t.sym} a day${u.circ ? `, ${fmt.pct((u.perDay / u.circ) * 100, 3)} of circulating` : ""}${circNote(t)}` : "";
     },
@@ -180,20 +188,28 @@ const UNLOCK_METRICS = [
     show: (v) => fmt.x(v),
     extra: (t) => {
       const u = t.unlocks, n = nextEvent(u);
-      if (n && n.amount > 0 && t.price) return `${fmt.usd(n.amount * t.price)} unlocking vs ${fmt.usd(t.volume24h)} traded in 24h`;
+      if (!continuous(u) && n && n.amount > 0 && t.price) return `${fmt.usd(n.amount * t.price)} unlocking vs ${fmt.usd(t.volume24h)} traded in 24h`;
       return continuous(u) && t.price && t.volume24h ? `About ${fmt.usd(u.perDay * t.price)} a day unlocking vs ${fmt.usd(t.volume24h)} traded in 24h` : "";
     },
   },
   {
     id: "unlocks12m", area: "dilution", label: "Unlocks due in the next 12 months", yard: "fixed", src: "DefiLlama unlock page",
     unrated: (t) => {
-      if (noSchedule(t) || !uncapped(t)) return noSchedule(t);
+      if (noSchedule(t)) return noSchedule(t);
       const a = unlocks12mAmount(t.unlocks), c = t.unlocks?.circ;
-      return { display: a != null && c ? `${fmt.pct((a / c) * 100, 1)} of circulating (vesting only)` : "Uncapped supply", rule: UNCAPPED_RULE };
+      if (uncapped(t)) return { display: a != null && c ? `${fmt.pct((a / c) * 100, 1)} of circulating (vesting only)` : "Uncapped supply", rule: UNCAPPED_RULE };
+      const tbd = tbdShare(t.unlocks);
+      if (tbd > TBD_LIMIT) return { display: a != null && c ? `${fmt.pct((a / c) * 100, 1)} of circulating (published part only)` : "Schedule not published",
+        rule: `Not rated: DefiLlama has no published schedule for ${fmt.pct(tbd, 0)} of the max supply ("to be decided"), so a low figure for the next 12 months isn't good news. See "Locked supply not unlocking within 12 months".` };
+      return null;
     },
     val: (t) => { const a = unlocks12mAmount(t.unlocks); const c = t.unlocks?.circ; return a != null && c ? (a / c) * 100 : null; },
     show: (v) => fmt.pct(v, 1) + " of circulating",
-    extra: (t) => { const a = unlocks12mAmount(t.unlocks); return a != null ? `${fmt.num(a)} ${t.sym} on the published schedule${circNote(t)}` : t.unlocks ? "Full schedule not fetched yet" : ""; },
+    extra: (t) => {
+      const a = unlocks12mAmount(t.unlocks), tbd = tbdShare(t.unlocks);
+      const unscheduled = tbd > TBD_LIMIT ? `; ${fmt.pct(tbd, 0)} of max supply has no published schedule` : "";
+      return a != null ? `${fmt.num(a)} ${t.sym} on the published schedule${unscheduled}${circNote(t)}` : t.unlocks ? "Full schedule not fetched yet" : "";
+    },
   },
   {
     id: "lockedBeyond12m", area: "dilution", label: "Locked supply not unlocking within 12 months", yard: "fixed", src: "DefiLlama unlock page",

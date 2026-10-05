@@ -35,6 +35,8 @@ check("dataset: daily series merged per category, thinned to monthly, only futur
   assert.deepEqual(d.monthly[1], [day(32), 100, 20]);
   assert.deepEqual(d.upcoming, [{ ts: NOW + 30 * DAY, amount: 15, cat: "privateSale", type: "cliff" }]);
   assert.equal(d.maxSupply, 1000);
+  assert.equal(d.tbd, 0);
+  assert.equal(summariseDataset({ ...e, supplyMetrics: { maxSupply: 1000, tbdAmount: 612 } }, NOW).tbd, 612);   // HYPE-like (#42)
   assert.equal(summariseDataset({ documentedData: { data: [] } }, NOW), null);
 });
 check("dataset: a category with no point on a date carries its last value forward", () => {

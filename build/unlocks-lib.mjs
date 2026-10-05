@@ -52,7 +52,9 @@ export function summariseDataset(e, now = Date.now() / 1000) {
   const upcoming = (e.metadata?.events || []).filter((ev) => ev.timestamp >= now)
     .map((ev) => ({ ts: ev.timestamp, amount: (ev.noOfTokens || []).reduce((a, b) => a + (Number(b) || 0), 0), cat: ev.category || "", type: ev.unlockType || "cliff" }))
     .sort((a, b) => a.ts - b.ts).slice(0, 24);
-  return { cats, monthly, upcoming, maxSupply: num(e.supplyMetrics?.maxSupply ?? e.metadata?.total), generatedAt: new Date(now * 1000).toISOString() };
+  // tbd: supply DefiLlama marks "to be decided" (no published schedule), e.g. HYPE's 612M of 1B (#42).
+  return { cats, monthly, upcoming, maxSupply: num(e.supplyMetrics?.maxSupply ?? e.metadata?.total), tbd: num(e.supplyMetrics?.tbdAmount) || 0,
+    generatedAt: new Date(now * 1000).toISOString() };
 }
 
 // Cumulative unlocked supply at time `ts` (seconds), from monthly rows, linear between rows.

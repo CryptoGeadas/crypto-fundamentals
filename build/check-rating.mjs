@@ -121,6 +121,24 @@ check("unlocks (#12 spot-check): unpublished amounts, continuous emissions, unca
   assert.match(row(spk, "unlocks12m").extra, /DefiLlama's circulating 4\.03B \(CoinGecko counts 3\.42B\)/);
   assert.ok(row(spk, "unlocks12m").level != null, "capped tokens keep their 12-month rating");
 });
+check("unlocks (#42): a linear stream with a daily rate is continuous; a big unpublished share stops the 12-month rating", () => {
+  // Canton-like: next event is a linear stream without a single amount, ~9.07M a day.
+  const cc = withU({ circulatingSupply: 39.8e9, totalSupply: 39.8e9, maxSupply: 61e9, marketCap: 5e9, fdv: 5e9 },
+    { circ: 43.1e9, max: 61e9, perDay: 9.07e6, next: { ts: NOW + 86400, amount: null, type: "linear" },
+      detail: { monthly: [[NOW, 43.1e9], [NOW + Y, 46.4e9]], tbd: 0 } });
+  assert.equal(row(cc, "nextUnlockShare").display, "Continuous");
+  assert.equal(row(cc, "nextUnlockShare").missing, false);
+  assert.match(row(cc, "nextUnlockShare").extra, /^About 9\.1M X a day/);
+  // HYPE-like: nothing scheduled in 12 months, but 612M of 1B "to be decided".
+  const hype = withU({ circulatingSupply: 222e6, totalSupply: 955e6, maxSupply: 1e9, marketCap: 20.7e9, fdv: 89e9 },
+    { circ: 388e6, max: 1e9, perDay: 0, next: null, detail: { monthly: [[NOW, 388e6], [NOW + Y, 388e6]], tbd: 612e6 } });
+  const u12 = row(hype, "unlocks12m");
+  assert.equal(u12.level, null);
+  assert.equal(u12.display, "0.0% of circulating (published part only)");
+  assert.match(u12.extra, /61% of max supply has no published schedule/);
+  // A small unscheduled share keeps the rating.
+  assert.ok(row(withU(hype, { ...hype.unlocks, detail: { ...hype.unlocks.detail, tbd: 20e6 } }), "unlocks12m").level != null);
+});
 check("unlocks (ARB-like): next unlock 0.80% = Low, vs volume Very low, 12m 13.6% = High (bad), locked beyond 20% = Low", () => {
   const t = withU(FIXTURES.arbitrum, ARB_U);
   assert.equal(row(t, "nextUnlockShare").word, "Low");
