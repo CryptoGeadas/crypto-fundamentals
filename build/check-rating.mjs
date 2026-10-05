@@ -311,6 +311,15 @@ check("chain TVL is rated only when public DeFi is at least 1% of market cap; De
   const protocol = full({ marketCap: 4.96e9, llama: { ...LLAMA_AAVE, tvl: { now: 8.4e6, prev: 8.1e6 } } });   // same ratio, but a protocol
   assert.ok(row(protocol, "mcapToTvl").level != null);
 });
+check("Chain + DeFi tokens: TVL from the protocol like their fees, chain TVL named, rated normally (#40)", () => {
+  const hype = full({ marketCap: 20.7e9, llama: { ...LLAMA_AAVE, tvl: { now: 7.51e9, prev: 6.95e9, from: "protocol" }, chainTvl: { now: 1.2e9, prev: 1.5e9, chain: true } } });
+  const m = row(hype, "mcapToTvl");
+  assert.equal(m.display, "2.76×");
+  assert.ok(m.level != null);
+  assert.match(m.extra, /from the protocol, the business behind the token; the chain itself holds \$1\.20B/);
+  assert.equal(row(hype, "tvlTrend").display, "+8.1%");
+  assert.match(row(hype, "tvlTrend").extra, /^\$7\.51B locked today; from the protocol/);
+});
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
     const rule = HOUSE_RULES.metrics[m.id];

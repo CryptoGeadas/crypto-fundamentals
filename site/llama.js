@@ -84,10 +84,15 @@ export async function loadLlama(id, entry, defi, cls, now = Date.now() / 1000) {
       jobs.push(settle(feeSummary(src, "dailyFees")).then((v) => (out.fees = v)));
       jobs.push(settle(feeSummary(src, "dailyRevenue")).then((v) => (out.revenue = v)));
     }
+    // TVL comes from the same place as the fees (#40): for "Chain + DeFi" tokens the protocol (daily data),
+    // with the chain's own TVL kept as context; otherwise the chain's public DeFi TVL (#38).
+    const fromProtocol = cls.alsoDefi && entry.p && defi?.tvl > 0;
+    if (fromProtocol) out.tvl = { now: defi.tvl, prev: defi.tvlPrevMonth, estimated: Boolean(defi.estimated), from: "protocol" };
     jobs.push(settle(json(`${API}/v2/historicalChainTvl/${encodeURIComponent(entry.c)}`)).then((h) => {
       if (!h?.length) return;
       const at = (t) => { let v = null; for (const p of h) if (p.date <= t) v = p.tvl; return v; };
-      out.tvl = { now: h[h.length - 1].tvl, prev: at(now - 30 * DAY), chain: true };   // a chain's public DeFi TVL (#38)
+      const chainTvl = { now: h[h.length - 1].tvl, prev: at(now - 30 * DAY), chain: true };
+      if (fromProtocol) out.chainTvl = chainTvl; else out.tvl = chainTvl;
     }));
     jobs.push(Promise.all([
       settle(json(`${API}/overview/dexs/${encodeURIComponent(entry.c)}?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`)),

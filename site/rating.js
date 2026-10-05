@@ -211,6 +211,10 @@ METRICS.push(...UNLOCK_METRICS);
 // ---------------------------------------------------------------- traction, value accrual, treasury (issue #6)
 // t.llama comes from site/llama.js: { fees, revenue, holders, accrualFees: {d30, prev, monthly}, tvl: {now, prev},
 // chain: {dex30, stables, stables90}, treasury: {own, other} }; any piece may be null.
+// For "Chain + DeFi" tokens TVL is the protocol's, like their fees (#40); the chain's own TVL is named.
+const tvlFrom = (t) => (t.llama?.tvl?.from === "protocol"
+  ? `; from the protocol, the business behind the token${t.llama.chainTvl?.now != null ? `; the chain itself holds ${fmt.usd(t.llama.chainTvl.now)}` : ""}` : "");
+
 // A chain whose public DeFi deposits are a sliver of its market cap (#38): TVL likely misses what the
 // chain is mainly used for (payments, enterprise or real-world-asset settlement), so it is shown, not rated.
 // DeFi protocols are always rated: for them, TVL is the business.
@@ -240,7 +244,7 @@ const BUSINESS_METRICS = [
   { id: "tvlTrend", precision: 1, area: "traction", label: "TVL trend (30 days)", yard: "fixed", src: "DefiLlama TVL",
     unrated: (t) => thinChainTvl(t, (x) => { const v = pctChange(x.llama.tvl.now, x.llama.tvl.prev); return v == null ? "No data" : fmt.chg(v); }),
     val: (t) => pctChange(t.llama?.tvl?.now, t.llama?.tvl?.prev), show: (v) => fmt.chg(v),
-    extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today${t.llama.tvl.estimated ? "; last month's figure is estimated (DefiLlama publishes no history for this group)" : ""}` : "") },
+    extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today${tvlFrom(t)}${t.llama.tvl.estimated ? "; last month's figure is estimated (DefiLlama publishes no history for this group)" : ""}` : "") },
   { id: "dex30", area: "traction", label: "DEX volume on the chain, 30 days", yard: "shown", types: ["chain"], src: "DefiLlama DEX volumes",
     val: (t) => t.llama?.chain?.dex30 ?? null, show: (v) => fmt.usd(v) },
   { id: "stablesTrend", precision: 1, area: "traction", label: "Stablecoins on the chain, 90-day trend", yard: "fixed", types: ["chain"], src: "DefiLlama stablecoins",
@@ -275,7 +279,7 @@ const VALUATION_METRICS = [
   { id: "mcapToTvl", area: "valuation", label: "Market cap ÷ TVL", yard: "fixed", src: "CoinGecko, DefiLlama TVL",
     unrated: (t) => thinChainTvl(t, () => `Over ${Math.round(100 / HOUSE_RULES.chainTvlMinSharePct)}×`),
     val: (t) => (t.marketCap && t.llama?.tvl?.now ? t.marketCap / t.llama.tvl.now : null), show: (v) => fmt.x(v),
-    extra: (t) => (thinChainTvl(t, () => "") ? `Public DeFi deposits ${fmt.usd(t.llama.tvl.now)} vs market cap ${fmt.usd(t.marketCap)}` : ""),
+    extra: (t) => (thinChainTvl(t, () => "") ? `Public DeFi deposits ${fmt.usd(t.llama.tvl.now)} vs market cap ${fmt.usd(t.marketCap)}` : tvlFrom(t).replace(/^; /, "")),
     hint: "How much the market pays for each dollar locked in it" },
 ];
 METRICS.push(...VALUATION_METRICS);
