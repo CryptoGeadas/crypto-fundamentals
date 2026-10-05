@@ -14,6 +14,9 @@ export function feesByToken({ feeRows = [], protocols = [], parents = [], chains
   for (const r of feeRows) {
     const v = Number(r.total30d) || 0;
     if (!(v > 0)) continue;
+    // A row with no figure for the latest day has stopped updating (#32, #34): its calendar 30 days hold
+    // only a few old days, which would read as an absurdly expensive peer. A zero day still counts.
+    if (r.total24h == null) continue;
     const id = String(r.defillamaId ?? r.id ?? "");
     if (id.toLowerCase().startsWith("chain#")) {
       const g = chainGecko[id.toLowerCase()];

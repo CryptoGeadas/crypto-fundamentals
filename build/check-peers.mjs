@@ -17,11 +17,11 @@ const protocols = [
 ];
 const chains = [{ name: "Solana", gecko_id: "solana" }, { name: "Hyperliquid L1", gecko_id: "hyperliquid" }];
 const FEES = feesByToken({ protocols, parents, chains, feeRows: [
-  { defillamaId: "1599", total30d: 37e6, category: "Lending" },
-  { defillamaId: "5507", total30d: 69e6, category: "Derivatives" },
-  { defillamaId: "chain#solana", total30d: 25e6 },
-  { defillamaId: "chain#hyperliquid l1", total30d: 0.6e6 },
-  { defillamaId: "1599", total30d: 0 },
+  { defillamaId: "1599", total30d: 37e6, category: "Lending", total24h: 1 },
+  { defillamaId: "5507", total30d: 69e6, category: "Derivatives", total24h: 1 },
+  { defillamaId: "chain#solana", total30d: 25e6, total24h: 1 },
+  { defillamaId: "chain#hyperliquid l1", total30d: 0.6e6, total24h: 1 },
+  { defillamaId: "1599", total30d: 0, total24h: 1 },
 ] });
 
 check("fees are grouped per token: protocol fees with their category, chain fees apart", () => {
@@ -30,6 +30,14 @@ check("fees are grouped per token: protocol fees with their category, chain fees
   assert.equal(FEES.solana.chain, 25e6);
   assert.equal(FEES.hyperliquid.protocol.cat, "Derivatives");
   assert.equal(FEES.hyperliquid.chain, 0.6e6);
+});
+check("a stale row (no latest-day figure) is left out of the benchmarks; a zero day still counts (#34)", () => {
+  const f = feesByToken({ protocols, parents, chains, feeRows: [
+    { defillamaId: "1599", total30d: 19684, category: "Lending", total24h: null },       // Chutes-like: stopped updating
+    { defillamaId: "5507", total30d: 69e6, category: "Derivatives", total24h: 0 },        // active, quiet yesterday
+  ] });
+  assert.equal(f.aave, undefined);
+  assert.equal(f.hyperliquid.protocol.v, 69e6);
 });
 check("plain chains compare on chain fees; Chain + DeFi in its protocol category; no FDV = skipped", () => {
   const universe = [{ id: "aave", fdv: 2.7e9 }, { id: "solana", fdv: 80e9 }, { id: "hyperliquid", fdv: 40e9 }, { id: "nofdv" }];
