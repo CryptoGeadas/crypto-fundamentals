@@ -11,6 +11,9 @@
 
 export const HOUSE_RULES = {
   version: "0.1",
+  // A chain's TVL (public DeFi deposits) is rated only when it is at least this % of the chain's market
+  // cap; below it, TVL likely misses what the chain is mainly used for (#38).
+  chainTvlMinSharePct: 1,
   metrics: {
     // Share of the eventual supply already circulating, in % (circulating ÷ max, or ÷ total when uncapped).
     circulatingShare: { bands: [30, 50, 70, 90], dir: "up" },

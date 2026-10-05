@@ -291,6 +291,22 @@ check("stale DefiLlama series: every metric built on it says since when, unrated
   }
   assert.equal(row(t, "revenue30").display, "$5.1M", "revenue is its own series and stays current");
 });
+check("chain TVL is rated only when public DeFi is at least 1% of market cap; DeFi protocols always (#38)", () => {
+  const chain = (tvl, mcap) => full({ marketCap: mcap, llama: { ...LLAMA_AAVE, tvl: { now: tvl, prev: tvl / 1.037, chain: true } } });
+  const canton = chain(8.4e6, 4.96e9);                               // 591×: public DeFi misses Canton's settlement business
+  assert.equal(row(canton, "mcapToTvl").display, "Over 100×");
+  assert.equal(row(canton, "mcapToTvl").level, null);
+  assert.equal(row(canton, "mcapToTvl").missing, false);
+  assert.match(row(canton, "mcapToTvl").extra, /Public DeFi deposits \$8\.4M vs market cap \$4\.96B/);
+  assert.equal(row(canton, "tvlTrend").display, "+3.7%");
+  assert.equal(row(canton, "tvlTrend").level, null);
+  assert.equal(row(chain(0, 1e9), "mcapToTvl").display, "Over 100×", "a chain with no DeFi at all");
+  const eth = chain(53.4e9, 328e9);                                    // 6.1×: rated as before
+  assert.ok(row(eth, "mcapToTvl").level != null);
+  assert.ok(row(eth, "tvlTrend").level != null);
+  const protocol = full({ marketCap: 4.96e9, llama: { ...LLAMA_AAVE, tvl: { now: 8.4e6, prev: 8.1e6 } } });   // same ratio, but a protocol
+  assert.ok(row(protocol, "mcapToTvl").level != null);
+});
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
     const rule = HOUSE_RULES.metrics[m.id];
