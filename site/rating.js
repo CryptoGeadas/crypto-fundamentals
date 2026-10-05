@@ -363,6 +363,26 @@ const ATTENTION = [
 ];
 METRICS.push(...ATTENTION);
 
+// ---------------------------------------------------------------- stale DefiLlama series (issue #32)
+// A fee or revenue series that stopped updating more than 3 days ago is unknown, not current: every
+// metric built on it says since when, unrated and counted as missing.
+const STALE_SERIES = { fees30: ["fees"], revenue30: ["revenue"], feesTrend: ["fees"], revenueTrend: ["revenue"],
+  holdersShare: ["holders", "accrualFees"], treasuryYears: ["revenue"], feeMultiple: ["fees"], revenueMultiple: ["revenue"] };
+const SERIES_NAME = { fees: "fees", revenue: "revenue", holders: "holders revenue", accrualFees: "fees" };
+function staleSkip(t, keys) {
+  const k = keys.find((key) => t.llama?.[key]?.stale);
+  if (!k) return null;
+  const since = fmtDay(t.llama[k].stale);
+  return { missing: true, display: `Not updated since ${since}`,
+    rule: `DefiLlama's ${SERIES_NAME[k]} figures for this project stopped updating on ${since}, so older figures aren't shown as current.` };
+}
+for (const m of METRICS) {
+  const keys = STALE_SERIES[m.id];
+  if (!keys) continue;
+  const own = m.unrated;
+  m.unrated = (t) => staleSkip(t, keys) || (own ? own(t) : null);
+}
+
 // ---------------------------------------------------------------- rating
 export function levelFromBands(v, bands) {
   let i = 0;

@@ -32,10 +32,15 @@ export function monthlySums(chart, months = 12) {
 // complete data point, not the clock: some series publish a day late (a clock window would hold 29
 // days), others already carry today's unfinished day (dropped). Points are stamped at the start of
 // their day (UTC).
+// A series whose newest complete day ended more than this long ago has stopped updating (#32): its
+// figures are reported as stale, never shown as current.
+export const STALE_AFTER = 3 * DAY;
+
 export function feeWindows(chart = [], now = Date.now() / 1000) {
   const done = chart.filter(([t]) => t + DAY <= now);
   if (!done.length) return { d30: null, prev: null };
   const end = done[done.length - 1][0] + DAY;
+  if (now - end > STALE_AFTER) return { d30: null, prev: null, stale: done[done.length - 1][0] };
   return { d30: windowSum(done, end - 30 * DAY, end), prev: windowSum(done, end - 120 * DAY, end - 90 * DAY) };
 }
 

@@ -41,7 +41,8 @@ export async function auditStep({ net, data }) {
   for (const id of fees.pick) {
     try {
       const d = await net.getJson(`${API}/summary/fees/${encodeURIComponent(feeSlug(idmap[id]))}?dataType=dailyFees`, "audit", { tries: 2 });
-      items.push(...feeDrift(id, feeWindows(d.totalDataChart || []).d30, d.total30d));
+      const w = feeWindows(d.totalDataChart || []);
+      if (!w.stale) items.push(...feeDrift(id, w.d30, d.total30d));   // stale series are shown as unknown, correctly (#32)
     } catch (e) { if (!/HTTP 40[04]/.test(e.message)) { failures++; console.log(`  audit: fees for ${id} failed (${e.message})`); } }
     await sleep(400);
   }

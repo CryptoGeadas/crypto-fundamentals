@@ -28,6 +28,13 @@ check("today's unfinished day is left out; the window ends at the last complete 
   const withToday = [...chart, [START + 160 * DAY, 0.3]];
   assert.equal(feeWindows(withToday, AFTER).d30, 30);
 });
+check("a series that stopped updating is stale, never current; one published a day late is current (#32)", () => {
+  const lastEnd = START + 160 * DAY;
+  assert.equal(feeWindows(chart, lastEnd + DAY + 3600).d30, 30);           // newest day ended ~1 day ago
+  const stale = feeWindows(chart, lastEnd + 4 * DAY);                       // ended 4 days ago
+  assert.equal(stale.d30, null);
+  assert.equal(stale.stale, START + 159 * DAY);
+});
 check("a gap in the data is summed as reported, never stretched", () => {
   const gappy = chart.filter((_, i) => i !== 150);
   assert.equal(feeWindows(gappy, AFTER).d30, 29);

@@ -280,6 +280,17 @@ check("FDV ÷ market cap uses the page's own FDV and names CoinGecko's figure wh
   assert.equal(junk.display, "1.00×");
   assert.match(junk.extra, /price × total supply; CoinGecko shows/);
 });
+check("stale DefiLlama series: every metric built on it says since when, unrated and missing (#32)", () => {
+  const sep6 = Date.UTC(2026, 8, 6) / 1000;
+  const t = full({ llama: { ...LLAMA_AAVE, fees: { d30: null, prev: null, stale: sep6 }, accrualFees: { d30: null, prev: null, stale: sep6 } } });
+  for (const id of ["fees30", "feesTrend", "feeMultiple", "holdersShare"]) {
+    const r = row(t, id);
+    assert.equal(r.display, "Not updated since 6 Sept 2026", id);
+    assert.equal(r.level, null, id);
+    assert.equal(r.missing, true, id);
+  }
+  assert.equal(row(t, "revenue30").display, "$5.1M", "revenue is its own series and stays current");
+});
 check("every rated metric has a house rule, and rules carry the bands", () => {
   for (const m of METRICS.filter((m) => m.yard === "fixed")) {
     const rule = HOUSE_RULES.metrics[m.id];
