@@ -278,12 +278,12 @@ const BUSINESS_METRICS = [
   { id: "treasuryYears", area: "treasury", label: "Treasury outside its own token, in years of revenue", yard: "fixed", src: "DefiLlama treasury",
     val: (t) => { const tr = t.llama?.treasury, r = t.llama?.revenue?.d30; return tr && r ? tr.other / (r * 12) : null; },
     show: (v) => (v >= 100 ? "100+ years" : v.toFixed(1) + " years"),
-    extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.other)} in other assets` : "") },
+    extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.other)} in other assets; only wallets DefiLlama tracks` : "") },
   { id: "treasuryOwnShare", area: "treasury", label: "Treasury held in its own token", yard: "fixed", src: "DefiLlama treasury",
     val: (t) => { const tr = t.llama?.treasury; return tr && tr.own + tr.other > 0 ? (tr.own / (tr.own + tr.other)) * 100 : null; },
     show: (v) => fmt.pct(v, 0),
-    extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.own)} in ${t.sym}` : ""),
-    note: "A treasury mostly in its own token loses value exactly when the project needs it most." },
+    extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.own)} in ${t.sym} (including wrapped and staked forms); only wallets DefiLlama tracks` : ""),
+    note: "A treasury mostly in its own token loses value exactly when the project needs it most. Only wallets DefiLlama tracks are counted." },
 ];
 METRICS.push(...BUSINESS_METRICS);
 

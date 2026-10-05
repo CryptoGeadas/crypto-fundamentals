@@ -12,6 +12,7 @@ export async function defiStep({ report, net, data }) {
   const [idmap, universe, prev] = [await data.read("idmap.json"), await data.read("universe.json"), await data.read("defi.json")];
   if (!idmap || !universe) { report.error("defi", "No identifier map or token list; protocol data kept."); report.datasets.defi = { status: "kept" }; return; }
   const ids = new Set(universe.tokens.map((t) => t.id));
+  const symOf = Object.fromEntries(universe.tokens.map((t) => [t.id, t.sym]));
 
   console.log("DefiLlama protocol TVL ...");
   let tvl, hacks, audits;
@@ -65,7 +66,7 @@ export async function defiStep({ report, net, data }) {
   for (const id of due) {
     const res = await fetch(`${API}/treasury/${encodeURIComponent(candidates[id])}`, { headers: { accept: "application/json" } }).catch(() => null);
     if (res?.ok) {
-      try { treasury[id] = treasurySummary(await res.json()); fetched++; }
+      try { treasury[id] = treasurySummary(await res.json(), symOf[id]); fetched++; }
       catch (e) { report.warn("defillama", `Treasury for ${id} unreadable (${e.message}); kept previous.`); }
     } else if (res && (res.status === 400 || res.status === 404)) {
       treasury[id] = { none: true, at: new Date().toISOString() };      // no treasury tracked

@@ -2,7 +2,7 @@
 // Run: node build/check-defi.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { tvlByToken, tvlFromSeries, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
+import { tvlByToken, tvlFromSeries, isOwnForm, treasurySummary, treasuriesToRefresh, hacksByToken, auditsByToken } from "./defi-lib.mjs";
 
 const results = [];
 const check = (name, fn) => { try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", `${name} — ${e.message}`]); } };
@@ -27,6 +27,19 @@ check("treasury splits own token from everything else (shape of /treasury/aave)"
   assert.equal(t.own, 97926528);
   assert.equal(t.other, 34603230);
   assert.throws(() => treasurySummary({}));
+});
+check("treasury: wrapped and staked forms of the token count as own when DefiLlama's own bucket is empty (#43)", () => {
+  // Ethereum Foundation-like: no OwnTokens bucket, ETH held as WETH and liquid-staking tokens.
+  const ef = { currentChainTvls: { Ethereum: 181e6 }, chainTvls: { Ethereum: { tokensInUsd: [{ tokens: { WETH: 75e6, AETHLIDOWETH: 28e6, SPWETH: 28e6, USDC: 23e6, STEAKETH: 10e6, DAI: 17e6 } }] } } };
+  const t = treasurySummary(ef, "ETH");
+  assert.equal(t.own, Math.round(181e6 * 141 / 181));
+  assert.equal(t.other, Math.round(181e6 * 40 / 181));
+  // A protocol with its own bucket filled is unchanged.
+  assert.deepEqual(treasurySummary({ currentChainTvls: { OwnTokens: 100, Ethereum: 50 }, chainTvls: {} }, "ETH").own, 100);
+  // Short tickers never match by suffix; unrelated symbols don't match.
+  assert.equal(isOwnForm("TOP", "OP"), false);
+  assert.equal(isOwnForm("USDC", "ETH"), false);
+  assert.ok(isOwnForm("WSTETH", "ETH") && isOwnForm("JITOSOL", "SOL") && isOwnForm("SOL", "SOL"));
 });
 check("treasury rotation: missing or week-old are due; 'none' waits 30 days", () => {
   const iso = (d) => new Date((NOW - d * DAY) * 1000).toISOString();

@@ -48,11 +48,29 @@ export function tvlFromSeries(series = [], now = Date.now() / 1000) {
 
 // /treasury/<slug> → { own, other }: value held in the project's own token vs everything else.
 // currentChainTvls keys look like "Ethereum", "Ethereum-OwnTokens", "OwnTokens".
-export function treasurySummary(t) {
+// When DefiLlama's own-token bucket is empty, the token itself may still sit in the treasury in wrapped or
+// staked form, filed with the other assets (the Ethereum Foundation's ETH as WETH, stETH variants, …)
+// (#43). Holdings whose symbol is the ticker, or ends in it (tickers of 3+ letters), count as own token.
+export const isOwnForm = (symbol, ticker) => {
+  const s = String(symbol || "").toUpperCase(), k = String(ticker || "").toUpperCase();
+  return k.length >= 3 && (s === k || (s.endsWith(k) && s.length - k.length <= 10));
+};
+
+export function treasurySummary(t, ticker = "") {
   const c = t?.currentChainTvls;
   if (!c || typeof c !== "object") throw new Error("no currentChainTvls");
-  const own = Number(c.OwnTokens) || 0;
-  const other = Object.entries(c).filter(([k]) => !k.includes("-") && k !== "OwnTokens").reduce((a, [, v]) => a + (Number(v) || 0), 0);
+  let own = Number(c.OwnTokens) || 0;
+  let other = Object.entries(c).filter(([k]) => !k.includes("-") && k !== "OwnTokens").reduce((a, [, v]) => a + (Number(v) || 0), 0);
+  if (!own && other > 0 && ticker) {
+    const byToken = {};
+    for (const [chain, v] of Object.entries(t.chainTvls || {})) {
+      if (chain.includes("-") || chain === "OwnTokens") continue;
+      for (const [sym, usd] of Object.entries((v.tokensInUsd || []).at(-1)?.tokens || {})) byToken[sym] = (byToken[sym] || 0) + (Number(usd) || 0);
+    }
+    const total = Object.values(byToken).reduce((a, b) => a + b, 0);
+    const mine = Object.entries(byToken).filter(([sym]) => isOwnForm(sym, ticker)).reduce((a, [, v]) => a + v, 0);
+    if (total > 0 && mine > 0) { own = other * (mine / total); other -= own; }
+  }
   return { own: Math.round(own), other: Math.round(other), at: new Date().toISOString() };
 }
 
