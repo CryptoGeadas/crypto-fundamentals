@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-05T13:34:58.774Z",
-  "startedAt": "2026-10-05T12:58:54.099Z",
+  "generated": "2026-10-06T14:01:18.875Z",
+  "startedAt": "2026-10-06T13:22:14.320Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -12,38 +12,38 @@
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3019,
-      "lastSuccess": "2026-10-05T13:01:42.954Z"
+      "count": 3022,
+      "lastSuccess": "2026-10-06T13:24:03.229Z"
     },
     "universe": {
       "status": "updated",
-      "count": 649,
-      "lastSuccess": "2026-10-05T13:01:42.954Z"
+      "count": 648,
+      "lastSuccess": "2026-10-06T13:24:03.229Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 223,
-      "lastSuccess": "2026-10-05T13:01:46.642Z"
+      "count": 222,
+      "lastSuccess": "2026-10-06T13:24:04.960Z"
     },
     "defi": {
       "status": "updated",
-      "count": 418,
-      "lastSuccess": "2026-10-05T13:02:43.117Z"
+      "count": 419,
+      "lastSuccess": "2026-10-06T13:25:41.434Z"
     },
     "peers": {
       "status": "updated",
-      "count": 298,
-      "lastSuccess": "2026-10-05T13:02:43.503Z"
+      "count": 296,
+      "lastSuccess": "2026-10-06T13:25:42.004Z"
     },
     "meta": {
       "status": "updated",
-      "count": 518,
-      "lastSuccess": "2026-10-05T13:04:45.351Z"
+      "count": 529,
+      "lastSuccess": "2026-10-06T13:27:20.557Z"
     },
     "attention": {
       "status": "updated",
-      "count": 540,
-      "lastSuccess": "2026-10-05T13:31:47.000Z"
+      "count": 630,
+      "lastSuccess": "2026-10-06T13:57:22.210Z"
     }
   },
   "problems": [],
@@ -114,6 +114,18 @@
     },
     {
       "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "audit",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
     },
     {
