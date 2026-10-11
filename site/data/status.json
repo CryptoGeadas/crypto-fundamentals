@@ -1,53 +1,124 @@
 {
-  "generated": "2026-10-10T12:41:18.971Z",
-  "startedAt": "2026-10-10T12:36:55.251Z",
-  "healthy": true,
+  "generated": "2026-10-11T13:32:04.367Z",
+  "startedAt": "2026-10-11T12:55:48.669Z",
+  "healthy": false,
   "sources": {
     "defillama": "ok",
     "coingecko": "ok",
-    "defillama-unlocks": "ok",
+    "defillama-unlocks": "degraded",
     "github": "ok",
     "audit": "ok"
   },
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3028,
-      "lastSuccess": "2026-10-10T12:38:44.598Z"
+      "count": 3029,
+      "lastSuccess": "2026-10-11T12:56:37.535Z"
     },
     "universe": {
       "status": "updated",
-      "count": 645,
-      "lastSuccess": "2026-10-10T12:38:44.598Z"
+      "count": 643,
+      "lastSuccess": "2026-10-11T12:56:37.535Z"
     },
     "unlocks": {
       "status": "updated",
       "count": 221,
-      "lastSuccess": "2026-10-10T12:38:48.343Z"
+      "lastSuccess": "2026-10-11T12:57:02.219Z"
     },
     "defi": {
       "status": "updated",
-      "count": 416,
-      "lastSuccess": "2026-10-10T12:39:13.292Z"
+      "count": 413,
+      "lastSuccess": "2026-10-11T12:59:27.655Z"
     },
     "peers": {
       "status": "updated",
-      "count": 292,
-      "lastSuccess": "2026-10-10T12:39:13.814Z"
+      "count": 291,
+      "lastSuccess": "2026-10-11T12:59:28.148Z"
     },
     "meta": {
       "status": "updated",
-      "count": 540,
-      "lastSuccess": "2026-10-10T12:39:21.084Z"
+      "count": 536,
+      "lastSuccess": "2026-10-11T13:01:34.611Z"
     },
     "attention": {
       "status": "updated",
-      "count": 663,
-      "lastSuccess": "2026-10-10T12:39:21.117Z"
+      "count": 665,
+      "lastSuccess": "2026-10-11T13:29:35.966Z"
     }
   },
-  "problems": [],
+  "problems": [
+    {
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for movement not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/ooia); previous copy kept if any. Retried in a week."
+    },
+    {
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for bsquared-network not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/buzz-farming); previous copy kept if any. Retried in a week."
+    }
+  ],
   "retries": [
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
