@@ -1,67 +1,59 @@
 {
-  "generated": "2026-10-12T16:06:43.283Z",
-  "startedAt": "2026-10-12T15:33:05.211Z",
+  "generated": "2026-10-13T14:48:49.458Z",
+  "startedAt": "2026-10-13T14:16:45.142Z",
   "healthy": false,
   "sources": {
     "defillama": "ok",
     "coingecko": "ok",
-    "defillama-unlocks": "degraded",
-    "github": "ok",
+    "defillama-unlocks": "ok",
+    "github": "degraded",
     "audit": "ok"
   },
   "datasets": {
     "idmap": {
       "status": "updated",
       "count": 3029,
-      "lastSuccess": "2026-10-12T15:35:54.219Z"
+      "lastSuccess": "2026-10-13T14:17:36.257Z"
     },
     "universe": {
       "status": "updated",
-      "count": 647,
-      "lastSuccess": "2026-10-12T15:35:54.219Z"
+      "count": 642,
+      "lastSuccess": "2026-10-13T14:17:36.257Z"
     },
     "unlocks": {
       "status": "updated",
       "count": 222,
-      "lastSuccess": "2026-10-12T15:36:19.807Z"
+      "lastSuccess": "2026-10-13T14:18:07.424Z"
     },
     "defi": {
       "status": "updated",
-      "count": 419,
-      "lastSuccess": "2026-10-12T15:37:02.518Z"
+      "count": 417,
+      "lastSuccess": "2026-10-13T14:18:58.367Z"
     },
     "peers": {
       "status": "updated",
       "count": 288,
-      "lastSuccess": "2026-10-12T15:37:03.021Z"
+      "lastSuccess": "2026-10-13T14:18:59.775Z"
     },
     "meta": {
       "status": "updated",
-      "count": 565,
-      "lastSuccess": "2026-10-12T15:39:36.781Z"
+      "count": 563,
+      "lastSuccess": "2026-10-13T14:21:39.875Z"
     },
     "attention": {
       "status": "updated",
-      "count": 667,
-      "lastSuccess": "2026-10-12T16:03:38.590Z"
+      "count": 668,
+      "lastSuccess": "2026-10-13T14:45:42.986Z"
     }
   },
   "problems": [
     {
       "level": "warning",
-      "source": "defillama-unlocks",
-      "message": "Schedule for pharos-network not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
+      "source": "github",
+      "message": "Development stats for fuel-network not refreshed (GitHub 500 for /repos/FuelLabs/sway/commits); kept previous."
     }
   ],
   "retries": [
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
