@@ -65,8 +65,3 @@ $("#hr-version").textContent = HOUSE_RULES.version;
 // The page is rendered after load, so honour a #m-… or #g-… link once the targets exist.
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 
-$("#theme").addEventListener("click", () => {
-  const r = document.documentElement;
-  r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark";
-  try { localStorage.setItem("theme", r.dataset.theme); } catch { /* storage unavailable: theme still toggles */ }
-});

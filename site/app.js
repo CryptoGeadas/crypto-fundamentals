@@ -29,8 +29,8 @@ const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-sol
 function strip(r) {
   if (r.level == null) return `<span class="strip none">${r.notOnRecord ? "Unknown" : r.missing || (r.value == null && !r.unrated) ? "No data" : "Not rated"}</span>`;
   const good = r.favour > 0 ? "good" : r.favour < 0 ? "bad" : "neutral";
-  return `<span class="strip t-${tone(r.favour)}" role="img" aria-label="Rating: ${r.word} (${good})">${[1, 2, 3, 4, 5]
-    .map((i) => `<i class="${i === r.level ? "on" : ""}"></i>`).join("")}<b>${r.word}</b></span>`;
+  return `<span class="strip t-${tone(r.favour)}" role="img" aria-label="Rating: ${r.word} (${good})">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    .map((i) => `<i class="${i <= r.level * 2 ? "on" : ""}"></i>`).join("")}<b>${r.word}</b></span>`;
 }
 
 function outsideBanner(t, via) {
@@ -315,7 +315,7 @@ function renderToken(t, via) {
   document.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => { setView(b.dataset.view); renderToken(t, via); }));
   document.querySelectorAll("[data-retry]").forEach((b) => (b.onclick = () => retrySource(b.dataset.retry, b)));
   $("#refresh")?.addEventListener("click", () => load(t.id, via, { fresh: true }));
-  document.title = `${t.sym} · Token Fundamentals`;
+  document.title = `${t.sym} · Crypto Fundamentals · Bernardo Geadas`;
   renderFoot(t);
   // Lets the local personal version add its AI Insights panel. Nothing listens on the public site.
   const leads = Object.fromEntries(Object.keys(a.byArea).map((id) => [id, LEADS[id] ? LEADS[id](t, a) : ""]));
@@ -361,6 +361,10 @@ function healthLine(s) {
 
 function renderFoot(t) {
   const u = state.universe;
+  const s = state.status;
+  const line = $("[data-tool-dataline]");
+  if (line && s) line.textContent = `Data as of ${fmtWhen(s.startedAt)} · Sources: CoinGecko, DefiLlama, GitHub, GoPlus${u ? ` · Tokens: ${u.count}` : ""} · Not financial advice`;
+  $("[data-tool-dot]")?.classList.toggle("stale", !!s && !s.healthy);
   $("#foot").innerHTML = `${healthLine(state.status)}
     ${t ? `Prices from CoinGecko, fetched ${hhmm(t.fetchedAt)} in your browser. ` : ""}
     ${u ? `Verified token list: ${u.count} tokens. ` : ""}
@@ -533,13 +537,6 @@ q.addEventListener("keydown", (e) => {
 });
 q.addEventListener("blur", () => setTimeout(closeDropdown, 120));
 
-// ---------------------------------------------------------------- theme
-$("#theme").addEventListener("click", () => {
-  const r = document.documentElement;
-  r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark";
-  try { localStorage.setItem("theme", r.dataset.theme); } catch { /* storage unavailable: theme still toggles */ }
-});
-
 // ---------------------------------------------------------------- start
 async function start() {
   renderLoading();
@@ -565,7 +562,7 @@ async function start() {
   const extra = (PERSONAL?.alwaysInclude || []).filter((t) => !state.byId.has(t.id))
     .map((t) => ({ id: t.id, sym: t.sym || t.id.toUpperCase(), name: t.name || t.id, rank: 9999, img: "", personal: true }));
   state.searchPool = [...state.universe.tokens, ...extra];
-  if (PERSONAL) document.querySelector(".brand")?.insertAdjacentHTML("beforeend", '<span class="badge badge-info" title="Local personal version">Personal</span>');
+  if (PERSONAL) document.querySelector(".tool-title")?.insertAdjacentHTML("beforeend", '<span class="badge badge-info" title="Local personal version">Personal</span>');
   state.addrIdx = buildAddressIndex(state.universe.tokens);
   $("#hint").textContent = `${state.universe.count} verified tokens`;
   if (state.id) load(state.id);

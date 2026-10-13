@@ -1,4 +1,4 @@
-# Token Fundamentals
+# Crypto Fundamentals
 
 Type a ticker and see a token's fundamentals in one place: valuation against its peers, traction, value accrual, dilution and unlocks, holder concentration, market health, treasury, security and development activity. Each number is rated from very low to very high by fixed, visible rules, so the page can be read at a glance.
 
