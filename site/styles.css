@@ -29,7 +29,7 @@
 .badge-error { color: var(--down); }
 .badge-accent { color: var(--accent); }
 
-.sub { color: var(--muted); max-width: 70ch; margin: 0; font-size: 15px; line-height: 1.6; }
+.sub { color: var(--muted); max-width: 70ch; margin: 0; font-size: 15px; line-height: 1.65; }
 
 /* search */
 .searchbar { position: relative; margin: 20px 0 28px; }
