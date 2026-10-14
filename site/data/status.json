@@ -1,59 +1,61 @@
 {
-  "generated": "2026-10-13T14:48:49.458Z",
-  "startedAt": "2026-10-13T14:16:45.142Z",
-  "healthy": false,
+  "generated": "2026-10-14T12:32:11.904Z",
+  "startedAt": "2026-10-14T11:58:05.505Z",
+  "healthy": true,
   "sources": {
     "defillama": "ok",
     "coingecko": "ok",
     "defillama-unlocks": "ok",
-    "github": "degraded",
+    "github": "ok",
     "audit": "ok"
   },
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3029,
-      "lastSuccess": "2026-10-13T14:17:36.257Z"
+      "count": 3021,
+      "lastSuccess": "2026-10-14T11:59:54.488Z"
     },
     "universe": {
       "status": "updated",
-      "count": 642,
-      "lastSuccess": "2026-10-13T14:17:36.257Z"
+      "count": 639,
+      "lastSuccess": "2026-10-14T11:59:54.488Z"
     },
     "unlocks": {
       "status": "updated",
       "count": 222,
-      "lastSuccess": "2026-10-13T14:18:07.424Z"
+      "lastSuccess": "2026-10-14T12:00:20.766Z"
     },
     "defi": {
       "status": "updated",
-      "count": 417,
-      "lastSuccess": "2026-10-13T14:18:58.367Z"
+      "count": 415,
+      "lastSuccess": "2026-10-14T12:01:24.476Z"
     },
     "peers": {
       "status": "updated",
-      "count": 288,
-      "lastSuccess": "2026-10-13T14:18:59.775Z"
+      "count": 287,
+      "lastSuccess": "2026-10-14T12:01:24.856Z"
     },
     "meta": {
       "status": "updated",
-      "count": 563,
-      "lastSuccess": "2026-10-13T14:21:39.875Z"
+      "count": 560,
+      "lastSuccess": "2026-10-14T12:03:07.912Z"
     },
     "attention": {
       "status": "updated",
-      "count": 668,
-      "lastSuccess": "2026-10-13T14:45:42.986Z"
+      "count": 672,
+      "lastSuccess": "2026-10-14T12:28:09.607Z"
     }
   },
-  "problems": [
-    {
-      "level": "warning",
-      "source": "github",
-      "message": "Development stats for fuel-network not refreshed (GitHub 500 for /repos/FuelLabs/sway/commits); kept previous."
-    }
-  ],
+  "problems": [],
   "retries": [
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
