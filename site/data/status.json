@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-16T12:03:34.404Z",
-  "startedAt": "2026-10-16T11:29:23.936Z",
+  "generated": "2026-10-17T11:20:53.921Z",
+  "startedAt": "2026-10-17T10:49:26.281Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -12,46 +12,42 @@
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3023,
-      "lastSuccess": "2026-10-16T11:31:12.958Z"
+      "count": 3025,
+      "lastSuccess": "2026-10-17T10:50:14.979Z"
     },
     "universe": {
       "status": "updated",
-      "count": 644,
-      "lastSuccess": "2026-10-16T11:31:12.958Z"
+      "count": 645,
+      "lastSuccess": "2026-10-17T10:50:14.979Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 223,
-      "lastSuccess": "2026-10-16T11:31:19.875Z"
+      "count": 222,
+      "lastSuccess": "2026-10-17T10:50:18.517Z"
     },
     "defi": {
       "status": "updated",
       "count": 418,
-      "lastSuccess": "2026-10-16T11:32:18.267Z"
+      "lastSuccess": "2026-10-17T10:51:04.043Z"
     },
     "peers": {
       "status": "updated",
-      "count": 286,
-      "lastSuccess": "2026-10-16T11:32:19.784Z"
+      "count": 287,
+      "lastSuccess": "2026-10-17T10:51:04.396Z"
     },
     "meta": {
       "status": "updated",
-      "count": 563,
-      "lastSuccess": "2026-10-16T11:34:13.666Z"
+      "count": 564,
+      "lastSuccess": "2026-10-17T10:52:38.319Z"
     },
     "attention": {
       "status": "updated",
-      "count": 677,
-      "lastSuccess": "2026-10-16T11:59:15.003Z"
+      "count": 679,
+      "lastSuccess": "2026-10-17T11:17:39.803Z"
     }
   },
   "problems": [],
   "retries": [
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
