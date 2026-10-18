@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-17T11:20:53.921Z",
-  "startedAt": "2026-10-17T10:49:26.281Z",
+  "generated": "2026-10-18T11:47:57.154Z",
+  "startedAt": "2026-10-18T11:12:18.362Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -13,41 +13,53 @@
     "idmap": {
       "status": "updated",
       "count": 3025,
-      "lastSuccess": "2026-10-17T10:50:14.979Z"
+      "lastSuccess": "2026-10-18T11:14:07.954Z"
     },
     "universe": {
       "status": "updated",
       "count": 645,
-      "lastSuccess": "2026-10-17T10:50:14.979Z"
+      "lastSuccess": "2026-10-18T11:14:07.954Z"
     },
     "unlocks": {
       "status": "updated",
       "count": 222,
-      "lastSuccess": "2026-10-17T10:50:18.517Z"
+      "lastSuccess": "2026-10-18T11:14:14.938Z"
     },
     "defi": {
       "status": "updated",
       "count": 418,
-      "lastSuccess": "2026-10-17T10:51:04.043Z"
+      "lastSuccess": "2026-10-18T11:14:53.552Z"
     },
     "peers": {
       "status": "updated",
       "count": 287,
-      "lastSuccess": "2026-10-17T10:51:04.396Z"
+      "lastSuccess": "2026-10-18T11:14:54.116Z"
     },
     "meta": {
       "status": "updated",
       "count": 564,
-      "lastSuccess": "2026-10-17T10:52:38.319Z"
+      "lastSuccess": "2026-10-18T11:17:00.287Z"
     },
     "attention": {
       "status": "updated",
-      "count": 679,
-      "lastSuccess": "2026-10-17T11:17:39.803Z"
+      "count": 680,
+      "lastSuccess": "2026-10-18T11:44:02.868Z"
     }
   },
   "problems": [],
   "retries": [
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
