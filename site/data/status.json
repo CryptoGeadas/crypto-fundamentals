@@ -1,52 +1,58 @@
 {
-  "generated": "2026-10-21T12:29:22.423Z",
-  "startedAt": "2026-10-21T11:55:18.881Z",
-  "healthy": true,
+  "generated": "2026-10-22T12:33:12.260Z",
+  "startedAt": "2026-10-22T11:58:20.172Z",
+  "healthy": false,
   "sources": {
     "defillama": "ok",
     "coingecko": "ok",
-    "defillama-unlocks": "ok",
+    "defillama-unlocks": "degraded",
     "github": "ok",
     "audit": "ok"
   },
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3022,
-      "lastSuccess": "2026-10-21T11:57:07.751Z"
+      "count": 3024,
+      "lastSuccess": "2026-10-22T12:00:09.409Z"
     },
     "universe": {
       "status": "updated",
-      "count": 646,
-      "lastSuccess": "2026-10-21T11:57:07.751Z"
+      "count": 645,
+      "lastSuccess": "2026-10-22T12:00:09.409Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 221,
-      "lastSuccess": "2026-10-21T11:57:40.903Z"
+      "count": 222,
+      "lastSuccess": "2026-10-22T12:00:36.323Z"
     },
     "defi": {
       "status": "updated",
-      "count": 418,
-      "lastSuccess": "2026-10-21T11:58:32.505Z"
+      "count": 416,
+      "lastSuccess": "2026-10-22T12:01:41.876Z"
     },
     "peers": {
       "status": "updated",
-      "count": 291,
-      "lastSuccess": "2026-10-21T11:58:33.995Z"
+      "count": 292,
+      "lastSuccess": "2026-10-22T12:01:42.505Z"
     },
     "meta": {
       "status": "updated",
       "count": 563,
-      "lastSuccess": "2026-10-21T12:01:04.235Z"
+      "lastSuccess": "2026-10-22T12:05:05.528Z"
     },
     "attention": {
       "status": "updated",
-      "count": 683,
-      "lastSuccess": "2026-10-21T12:26:06.103Z"
+      "count": 684,
+      "lastSuccess": "2026-10-22T12:30:06.975Z"
     }
   },
-  "problems": [],
+  "problems": [
+    {
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for pearl-2 not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
+    }
+  ],
   "retries": [
     {
       "source": "coingecko",
