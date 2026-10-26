@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-25T12:07:24.962Z",
-  "startedAt": "2026-10-25T11:36:51.128Z",
+  "generated": "2026-10-26T13:40:41.091Z",
+  "startedAt": "2026-10-26T13:09:45.029Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -13,37 +13,37 @@
     "idmap": {
       "status": "updated",
       "count": 3026,
-      "lastSuccess": "2026-10-25T11:37:39.942Z"
+      "lastSuccess": "2026-10-26T13:10:33.961Z"
     },
     "universe": {
       "status": "updated",
-      "count": 641,
-      "lastSuccess": "2026-10-25T11:37:39.942Z"
+      "count": 638,
+      "lastSuccess": "2026-10-26T13:10:33.961Z"
     },
     "unlocks": {
       "status": "updated",
       "count": 221,
-      "lastSuccess": "2026-10-25T11:37:46.121Z"
+      "lastSuccess": "2026-10-26T13:10:37.321Z"
     },
     "defi": {
       "status": "updated",
-      "count": 414,
-      "lastSuccess": "2026-10-25T11:38:24.003Z"
+      "count": 411,
+      "lastSuccess": "2026-10-26T13:11:13.289Z"
     },
     "peers": {
       "status": "updated",
-      "count": 292,
-      "lastSuccess": "2026-10-25T11:38:24.490Z"
+      "count": 290,
+      "lastSuccess": "2026-10-26T13:11:13.865Z"
     },
     "meta": {
       "status": "updated",
-      "count": 560,
-      "lastSuccess": "2026-10-25T11:40:27.294Z"
+      "count": 556,
+      "lastSuccess": "2026-10-26T13:13:35.205Z"
     },
     "attention": {
       "status": "updated",
-      "count": 689,
-      "lastSuccess": "2026-10-25T12:04:28.545Z"
+      "count": 690,
+      "lastSuccess": "2026-10-26T13:37:36.589Z"
     }
   },
   "problems": [],
