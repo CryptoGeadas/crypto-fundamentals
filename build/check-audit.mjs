@@ -3,8 +3,8 @@
 // Run: node build/check-audit.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, decideDrift, driftBody, keyOf, TOL } from "./audit-lib.mjs";
-import { fdvOf } from "../site/fdv.js";
+import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, decideDrift, driftBody, keyOf, carryOver, TOL, INFO_ONLY } from "./audit-lib.mjs";
+import { fdvOf, cleanSupply } from "../site/fdv.js";
 
 const results = [];
 function check(name, fn) {
@@ -20,8 +20,10 @@ check("CoinGecko: consistent rows pass; market cap, FDV and supply contradiction
   const stg = { id: "stargate-finance", current_price: 0.174, market_cap: 21e6, circulating_supply: 120.7e6, total_supply: 120.8e6, max_supply: 1e9, fully_diluted_valuation: 21.02e6 };
   assert.deepEqual(coingeckoDrift(stg).map((x) => x.check), ["fdvTotal"]);
   assert.deepEqual(coingeckoDrift({ ...ok, circulating_supply: 17e6, market_cap: 180 * 17e6 }).map((x) => x.check), ["supply"]);
-  // #36: the page's own FDV must stay plausible (junk max supply → absurd FDV).
-  assert.ok(coingeckoDrift({ ...ok, total_supply: 1e15, max_supply: null, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).includes("pageFdv"));
+  // #36: the page's own FDV must stay plausible: a 0.5% float (200×) is still flagged for a hand check;
+  // a total over 1,000× circulating is cleaned to unknown first (#30), so it never reaches the page.
+  assert.ok(coingeckoDrift({ ...ok, total_supply: 3e9, max_supply: null, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).includes("pageFdv"));
+  assert.ok(!coingeckoDrift({ ...ok, total_supply: 1e15, max_supply: null, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).includes("pageFdv"));
   // Uncapped: FDV is checked against total supply.
   assert.deepEqual(coingeckoDrift({ ...ok, max_supply: null, total_supply: 16e6 }), []);
   assert.deepEqual(coingeckoDrift({ id: "x", current_price: 0 }), []);
@@ -52,6 +54,44 @@ check("FDV is price × total supply, else × max; CoinGecko's FDV never used (#3
   assert.equal(fdvOf(0.0023, null, 15e9), 0.0023 * 15e9); // Snowbank-style: CoinGecko's junk FDV never enters
   assert.equal(fdvOf(null, 1e9, 5e6), null);
   assert.equal(fdvOf(1, null, null), null);
+});
+check("contradicting CoinGecko supply figures are cleaned before FDV (#30, live rows of 27 Oct 2026)", () => {
+  // Ferrum: total 164T against a 616M cap, circulating 287M → total is the error; FDV on max supply.
+  assert.deepEqual(cleanSupply(287.0e6, 164126873063397, 615617784), { total: null, max: 615617784, maxBelowCirc: false });
+  assert.equal(fdvOf(0.070821, 615617784, 164126873063397, 287.0e6), 0.070821 * 615617784);
+  // Snowbank: no cap, total = circulating × 10⁹ → unknown, so FDV is unknown.
+  assert.equal(cleanSupply(159640.03, 159640027327531, null).total, null);
+  assert.equal(fdvOf(227.16, null, 159640027327531, 159640.03), null);
+  // Gala / LCX: circulating above max → max out of date; total (≈ circulating) stays the FDV basis.
+  assert.deepEqual(cleanSupply(50.902e9, 50.902e9, 50e9), { total: 50.902e9, max: 50e9, maxBelowCirc: true });
+  assert.equal(fdvOf(0.00174824, 50e9, 50.902e9, 50.902e9), 0.00174824 * 50.902e9);
+  // Real low floats and burned gaps are left alone: ADI 0.9% circulating, Stargate total ≪ max.
+  assert.deepEqual(cleanSupply(9.43e6, 999999999, 999999999), { total: 999999999, max: 999999999, maxBelowCirc: false });
+  assert.equal(cleanSupply(120.7e6, 120.8e6, 1e9).total, 120.8e6);
+  assert.equal(cleanSupply(null, 5e9, null).total, 5e9, "no circulating figure: nothing to check against");
+});
+check("Ferrum and Snowbank no longer give an implausible page FDV; ADI's real low float still asks for a hand check", () => {
+  const ferrum = { id: "ferrum-network", current_price: 0.070821, market_cap: 20326366, circulating_supply: 287009850, total_supply: 164126873063397, max_supply: 615617784, fully_diluted_valuation: 11623653077661 };
+  const snow = { id: "snowbank", current_price: 227.16, market_cap: 36264350, circulating_supply: 159640.027, total_supply: 159640027327531, max_supply: null, fully_diluted_valuation: 36264349888621880 };
+  const adi = { id: "adi-token", current_price: 8.05, market_cap: 75907234, circulating_supply: 9434511, total_supply: 999999999, max_supply: 999999999, fully_diluted_valuation: 8045698578 };
+  assert.ok(!coingeckoDrift(ferrum).some((x) => x.check === "pageFdv"));
+  assert.ok(!coingeckoDrift(snow).some((x) => x.check === "pageFdv"));
+  assert.match(coingeckoDrift(adi).find((x) => x.check === "pageFdv").detail, /\(total supply 1000\.00M\)/);
+});
+check("max below circulating is shown on the page as out of date, so it is info only", () => {
+  const gala = { id: "gala", current_price: 0.00174824, market_cap: 88986417, circulating_supply: 50.902e9, total_supply: 50.902e9, max_supply: 50e9, fully_diluted_valuation: 88986522 };
+  assert.deepEqual(coingeckoDrift(gala).map((x) => x.check), ["supply"]);
+  assert.ok(INFO_ONLY.has("supply"));
+});
+check("carried items leave when their token was re-checked today or is no longer sampled at all", () => {
+  const prev = [
+    { check: "fees30", id: "chutes", detail: "d" },      // no longer a fee token: never picked again (#30)
+    { check: "fees30", id: "solana", detail: "d" },      // re-checked today
+    { check: "tvl", id: "instadapp", detail: "d" },      // not its turn: carried
+    { check: "pageFdv", id: "x", detail: "d" },          // not sampled: comes back fresh from today's run
+  ];
+  const kept = carryOver(prev, { fees30: new Set(["solana"]), tvl: new Set() }, { fees30: new Set(["solana"]), tvl: new Set(["instadapp"]) });
+  assert.deepEqual(kept.map(keyOf), ["tvl:instadapp"]);
 });
 check("rotation continues where it stopped, wraps, and covers everything", () => {
   const ids = ["e", "a", "d", "c", "b"];

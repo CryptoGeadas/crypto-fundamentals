@@ -64,7 +64,7 @@ export function buildUniverse(markets, llama, platformsById = {}) {
       img: m.image || "",
       llama: inLlama ? 1 : 0,
       mcap: m.market_cap || null,
-      fdv: fdvOf(m.current_price, m.max_supply, m.total_supply),   // same definition as the page (#39)
+      fdv: fdvOf(m.current_price, m.max_supply, m.total_supply, m.circulating_supply ?? null),   // same definition as the page (#39, #30)
       addr: cleanPlatforms(platformsById[m.id]),
     });
   }

@@ -3,7 +3,7 @@
 // "Data drift" issue. Never changes other data and never fails the run: a failed call is only logged.
 //   site/data/audit.json  { generated, cursor: { fees, tvl }, sampled: { fees, tvl }, items: [{ check, id, detail }], previousKeys }
 
-import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, keyOf } from "./audit-lib.mjs";
+import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, keyOf, carryOver } from "./audit-lib.mjs";
 import { feeWindows, feeSource } from "../site/llama.js";
 import { classify } from "../site/classify.js";
 import { sleep } from "./net.mjs";
@@ -61,10 +61,9 @@ export async function auditStep({ net, data }) {
     await sleep(400);
   }
 
-  // Sampled checks only cover today's slice, so keep yesterday's sampled items for tokens not re-checked
-  // today; they leave the list once their next turn comes round and they pass.
-  const checkedToday = { fees30: new Set(fees.pick), tvl: new Set(tvl.pick) };
-  const carried = (prev?.items || []).filter((it) => checkedToday[it.check] && !checkedToday[it.check].has(it.id));
+  // Sampled checks only cover today's slice: yesterday's sampled items are carried until their turn.
+  const carried = carryOver(prev?.items, { fees30: new Set(fees.pick), tvl: new Set(tvl.pick) },
+    { fees30: new Set(feeIds), tvl: new Set(tvlIds) });
   const all = [...items, ...carried];
   await data.write("audit.json", {
     generated: new Date().toISOString(),

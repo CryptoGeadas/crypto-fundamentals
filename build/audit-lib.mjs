@@ -2,14 +2,15 @@
 // sources publish themselves. The step (build/step-audit.mjs) fetches; build/audit-issue.mjs keeps the
 // "Data drift" issue in sync. Drift is reported, never acted on: it doesn't change data or fail a run.
 
-import { fdvOf } from "../site/fdv.js";
+import { fdvOf, cleanSupply } from "../site/fdv.js";
 
 export const DRIFT_TITLE = "Data drift";
 
 // Kept in audit.json but left out of the issue: nothing to fix. Circulating disagreement is shown on the
 // page itself (#26); CoinGecko's FDV (on total supply, or contradicting itself) is no longer used by the
-// page, which computes FDV from price and supply (#29, #31).
-export const INFO_ONLY = new Set(["circulating", "fdvTotal", "fdv"]);
+// page, which computes FDV from price and supply (#29, #31); a max supply below circulating is shown on
+// the page as out of date (#30).
+export const INFO_ONLY = new Set(["circulating", "fdvTotal", "fdv", "supply"]);
 export const actionable = (items = []) => items.filter((it) => !INFO_ONLY.has(it.check));
 
 // Tolerances, as a share of the source's figure. Each says why it is that loose.
@@ -49,9 +50,10 @@ export function coingeckoDrift(m) {
   }
   // The page's own FDV (price × max, else × total supply; #31) must stay plausible: a junk max supply
   // would otherwise drive the dilution and valuation ratings unnoticed (#36).
-  const ours = fdvOf(p, m.max_supply, m.total_supply);
+  const ours = fdvOf(p, m.max_supply, m.total_supply, m.circulating_supply ?? null);
   if (ours && m.market_cap > 0 && ours / m.market_cap > TOL.fdvRatio) {
-    out.push({ check: "pageFdv", id: m.id, detail: `page FDV ${n(ours)} is ${Math.round(ours / m.market_cap)}× market cap ${n(m.market_cap)} (${m.max_supply ? "max" : "total"} supply ${n(m.max_supply || m.total_supply)})` });
+    const total = cleanSupply(m.circulating_supply, m.total_supply, m.max_supply).total;
+    out.push({ check: "pageFdv", id: m.id, detail: `page FDV ${n(ours)} is ${Math.round(ours / m.market_cap)}× market cap ${n(m.market_cap)} (${total ? `total supply ${n(total)}` : `max supply ${n(m.max_supply)}`})` });
   }
   if (m.max_supply > 0 && m.circulating_supply > m.max_supply * 1.001) {
     out.push({ check: "supply", id: m.id, detail: `circulating ${n(m.circulating_supply)} is above max supply ${n(m.max_supply)}` });
@@ -89,6 +91,13 @@ export function rotate(ids, cursor = 0, size = 30) {
 }
 
 export const keyOf = (it) => `${it.check}:${it.id}`;
+
+// Sampled checks only cover today's slice, so yesterday's sampled items are kept for tokens whose turn
+// hasn't come round. Items of tokens no longer eligible for that check leave too: their turn never comes
+// (Chutes stayed listed for three weeks after DefiLlama stopped marking it a fee earner; #30).
+export function carryOver(prevItems = [], checkedToday = {}, eligible = {}) {
+  return prevItems.filter((it) => checkedToday[it.check] && !checkedToday[it.check].has(it.id) && eligible[it.check]?.has(it.id));
+}
 
 // What to do with the "Data drift" issue. New items (not in yesterday's list) earn a comment, which
 // notifies; otherwise the issue body is just refreshed quietly.

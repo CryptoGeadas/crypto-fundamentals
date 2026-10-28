@@ -1,5 +1,5 @@
 // CoinGecko keyless API, called from the visitor's browser (no server, no key).
-import { fdvOf } from "./fdv.js";
+import { fdvOf, cleanSupply } from "./fdv.js";
 const BASE = "https://api.coingecko.com/api/v3";
 
 export class SourceError extends Error {
@@ -39,6 +39,9 @@ export function normalise(c) {
   const md = c.market_data || {};
   const usd = (o) => (o && typeof o.usd === "number" ? o.usd : null);
   const num = (v) => (typeof v === "number" && v > 0 ? v : null);
+  // Contradicting supply figures cleaned once, for FDV and the supply rows alike (#30): a junk total
+  // becomes unknown; a max below circulating stays (the token is capped) but is shown as out of date.
+  const supply = cleanSupply(num(md.circulating_supply), num(md.total_supply), num(md.max_supply));
   return {
     id: c.id,
     name: c.name,
@@ -48,15 +51,16 @@ export function normalise(c) {
     price: usd(md.current_price),
     change30d: md.price_change_percentage_30d ?? null,
     marketCap: num(usd(md.market_cap)),
-    fdv: fdvOf(usd(md.current_price), num(md.max_supply), num(md.total_supply)),   // price × total supply (#39)
+    fdv: fdvOf(usd(md.current_price), supply.max, supply.total),   // price × total supply (#39)
     fdvCoinGecko: num(usd(md.fully_diluted_valuation)),
     volume24h: num(usd(md.total_volume)),
     watchlist: num(c.watchlist_portfolio_users),   // CoinGecko users following it (attention area)
     athChange: typeof md.ath_change_percentage?.usd === "number" ? md.ath_change_percentage.usd : null,
     homeChain: c.asset_platform_id || null,   // the chain the token lives on natively (null for native assets)
     circulatingSupply: num(md.circulating_supply),
-    totalSupply: num(md.total_supply),
-    maxSupply: num(md.max_supply),
+    totalSupply: supply.total,
+    maxSupply: supply.max,
+    maxSupplyStale: supply.maxBelowCirc,
     categories: (c.categories || []).filter(Boolean),
     // chain → contract address; empty for native assets (BTC, ETH, SOL…)
     // Real addresses only: EVM 0x…, base58 (Solana and similar), or Move-style 0x…::module::Name.

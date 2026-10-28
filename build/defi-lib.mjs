@@ -17,6 +17,9 @@ export function tvlByToken({ protocols = [], lite = [], parents = [], idmap = {}
     const viaParent = slugToGecko[p.parentProtocolSlug] || slugToGecko[parentSlug[p.parentProtocol]];
     const gecko = viaParent || slugToGecko[p.slug];
     if (!gecko || !(p.tvl > 0)) continue;
+    // DefiLlama leaves a child flagged excludeTvlFromParent out of the parent's total: its TVL sits
+    // inside a sibling (Fluid DEX liquidity is Fluid Lending's; #30). Same here.
+    if (viaParent && p.excludeTvlFromParent) continue;
     const l = liteById[String(p.id)];
     const prev = Number(l?.tvlPrevMonth) || 0;
     // A child's "excludeParent" TVL sits inside a sibling product and is already counted there, so

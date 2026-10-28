@@ -22,6 +22,23 @@ check("TVL sums every child of the token's parent protocol, now and a month ago"
   });
   assert.deepEqual(out, { aave: { tvl: 19e9, tvlPrevMonth: 16.2e9 } });   // uniswap is not in our universe
 });
+check("children DefiLlama marks excludeTvlFromParent stay out of the parent's TVL (#30: Fluid DEX sits in Fluid Lending)", () => {
+  // Live /protocols, 27 Oct 2026: DefiLlama's own /tvl/fluid is 876M = lending + lite, not + DEX.
+  const out = tvlByToken({
+    protocols: [
+      { id: "4167", slug: "fluid-lending", parentProtocolSlug: "fluid", tvl: 669.34e6 },
+      { id: "5317", slug: "fluid-dex", parentProtocolSlug: "fluid", tvl: 230.06e6, excludeTvlFromParent: true },
+      { id: "4742", slug: "fluid-lite", parentProtocolSlug: "fluid", tvl: 206.85e6 },
+    ],
+    lite: [{ defillamaId: "4167", tvlPrevMonth: 700e6 }, { defillamaId: "5317", tvlPrevMonth: 330e6 }, { defillamaId: "4742", tvlPrevMonth: 250e6 }],
+    idmap: { instadapp: { p: "fluid", f: 1 } }, ids: new Set(["instadapp"]),
+  });
+  assert.deepEqual(out, { instadapp: { tvl: 876.19e6, tvlPrevMonth: 950e6 } });
+  // A token mapped to the flagged child itself still gets that child's TVL.
+  const own = tvlByToken({ protocols: [{ id: "5317", slug: "fluid-dex", parentProtocolSlug: "fluid", tvl: 230e6, excludeTvlFromParent: true }],
+    idmap: { fdex: { p: "fluid-dex" } }, ids: new Set(["fdex"]) });
+  assert.equal(own.fdex.tvl, 230e6);
+});
 check("treasury splits own token from everything else (shape of /treasury/aave)", () => {
   const t = treasurySummary({ currentChainTvls: { "Ethereum-OwnTokens": 97925598.8, Ethereum: 33798447.7, Polygon: 804782.7, "OP Mainnet-OwnTokens": 488.2, OwnTokens: 97926527.6 } });
   assert.equal(t.own, 97926528);

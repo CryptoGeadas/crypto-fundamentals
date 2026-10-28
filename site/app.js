@@ -77,8 +77,10 @@ function identity(t, a, cls) {
     ${contractsRow(t)}
     ${cls.type === "meme" ? `<div class="memenote" role="note"><b>Fundamental analysis does not apply to memecoins.</b> There is no business, revenue or product to assess, so only supply, holder, market and contract checks are shown.</div>` : ""}
     <div class="kpis">${[["Market cap", fmt.usd(t.marketCap)], ["Fully diluted value", fmt.usd(t.fdv)],
-      ["Circulating supply", fmt.num(t.circulatingSupply)], ["Max supply", t.maxSupply ? fmt.num(t.maxSupply) : "No cap"]]
-      .map(([l, v]) => `<div class="kpi"><span class="label">${l}</span><b>${v}</b></div>`).join("")}</div>`;
+      ["Circulating supply", fmt.num(t.circulatingSupply)],
+      ["Max supply", t.maxSupplyStale ? "Out of date" : t.maxSupply ? fmt.num(t.maxSupply) : "No cap",
+        t.maxSupplyStale ? `CoinGecko's max supply (${fmt.num(t.maxSupply)}) is below circulating supply, so it is out of date.` : ""]]
+      .map(([l, v, tip]) => `<div class="kpi"><span class="label">${l}</span><b${tip ? ` class="tip" tabindex="0" data-tip="${esc(tip)}"` : ""}>${v}</b></div>`).join("")}</div>`;
 }
 
 function leadSentence(t, a) {
