@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-28T13:34:38.702Z",
-  "startedAt": "2026-10-28T13:00:08.167Z",
+  "generated": "2026-10-29T13:40:14.986Z",
+  "startedAt": "2026-10-29T13:07:55.774Z",
   "healthy": false,
   "sources": {
     "defillama": "ok",
@@ -12,52 +12,48 @@
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3027,
-      "lastSuccess": "2026-10-28T13:02:03.208Z"
+      "count": 3029,
+      "lastSuccess": "2026-10-29T13:09:44.932Z"
     },
     "universe": {
       "status": "updated",
-      "count": 660,
-      "lastSuccess": "2026-10-28T13:02:03.208Z"
+      "count": 661,
+      "lastSuccess": "2026-10-29T13:09:44.932Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 221,
-      "lastSuccess": "2026-10-28T13:02:26.479Z"
+      "count": 222,
+      "lastSuccess": "2026-10-29T13:10:14.864Z"
     },
     "defi": {
       "status": "updated",
-      "count": 429,
-      "lastSuccess": "2026-10-28T13:03:23.405Z"
+      "count": 432,
+      "lastSuccess": "2026-10-29T13:10:59.146Z"
     },
     "peers": {
       "status": "updated",
       "count": 295,
-      "lastSuccess": "2026-10-28T13:03:23.985Z"
+      "lastSuccess": "2026-10-29T13:11:00.703Z"
     },
     "meta": {
       "status": "updated",
-      "count": 570,
-      "lastSuccess": "2026-10-28T13:06:24.899Z"
+      "count": 573,
+      "lastSuccess": "2026-10-29T13:13:10.356Z"
     },
     "attention": {
       "status": "updated",
       "count": 706,
-      "lastSuccess": "2026-10-28T13:31:28.104Z"
+      "lastSuccess": "2026-10-29T13:37:12.539Z"
     }
   },
   "problems": [
     {
       "level": "warning",
       "source": "defillama-unlocks",
-      "message": "Schedule for pharos-network not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
+      "message": "Schedule for pearl-2 not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
     }
   ],
   "retries": [
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
