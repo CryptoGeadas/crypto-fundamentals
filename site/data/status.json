@@ -1,6 +1,6 @@
 {
-  "generated": "2026-10-30T13:34:03.255Z",
-  "startedAt": "2026-10-30T13:00:15.456Z",
+  "generated": "2026-10-31T13:10:27.254Z",
+  "startedAt": "2026-10-31T12:38:27.980Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -12,38 +12,38 @@
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3030,
-      "lastSuccess": "2026-10-30T13:03:04.386Z"
+      "count": 3031,
+      "lastSuccess": "2026-10-31T12:39:16.697Z"
     },
     "universe": {
       "status": "updated",
-      "count": 655,
-      "lastSuccess": "2026-10-30T13:03:04.386Z"
+      "count": 657,
+      "lastSuccess": "2026-10-31T12:39:16.697Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 221,
-      "lastSuccess": "2026-10-30T13:03:35.462Z"
+      "count": 222,
+      "lastSuccess": "2026-10-31T12:39:28.946Z"
     },
     "defi": {
       "status": "updated",
-      "count": 426,
-      "lastSuccess": "2026-10-30T13:04:22.968Z"
+      "count": 427,
+      "lastSuccess": "2026-10-31T12:39:51.350Z"
     },
     "peers": {
       "status": "updated",
       "count": 292,
-      "lastSuccess": "2026-10-30T13:04:23.543Z"
+      "lastSuccess": "2026-10-31T12:39:51.839Z"
     },
     "meta": {
       "status": "updated",
-      "count": 568,
-      "lastSuccess": "2026-10-30T13:05:52.854Z"
+      "count": 569,
+      "lastSuccess": "2026-10-31T12:41:52.137Z"
     },
     "attention": {
       "status": "updated",
-      "count": 709,
-      "lastSuccess": "2026-10-30T13:30:54.399Z"
+      "count": 710,
+      "lastSuccess": "2026-10-31T13:06:53.313Z"
     }
   },
   "problems": [],
@@ -101,11 +101,7 @@
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
     },
     {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
+      "source": "audit",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
     },
     {
