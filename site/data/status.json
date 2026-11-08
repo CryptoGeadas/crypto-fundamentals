@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-07T13:41:34.355Z",
-  "startedAt": "2026-11-07T13:08:24.521Z",
+  "generated": "2026-11-08T14:04:13.168Z",
+  "startedAt": "2026-11-08T13:29:50.319Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -12,42 +12,50 @@
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3039,
-      "lastSuccess": "2026-11-07T13:09:13.351Z"
+      "count": 3040,
+      "lastSuccess": "2026-11-08T13:31:40.430Z"
     },
     "universe": {
       "status": "updated",
-      "count": 662,
-      "lastSuccess": "2026-11-07T13:09:13.351Z"
+      "count": 659,
+      "lastSuccess": "2026-11-08T13:31:40.430Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 220,
-      "lastSuccess": "2026-11-07T13:09:24.993Z"
+      "count": 222,
+      "lastSuccess": "2026-11-08T13:31:43.782Z"
     },
     "defi": {
       "status": "updated",
-      "count": 432,
-      "lastSuccess": "2026-11-07T13:11:06.143Z"
+      "count": 431,
+      "lastSuccess": "2026-11-08T13:32:29.976Z"
     },
     "peers": {
       "status": "updated",
-      "count": 293,
-      "lastSuccess": "2026-11-07T13:11:08.086Z"
+      "count": 291,
+      "lastSuccess": "2026-11-08T13:32:30.410Z"
     },
     "meta": {
       "status": "updated",
-      "count": 571,
-      "lastSuccess": "2026-11-07T13:13:33.698Z"
+      "count": 570,
+      "lastSuccess": "2026-11-08T13:35:16.320Z"
     },
     "attention": {
       "status": "updated",
-      "count": 723,
-      "lastSuccess": "2026-11-07T13:38:35.278Z"
+      "count": 725,
+      "lastSuccess": "2026-11-08T14:01:18.078Z"
     }
   },
   "problems": [],
   "retries": [
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
