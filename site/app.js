@@ -1,12 +1,12 @@
 import { analyse, fmt, tone, areaTone } from "./rating.js";
-import { classify, TYPES } from "./classify.js";
+import { classify, TYPES, pegOf } from "./classify.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
 import { addressKind, buildAddressIndex, lookupAddress, searchUniverse, tickerClashes } from "./search.js";
 import { resolveAddress } from "./resolve.js";
 import { unlockChart, feesChart, holdersChart } from "./charts.js";
 import { fetchSecurity } from "./goplus.js";
-import { loadLlama } from "./llama.js";
+import { loadLlama, loadStablecoinList, pegFromList } from "./llama.js";
 import { createCache, TTL } from "./cache.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 import { trendingDays, watchChange } from "./attention.js";
@@ -63,6 +63,7 @@ function identity(t, a, cls) {
   const ti = TYPES[cls.type];
   const covTone = a.coverage.level === "Full" ? "badge-success" : a.coverage.level === "Partial" ? "badge-warning" : "badge-error";
   const covRule = cls.type === "meme" ? "Memecoins have no fundamentals to cover: only market, holder and contract checks apply."
+    : cls.type === "pegged" ? `${a.coverage.share}% of the peg, supply, holder and contract metrics have data. Full ≥ 80%, Partial ≥ 45%.`
     : `${a.coverage.share}% of the metrics that apply to this token have data. Full ≥ 80%, Partial ≥ 45%.`;
   return `<div class="idrow">
       ${t.img ? `<img class="logo" src="${esc(t.img)}" alt="" width="44" height="44">` : ""}
@@ -75,6 +76,7 @@ function identity(t, a, cls) {
       <div class="px"><div class="p">${fmt.price(t.price)}</div><div class="c">30d ${fmt.chg(t.change30d)}</div></div>
     </div>
     ${contractsRow(t)}
+    ${cls.type === "pegged" ? `<div class="memenote" role="note"><b>Fundamental analysis doesn't apply to pegged tokens.</b> This page shows the peg, supply and contract.</div>` : ""}
     ${cls.type === "meme" ? `<div class="memenote" role="note"><b>Fundamental analysis does not apply to memecoins.</b> There is no business, revenue or product to assess, so only supply, holder, market and contract checks are shown.</div>` : ""}
     <div class="kpis">${[["Market cap", fmt.usd(t.marketCap)], ["Fully diluted value", fmt.usd(t.fdv)],
       ["Circulating supply", fmt.num(t.circulatingSupply)],
@@ -142,6 +144,16 @@ function marketLead(t, a) {
   if (h?.value != null) parts.push(`the price is ${Math.abs(h.value).toFixed(0)}% below its all-time high`);
   return parts.length ? parts.join("; ") + "." : "CoinGecko has no market data for it.";
 }
+// Pegged assets (#53): the peg, then the supply and which way it moved.
+function pegLead(t, a) {
+  const d = a.rows.find((x) => x.id === "pegDistance"), s = a.rows.find((x) => x.id === "pegSupply"), c = a.rows.find((x) => x.id === "pegSupplyChange");
+  const parts = [];
+  if (d?.value != null) parts.push(`${t.sym} trades ${Math.abs(d.value) < 0.005 ? "at" : `${d.display} from`} its ${fmt.price(t.peg.target)} peg`);
+  else parts.push(`It is not known what ${t.sym} is pegged to in the free data, so its peg can't be checked here`);
+  if (s?.value != null) parts.push(`${s.display} tokens are in circulation${c?.value != null ? ` (${c.display} in 30 days)` : ""}`);
+  return parts.join("; ") + ".";
+}
+
 function securityLead(t, a) {
   const f = a.rows.find((x) => x.id === "contractFlags"), e = a.rows.find((x) => x.id === "exploitLoss");
   const parts = [];
@@ -168,7 +180,7 @@ function backersLead(t, a) {
   if (g?.value != null) parts.push(`the token has traded for ${g.display}`);
   return parts.length ? parts.join("; ") + "." : "No funding or age data for it.";
 }
-const LEADS = { valuation: valuationLead, holders: holdersLead, market: marketLead, security: securityLead, dev: devLead, backers: backersLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
+const LEADS = { peg: pegLead, valuation: valuationLead, holders: holdersLead, market: marketLead, security: securityLead, dev: devLead, backers: backersLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
 // Charts shown under an area's facts.
 // The peer group behind the valuation ratings, cheapest first, with this token highlighted.
 function peersBlock(t, a) {
@@ -198,7 +210,8 @@ const CHARTS = {
 };
 
 // Which areas each live source feeds, so a failed source marks exactly its rows.
-const SOURCE_AREAS = { defillama: ["valuation", "traction", "accrual"], goplus: ["holders", "security"] };
+// A pegged token's peg area reads DefiLlama's stablecoin list (#53).
+const SOURCE_AREAS = { defillama: ["peg", "valuation", "traction", "accrual"], goplus: ["holders", "security"] };
 const SOURCE_NAMES = { defillama: "DefiLlama", goplus: "GoPlus" };
 const failedSources = (t) => Object.keys(SOURCE_AREAS).filter((k) => t.sourceFailed?.[k]);
 const failedIn = (t, area) => failedSources(t).filter((k) => SOURCE_AREAS[k].includes(area));
@@ -422,17 +435,29 @@ async function load(id, via, { fresh = false } = {}) {
       .catch(() => { t.sourceFailed.goplus = true; return { value: null, at: null }; });
     const firstPriceJob = cache.get(`fp:${id}`, TTL.slow, () => fetch(`https://coins.llama.fi/prices/first/coingecko:${encodeURIComponent(id)}`).then((r) => r.json())
       .then((d) => d.coins?.[`coingecko:${id}`]?.timestamp ?? null).catch(() => null), { fresh });
-    const llamaJob = cache.get(`ll:${id}:${cls.type}:${cls.alsoDefi ? 1 : 0}`, TTL.slow,
+    // A pegged token has no protocol data to show (#53): only its peg data is read from DefiLlama, so a
+    // failure there is the one the peg area's banner and Retry button report.
+    const pegged = cls.type === "pegged";
+    const llamaJob = pegged ? Promise.resolve({ value: null, at: null }) : cache.get(`ll:${id}:${cls.type}:${cls.alsoDefi ? 1 : 0}`, TTL.slow,
       () => loadLlama(id, entry, state.defi?.[id], cls).catch(() => ({ failed: true })), { fresh, keep: (v) => !v?.failed });
+    const pegJob = pegged
+      // only this token's small result is cached (the full list is about 0.5 MB); not listed = { listed: false }
+      ? cache.get(`peg:${id}`, TTL.slow, () => loadStablecoinList().then((list) => pegFromList(list, id) ?? { listed: false }), { fresh })
+        .catch(() => { t.sourceFailed.defillama = true; return { value: null, at: null }; })
+      : Promise.resolve({ value: null, at: null });
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
-    const [llama, security, firstPrice] = await Promise.all([llamaJob, securityJob, firstPriceJob]);
+    const [llama, security, firstPrice, peg] = await Promise.all([llamaJob, securityJob, firstPriceJob, pegJob]);
+    if (pegged) {
+      const st = peg.value?.listed === false ? null : peg.value;
+      t.peg = pegOf(t.categories, st);
+    }
     t.llama = llama.value;
     if (t.llama?.failed) t.sourceFailed.defillama = true;
     t.security = security.value;
     t.firstPriceTs = firstPrice.value;
     // When each part of the page was fetched: the oldest slow lookup is what the refresh line reports.
-    const slowAts = [llama, security, firstPrice].filter((x) => entry || x !== llama).map((x) => x.at).filter(Boolean);
+    const slowAts = [llama, security, firstPrice, peg].filter((x) => entry || x !== llama).map((x) => x.at).filter(Boolean);
     t.dataAt = { market: market.at, slow: slowAts.length ? Math.min(...slowAts) : market.at };
     t.meta = state.meta?.[id] || null;
     t.attention = { trending: trendingDays(id, state.attention?.trending), watch: t.watchlist ?? null,
@@ -454,8 +479,15 @@ async function retrySource(source, btn) {
   const { t, via } = cur;
   if (source === "defillama") {
     const entry = state.idmap?.[t.id];
-    t.llama = await loadLlama(t.id, entry, state.defi?.[t.id], clsFor(t.id, t.categories)).catch(() => ({ failed: true }));
-    t.sourceFailed.defillama = Boolean(t.llama?.failed);
+    if (clsFor(t.id, t.categories).type === "pegged") {
+      // a pegged token reads only DefiLlama's stablecoin list (#53)
+      t.sourceFailed.defillama = false;
+      const st = await loadStablecoinList().then((list) => pegFromList(list, t.id), () => { t.sourceFailed.defillama = true; return null; });
+      if (!t.sourceFailed.defillama) t.peg = pegOf(t.categories, st);
+    } else {
+      t.llama = await loadLlama(t.id, entry, state.defi?.[t.id], clsFor(t.id, t.categories)).catch(() => ({ failed: true }));
+      t.sourceFailed.defillama = Boolean(t.llama?.failed);
+    }
   } else if (source === "goplus") {
     t.sourceFailed.goplus = false;
     t.security = await fetchSecurity(t).catch(() => { t.sourceFailed.goplus = true; return null; });

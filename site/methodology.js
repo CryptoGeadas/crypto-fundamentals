@@ -9,7 +9,7 @@ import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const areaName = (id) => AREAS.find((a) => a.id === id)?.name || id;
-const typeOrder = ["chain", "defi", "narrative", "meme"];
+const typeOrder = ["chain", "pegged", "defi", "meme", "narrative"];
 
 // The rule as the reader sees it on a token page: a five-step scale, or a sentence when not rated.
 function ruleVisual(m) {

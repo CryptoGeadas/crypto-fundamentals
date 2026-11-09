@@ -4,6 +4,7 @@
 // referenced glossary term is missing here.
 
 export const AREA_INTROS = {
+  peg: "For pegged assets only (stablecoins, tokenized gold or funds, wrapped and liquid-staking tokens): whether the price holds its target, and whether money is coming in or leaving. Their price follows something else, so valuation, dilution and growth do not apply.",
   attention: "Whether people are paying attention to the token, measured with free CoinGecko data: how often it appears in CoinGecko's trending searches and whether its watchlist is growing. A stand-in for social chatter, not Twitter data, which is not available for free.",
   valuation: "How expensive the token is compared with what the project earns, judged against similar projects rather than an absolute standard. A project can be excellent and still too expensive.",
   traction: "Whether the business behind the token is being used and growing: fees paid by users, revenue kept by the project, and money locked in it.",
@@ -18,6 +19,18 @@ export const AREA_INTROS = {
 };
 
 export const METRIC_EXPLAIN = {
+  pegDistance: {
+    what: "How far the price is from the value the token is meant to hold, in percent: the price against $1 for a dollar stablecoin.",
+    why: "A pegged token is only worth its target if it holds it. A gap of more than a fraction of a percent means the market doubts the backing or the redemption. Shown as unknown when the free data does not say what the target is.",
+  },
+  pegSupply: {
+    what: "How many tokens are in circulation, across all chains where DefiLlama tracks the stablecoin, otherwise CoinGecko's circulating supply.",
+    why: "For a pegged token, supply is the money people have put in. It shows the token's size and is the base for the 30-day change.",
+  },
+  pegSupplyChange: {
+    what: "The change in supply over the last 30 days, from DefiLlama's stablecoin list.",
+    why: "New tokens are minted when people deposit money, and burned when they redeem. A rising supply means money coming in; a falling one means people taking money out. Shown, not rated: neither is good or bad by itself.",
+  },
   circulatingShare: {
     what: "The share of the token's total supply (everything that exists now, locked or not) that is already in circulation.",
     why: "The rest is locked and will be released over time, diluting holders. A maximum supply above the total is noted but not used: the difference may be supply still to be minted or supply already burned. A token with a small share circulating has most of its dilution still ahead. Tokens without a maximum supply are not rated here, because their circulating share of today's supply is always close to 100% and says nothing about future issuance.",

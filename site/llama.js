@@ -10,6 +10,18 @@ async function json(url) {
   return r.json();
 }
 
+// Pegged assets (#53): DefiLlama's stablecoin list gives the peg type and the supply now and a month
+// ago, summed over the peg's own unit (for a USD stablecoin, peggedUSD). Tokens it does not list
+// (tokenized gold, wrapped and liquid-staking tokens) get nulls: the page shows them as unknown.
+export function pegFromList(list, id) {
+  const s = (list?.peggedAssets || []).find((x) => x.gecko_id === id);
+  if (!s) return null;
+  const unit = s.pegType;
+  const amount = (o) => (o && Number.isFinite(o[unit]) ? o[unit] : null);
+  return { pegType: unit, supply: amount(s.circulating), supplyPrev: amount(s.circulatingPrevMonth) };
+}
+export const loadStablecoinList = () => json("https://stablecoins.llama.fi/stablecoins?includePrices=false");
+
 // Sum of [ts, value] points with lo <= ts < hi (seconds).
 export function windowSum(chart, lo, hi) {
   let s = 0, n = 0;

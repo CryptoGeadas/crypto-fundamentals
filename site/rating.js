@@ -7,6 +7,7 @@
 export const LEVELS = ["Very low", "Low", "Neutral", "High", "Very high"];
 
 export const AREAS = [
+  { id: "peg", name: "Peg & supply" },
   { id: "valuation", name: "Valuation" },
   { id: "traction", name: "Traction" },
   { id: "accrual", name: "Value accrual" },
@@ -26,6 +27,9 @@ export const AREAS_BY_TYPE = {
   chain: ["valuation", "traction", "dilution", "holders", "market", "attention", "treasury", "security", "dev", "backers"],
   narrative: ["dilution", "holders", "market", "attention", "security", "dev", "backers"],
   meme: ["dilution", "holders", "market", "attention", "security"],
+  // A pegged token follows a price outside itself: only the peg, its supply, who holds it and what its
+  // contract allows say anything (#53). Valuation, dilution, market and development don't apply.
+  pegged: ["peg", "holders", "security"],
 };
 
 // Areas a token actually gets: its type's areas, plus value accrual for a chain whose
@@ -404,6 +408,26 @@ const ATTENTION = [
     extra: (t) => { const c = t.attention?.change; return c ? `${fmt.num(c.from)} → ${fmt.num(t.attention.watch)} since ${c.since}` : ""; } },
 ];
 METRICS.push(...ATTENTION);
+
+// ---------------------------------------------------------------- pegged assets (#53)
+// t.peg = { target, unit, supply, supplyPrev } from DefiLlama's stablecoin list (supply now and a
+// month ago) and the peg target rule in classify.js. Shown, never rated: there is no house rule for
+// a peg, and a stablecoin's supply moving is not good or bad by itself.
+const PEG_METRICS = [
+  { id: "pegDistance", area: "peg", label: "Distance from the peg", yard: "shown", src: "CoinGecko price",
+    unrated: (t) => (t.peg?.target ? null : { display: "Unknown", missing: true,
+      rule: `Not known: ${t.peg?.unit ? `it is pegged to ${t.peg.unit}, and no free source here gives that price` : "the free data does not say what this token is pegged to (gold, a fund or another coin)"}, so its distance from the peg can't be measured.` }),
+    val: (t) => (t.peg?.target && t.price ? (t.price / t.peg.target - 1) * 100 : null),
+    show: (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%",
+    extra: (t) => (t.peg?.target && t.price ? `Price ${fmt.price(t.price)} against a target of ${fmt.price(t.peg.target)}` : "") },
+  { id: "pegSupply", area: "peg", label: "Supply in circulation", yard: "shown", src: "DefiLlama stablecoins, else CoinGecko",
+    val: (t) => t.peg?.supply ?? t.circulatingSupply ?? null, show: (v) => fmt.num(v),
+    extra: (t) => (t.peg?.supply != null ? "All chains, from DefiLlama's stablecoin list" : t.circulatingSupply != null ? "From CoinGecko" : "") },
+  { id: "pegSupplyChange", precision: 1, area: "peg", label: "Supply change, last 30 days", yard: "shown", src: "DefiLlama stablecoins",
+    val: (t) => pctChange(t.peg?.supply, t.peg?.supplyPrev), show: (v) => fmt.chg(v),
+    hint: "Supply now against a month ago. Rising supply means money coming in; falling means redemptions" },
+];
+METRICS.push(...PEG_METRICS);
 
 // ---------------------------------------------------------------- stale DefiLlama series (issue #32)
 // A fee or revenue series that stopped updating more than 3 days ago is unknown, not current: every
