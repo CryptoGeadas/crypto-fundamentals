@@ -10,6 +10,7 @@ import { loadLlama, loadStablecoinList, pegFromList } from "./llama.js";
 import { createCache, TTL } from "./cache.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 import { trendingDays, watchChange } from "./attention.js";
+import { supplyGrowth } from "./supply.js";
 
 const $ = (s) => document.querySelector(s);
 // Personal version only: the local server injects window.TF_PERSONAL. On the public site it is absent.
@@ -457,6 +458,7 @@ async function load(id, via, { fresh = false } = {}) {
       : Promise.resolve({ value: null, at: null });
     const u = state.unlocks?.[id];
     t.unlocks = u ? { ...u, detail } : null;
+    t.supplyGrowthNow = supplyGrowth({ history: state.supply?.[id], unlocks: u }); // #55: null = unknown
     const [llama, security, firstPrice, peg] = await Promise.all([llamaJob, securityJob, firstPriceJob, pegJob]);
     if (pegged) {
       const st = peg.value?.listed === false ? null : peg.value;
@@ -593,7 +595,7 @@ async function start() {
     return renderError("The verified token list could not be loaded.", () => { q.disabled = false; start(); });
   }
   // Optional data: the page still works without them (type falls back to the meme/narrative rule).
-  const [status, idmap, unlocks, defi, peers, meta, attention] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json", "peers.json", "meta.json", "attention.json"].map((f) =>
+  const [status, idmap, unlocks, defi, peers, meta, attention, supply] = await Promise.all(["status.json", "idmap.json", "unlocks.json", "defi.json", "peers.json", "meta.json", "attention.json", "supply.json"].map((f) =>
     fetch(`./data/${f}`, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
   state.status = status;
   state.idmap = idmap?.map || null;
@@ -602,6 +604,7 @@ async function start() {
   state.peers = peers || null;
   state.meta = meta?.tokens || null;
   state.attention = attention || null;
+  state.supply = supply?.tokens || null; // daily circulating supply record (#55)
   state.byId = new Map(state.universe.tokens.map((t) => [t.id, t]));
   const extra = (PERSONAL?.alwaysInclude || []).filter((t) => !state.byId.has(t.id))
     .map((t) => ({ id: t.id, sym: t.sym || t.id.toUpperCase(), name: t.name || t.id, rank: 9999, img: "", personal: true }));

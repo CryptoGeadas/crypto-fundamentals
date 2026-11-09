@@ -19,6 +19,10 @@ export const HOUSE_RULES = {
     circulatingShare: { bands: [30, 50, 70, 90], dir: "up" },
     // Fully diluted valuation ÷ market cap, as a multiple.
     fdvToMcap: { bands: [1.1, 1.5, 2, 3], dir: "down" },
+    // Circulating supply growth per year, in % (#55): new supply spreads the same value over more
+    // tokens. Below 0 = burning (good); up to 2% is mild; 5% and more a year is real dilution.
+    supplyGrowth: { bands: [0, 2, 5, 10], dir: "down",
+      reason: "New tokens entering circulation dilute every holder. Up to 2% a year is mild; 5% or more is real dilution, whether it comes from issuance, unlocks or emissions; a negative number means tokens are burned." },
     // Next scheduled unlock as % of circulating supply.
     nextUnlockShare: { bands: [0.5, 1, 2, 5], dir: "down" },
     // Next scheduled unlock's dollar value ÷ 24h trading volume, as a multiple.

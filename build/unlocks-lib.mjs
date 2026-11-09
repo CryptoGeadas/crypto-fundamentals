@@ -16,7 +16,7 @@ export function summariseOverview(rows, universeIds) {
     const next = r.nextEventV2 || (r.nextEvent ? { date: r.nextEvent.date, amount: r.nextEvent.toUnlock, unlockType: "cliff" } : null);
     out[id] = {
       slug: r.protocolSlug,
-      circ: num(r.circSupply), max: num(r.maxSupply), locked: num(r.totalLocked),
+      circ: num(r.circSupply), circ30: num(r.circSupply30d), max: num(r.maxSupply), locked: num(r.totalLocked), // circ30: 30 days ago (#55)
       perDay: num(r.unlocksPerDay) || 0,
       next: next && next.date ? { ts: next.date, amount: num(next.amount), type: next.unlockType || "cliff" } : null,
     };

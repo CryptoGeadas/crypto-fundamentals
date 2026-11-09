@@ -1,5 +1,6 @@
 // Daily step 1: the curated search universe and the CoinGecko ↔ DefiLlama identifier map.
 
+import { supplyRecord } from "../site/supply.js";
 import { llamaIndex, buildUniverse, feeEarners, TOP_N, MAX_RANK } from "./universe-lib.mjs";
 
 const CG = "https://api.coingecko.com/api/v3";
@@ -46,9 +47,16 @@ export async function universeStep({ report, net, data }) {
   if (markets) {
     const platformsById = Object.fromEntries(list.map((c) => [c.id, c.platforms]));
     const tokens = buildUniverse(markets, llama, platformsById);
-    await data.publish("universe", "universe.json",
+    const published = await data.publish("universe", "universe.json",
       { generated, rule: `CoinGecko top ${TOP_N}, plus ranks ${TOP_N + 1}-${MAX_RANK} with any DefiLlama entry`, count: tokens.length, tokens },
       tokens.length, prev.universe?.count, TOP_N);
+    // #55: one circulating-supply point per token per day, the last 45 days, for supply growth per year.
+    // Only from a list that passed the universe check; a token missing today keeps its history.
+    const prevSupply = published ? await data.read("supply.json") : null;
+    if (published) {
+      const rec = supplyRecord({ markets, tokens, prev: prevSupply, generated });
+      await data.publish("supply", "supply.json", rec, rec.count, prevSupply?.count ?? null, TOP_N);
+    } else report.warn("supply", "Token list rejected today, so no supply point was recorded.");
     console.log(`Built universe: ${tokens.length} tokens (${tokens.filter((t) => t.llama).length} with DefiLlama data); identifier map: ${Object.keys(llama).length}.`);
   }
 }

@@ -53,9 +53,9 @@ check("PEPE: fully circulating, FDV = MCap → both very good", () => {
   assert.equal(row(FIXTURES.pepe, "fdvToMcap").word, "Very low");
   assert.equal(analyse(FIXTURES.pepe, HOUSE_RULES).byArea.dilution.word, "Strong");
 });
-check("uncapped token: circulating share is shown as 'Uncapped supply', never rated", () => {
+check("uncapped token: circulating share reads 'No maximum supply', never rated (#55)", () => {
   const r = row(FIXTURES.uncapped, "circulatingShare");
-  assert.equal(r.display, "Uncapped supply");
+  assert.equal(r.display, "No maximum supply");
   assert.equal(r.level, null);
   assert.equal(r.unrated, true);
   assert.match(r.extra, /no max cap/);
@@ -173,6 +173,7 @@ const full = (extra) => withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE
   meta: { orgs: ["aave", "aave-dao"], dev: { repos: ["aave-dao/seatbelt-gov-v3"], contributors90: 11, commits90: 120, commitsPrev90: 80, bots90: 2580 }, devAt: "2026-10-03T00:00:00Z",
     raises: [{ date: 1594771200, round: "Private", amount: 3, leads: ["Framework Ventures", "3AC"] }, { date: 1600000000, round: "Seed", amount: 4.5, leads: ["ParaFi"] }], raisesAt: "2026-10-03T00:00:00Z" },
   firstPriceTs: Date.now() / 1000 - 6 * 365 * 86400,
+  supplyGrowthNow: { value: 1.8, days: 30, from: "coingecko" },
   attention: { trending: { days: 3, of: 30 }, watch: 12000, change: { pct: 2.4, from: 11720, since: "2026-09-04", days: 30 } },
   defiExtra: { hacks: [{ date: 1773273600, name: "Aave V3", amount: 862000, returned: 862000 }, { date: 1724803200, name: "Aave", amount: 56000, returned: 0 }], audits: { count: 3 } }, ...extra });
 

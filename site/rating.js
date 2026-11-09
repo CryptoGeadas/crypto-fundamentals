@@ -91,7 +91,7 @@ export const METRICS = [
     // Without a max cap, circulating ÷ today's total is ~100% by construction and says nothing
     // about future dilution, so the metric is shown as "Uncapped supply" and never rated.
     unrated: (t) => (!t.maxSupply && t.totalSupply
-      ? { display: "Uncapped supply", rule: "Not rated: with no maximum supply, the share of today's total that circulates is always close to 100% and says nothing about future dilution. Issuance rate matters instead." }
+      ? { display: "No maximum supply", rule: "Not rated: with no maximum supply, the share of today's total that circulates is always close to 100% and says nothing about future dilution. Supply growth per year, below, measures it instead." }
       : null),
     // Total supply = what exists now, locked or not (#39); the gap to max supply can be unminted or burned.
     val: (t) => { const base = t.totalSupply || t.maxSupply; return t.circulatingSupply && base ? Math.min(100, (t.circulatingSupply / base) * 100) : null; },
@@ -105,12 +105,31 @@ export const METRICS = [
     label: "FDV ÷ market cap",
     yard: "fixed",
     src: "CoinGecko",
+    // #55: with no maximum supply FDV only counts what exists today, so it is about 1 and would read as
+    // "no dilution" while new tokens keep being issued. Shown, never rated; supply growth rates it.
+    unrated: (t) => (!t.maxSupply && t.fdv && t.marketCap
+      ? { display: fmt.x(t.fdv / t.marketCap), rule: "Not rated: with no maximum supply, FDV only counts the tokens that exist today, so it stays close to the market cap however many new tokens are issued. Supply growth per year measures that instead." }
+      : null),
     val: (t) => (t.fdv && t.marketCap ? t.fdv / t.marketCap : null),
     show: (v) => fmt.x(v),
     extra: (t) => (!t.fdv ? "" : `FDV ${fmt.usd(t.fdv)} vs market cap ${fmt.usd(t.marketCap)}` +
       (maxGap(t.maxSupply, t.totalSupply) && t.price ? `. At max supply it would be ${fmt.usd(t.price * t.maxSupply)} (the difference may be unminted or already burned)` : "") +
       (t.fdvCoinGecko && Math.abs(t.fdv / t.fdvCoinGecko - 1) > 0.03 ? `. CoinGecko shows ${fmt.usd(t.fdvCoinGecko)}` : "") +
       (t.maxSupply ? "" : ". No max cap: FDV only counts tokens that exist today, not future issuance")),
+  },
+  {
+    id: "supplyGrowth",
+    precision: 1,
+    area: "dilution",
+    label: "Circulating supply growth per year",
+    yard: "fixed",
+    src: "CoinGecko daily record, else DefiLlama",
+    unrated: (t) => (t.supplyGrowthNow?.jump ? { display: "Unclear", missing: true,
+      rule: "Not rated: CoinGecko's circulating supply jumped by more than 25% in one day within the last 30 days, which is usually a correction of the figure, not real issuance or burning." } : null),
+    val: (t) => t.supplyGrowthNow?.value ?? null,
+    show: (v) => `${v > 0 ? "+" : ""}${v.toFixed(1)}% a year`,
+    extra: (t) => (t.supplyGrowthNow ? `Over the last ${t.supplyGrowthNow.days} days, annualised; ${t.supplyGrowthNow.from === "coingecko" ? "from CoinGecko's circulating supply, recorded daily" : "from DefiLlama's 30-day circulating figure"}` : ""),
+    hint: "Issuance, unlocks and emissions all add supply; burns remove it. Annualised from the last 30 days",
   },
 ];
 

@@ -19,6 +19,11 @@ export const AREA_INTROS = {
 };
 
 export const METRIC_EXPLAIN = {
+  supplyGrowth: {
+    what: "How fast the number of tokens in circulation grew over the last 30 days, turned into a yearly rate. It comes from CoinGecko's circulating supply, recorded every day, or from DefiLlama's own 30-day figure until that record covers a month.",
+    why: "New tokens spread the same value over more units, whatever the reason: issuance to validators (Solana), unlocks to investors and teams, or farming emissions. Tokens being burned make it negative, which is good for holders. It is the one dilution number that works for every token, with or without a maximum supply. CoinGecko sometimes corrects a token's circulating supply in one step, which shows here as a jump.",
+    terms: ["circulating-supply", "unlock"],
+  },
   pegDistance: {
     what: "How far the price is from the value the token is meant to hold, in percent: the price against $1 for a dollar stablecoin.",
     why: "A pegged token is only worth its target if it holds it. A gap of more than a fraction of a percent means the market doubts the backing or the redemption. Shown as unknown when the free data does not say what the target is.",
