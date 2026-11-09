@@ -274,11 +274,16 @@ const BUSINESS_METRICS = [
   { id: "stablesTrend", precision: 1, area: "traction", label: "Stablecoins on the chain, 90-day trend", yard: "fixed", types: ["chain"], src: "DefiLlama stablecoins",
     val: (t) => pctChange(t.llama?.chain?.stables, t.llama?.chain?.stables90), show: (v) => fmt.chg(v),
     extra: (t) => (t.llama?.chain?.stables ? `${fmt.usd(t.llama.chain.stables)} in stablecoins today` : "") },
-  { id: "holdersShare", precision: 1, area: "accrual", label: "Share of fees reaching token holders", yard: "fixed", src: "DefiLlama holders revenue",
-    val: (t) => { const h = t.llama?.holders?.d30, f = t.llama?.accrualFees?.d30; return h != null && f ? (h / f) * 100 : null; },
+  // D6 (#54): measured against revenue, what the protocol keeps; the fees-based share below is context.
+  { id: "holdersShare", precision: 1, area: "accrual", label: "Share of revenue reaching token holders", yard: "fixed", src: "DefiLlama holders revenue",
+    val: (t) => { const h = t.llama?.holders?.d30, r = t.llama?.revenue?.d30; return h != null && r > 0 ? (h / r) * 100 : null; },
     show: (v) => fmt.pct(v, 1),
-    extra: (t) => (t.llama?.holders?.d30 != null ? `${fmt.usd(t.llama.holders.d30)} to holders in 30 days (buybacks, burns, staking payouts)` : ""),
+    extra: (t) => (t.llama?.holders?.d30 != null ? `${fmt.usd(t.llama.holders.d30)} to holders in 30 days (buybacks, burns, staking payouts)${t.llama?.revenue?.d30 > 0 ? ` out of ${fmt.usd(t.llama.revenue.d30)} revenue` : ""}` : ""),
     note: "DefiLlama's holders revenue can miss value returned outside the protocol, such as buybacks run by a foundation. A zero here deserves a check of the project's own docs." },
+  { id: "holdersShareFees", precision: 1, area: "accrual", label: "Share of fees reaching token holders", yard: "shown", src: "DefiLlama holders revenue",
+    val: (t) => { const h = t.llama?.holders?.d30, f = t.llama?.accrualFees?.d30; return h != null && f > 0 ? (h / f) * 100 : null; },
+    show: (v) => fmt.pct(v, 1),
+    hint: "Includes the fees that pass straight through to depositors or liquidity providers, so it is lower than the share of revenue" },
   { id: "treasuryYears", area: "treasury", label: "Treasury outside its own token, in years of revenue", yard: "fixed", src: "DefiLlama treasury",
     val: (t) => { const tr = t.llama?.treasury, r = t.llama?.revenue?.d30; return tr && r ? tr.other / (r * 12) : null; },
     show: (v) => (v >= 100 ? "100+ years" : v.toFixed(1) + " years"),
@@ -293,13 +298,23 @@ METRICS.push(...BUSINESS_METRICS);
 
 // ---------------------------------------------------------------- valuation against peers (issue #7)
 // t.peers = { group, groups } from data/peers.json; FDV is live from CoinGecko, fees and revenue live from DefiLlama.
+// D2/D6 (#54): a protocol is judged on what it keeps (revenue); "fees" include what passes straight
+// through to depositors, liquidity providers or validators. DeFi and Chain + DeFi tokens are rated on
+// revenue. A plain chain is rated on fees: blockspace is its product, and its "revenue" means something
+// different on each chain (burned on Ethereum, a treasury elsewhere).
+export const revenueBasis = (ctx = {}) => ctx.type === "defi" || Boolean(ctx.alsoDefi);
+const PASS_THROUGH = "Shown, not rated: fees include what passes straight through to depositors, liquidity providers or validators, so this protocol is rated on revenue, what it keeps.";
+const CHAIN_REVENUE = "Shown, not rated: a chain's \"revenue\" means something different on each chain (burned on Ethereum, a treasury elsewhere), so chains are rated on fees.";
+
 const VALUATION_METRICS = [
   { id: "feeMultiple", area: "valuation", label: "FDV ÷ yearly fees", yard: "peer", peerKey: "pf", src: "CoinGecko FDV, DefiLlama fees",
+    ratedFor: (ctx) => !revenueBasis(ctx), shownWhy: PASS_THROUGH,
     val: (t) => (t.fdv && t.llama?.fees?.d30 ? t.fdv / (t.llama.fees.d30 * 12) : null), show: (v) => fmt.x(v),
     extra: (t) => (t.llama?.fees?.d30 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.fees.d30 * 12)} of yearly fees` : "") },
   { id: "revenueMultiple", area: "valuation", label: "FDV ÷ yearly revenue", yard: "peer", peerKey: "pr", src: "CoinGecko FDV, DefiLlama revenue",
-    val: (t) => (t.fdv && t.llama?.revenue?.d30 ? t.fdv / (t.llama.revenue.d30 * 12) : null), show: (v) => fmt.x(v),
-    extra: (t) => (t.llama?.revenue?.d30 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.revenue.d30 * 12)} of yearly revenue` : "") },
+    ratedFor: revenueBasis, shownWhy: CHAIN_REVENUE,
+    val: (t) => (t.fdv && t.llama?.revenue?.d30 > 0 ? t.fdv / (t.llama.revenue.d30 * 12) : null), show: (v) => fmt.x(v),
+    extra: (t) => (t.llama?.revenue?.d30 > 0 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.revenue.d30 * 12)} of yearly revenue` : "") },
   { id: "mcapToTvl", area: "valuation", label: "Market cap ÷ TVL", yard: "fixed", src: "CoinGecko, DefiLlama TVL",
     unrated: (t) => thinChainTvl(t, () => `Over ${Math.round(100 / HOUSE_RULES.chainTvlMinSharePct)}×`),
     val: (t) => (t.marketCap && t.llama?.tvl?.now ? t.marketCap / t.llama.tvl.now : null), show: (v) => fmt.x(v),
@@ -433,7 +448,7 @@ METRICS.push(...PEG_METRICS);
 // A fee or revenue series that stopped updating more than 3 days ago is unknown, not current: every
 // metric built on it says since when, unrated and counted as missing.
 const STALE_SERIES = { fees30: ["fees"], revenue30: ["revenue"], feesTrend: ["fees"], revenueTrend: ["revenue"],
-  holdersShare: ["holders", "accrualFees"], treasuryYears: ["revenue"], feeMultiple: ["fees"], revenueMultiple: ["revenue"] };
+  holdersShare: ["holders", "revenue"], holdersShareFees: ["holders", "accrualFees"], treasuryYears: ["revenue"], feeMultiple: ["fees"], revenueMultiple: ["revenue"] };
 const SERIES_NAME = { fees: "fees", revenue: "revenue", holders: "holders revenue", accrualFees: "fees" };
 function staleSkip(t, keys) {
   const k = keys.find((key) => t.llama?.[key]?.stale);
@@ -468,7 +483,7 @@ export function ruleText(m, rule) {
   return `House rule (${good}): very low < ${b[0]} ≤ low < ${b[1]} ≤ neutral < ${b[2]} ≤ high < ${b[3]} ≤ very high`;
 }
 
-export function rate(m, token, rules) {
+export function rate(m, token, rules, ctx = {}) {
   const skip = m.unrated ? m.unrated(token) : null;
   const raw = skip ? null : m.val(token);
   // Rate at the precision shown, so a value can never display on one side of a band edge and rate on the other.
@@ -481,6 +496,7 @@ export function rate(m, token, rules) {
   if (skip) { out.rule = skip.rule; return out; }
   if (v == null) { out.rule = "The source returned no data for this token."; return out; }
   if (m.yard === "shown") { out.rule = "Shown for context, deliberately not rated."; return out; }
+  if (m.ratedFor && !m.ratedFor(ctx)) { out.rule = m.shownWhy; return out; } // rated for some types only (#54)
   const rule = rules.metrics[m.id];
   if (!rule) throw new Error(`No house rule for metric "${m.id}"`);
   if (m.yard === "peer") {
@@ -515,7 +531,7 @@ export function coverageOf(rows, type) {
 export function analyse(token, rules, { type = "narrative", alsoDefi = false } = {}) {
   const areas = areasFor(type, alsoDefi);
   const rows = METRICS.filter((m) => areas.includes(m.area) && (!m.types || m.types.includes(type) || (alsoDefi && m.types.includes("defi"))))
-    .map((m) => rate(m, token, rules));
+    .map((m) => rate(m, token, rules, { type, alsoDefi }));
   const byArea = {};
   for (const a of AREAS.filter((x) => areas.includes(x.id))) {
     const rs = rows.filter((r) => r.area === a.id);

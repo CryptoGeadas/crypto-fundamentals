@@ -22,7 +22,7 @@ function ruleVisual(m) {
 function rule(m) {
   if (m.yard === "shown") return "Shown for context, never rated.";
   const r = HOUSE_RULES.metrics[m.id];
-  if (m.yard === "peer") return "Percentile within the token's DefiLlama category: the cheapest 20% of the group is very low, the most expensive 20% very high. Lower is cheaper, which is better. Categories with fewer than 8 projects fall back to a wider group.";
+  if (m.yard === "peer") return `Percentile within the token's DefiLlama category: the cheapest 20% of the group is very low, the most expensive 20% very high. Lower is cheaper, which is better. Categories with fewer than 8 projects fall back to a wider group.${m.id === "feeMultiple" ? " Rated for chains only; shown for DeFi protocols." : m.id === "revenueMultiple" ? " Rated for DeFi protocols and chains whose protocol side earns fees; shown for chains." : ""}`;
   return r ? ruleText(m, r) : "";
 }
 

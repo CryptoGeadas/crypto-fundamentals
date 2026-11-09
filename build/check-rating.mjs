@@ -166,7 +166,7 @@ check("unlocks: a token DefiLlama does not track says 'Not tracked' and counts a
 // Business fixtures shaped like live DefiLlama numbers (3 Oct 2026), rounded.
 const LLAMA_AAVE = { fees: { d30: 37.2e6, prev: 38.7e6, monthly: [] }, revenue: { d30: 5.06e6, prev: 4.9e6 }, holders: { d30: 0, prev: 0 },
   accrualFees: { d30: 37.2e6 }, tvl: { now: 19.3e9, prev: 15.0e9 }, chain: null, treasury: { own: 97.9e6, other: 34.6e6 } };
-const LLAMA_HYPE = { fees: null, revenue: null, holders: { d30: 56.4e6 }, accrualFees: { d30: 62.0e6 }, tvl: null, chain: null, treasury: null };
+const LLAMA_HYPE = { fees: null, revenue: { d30: 57.8e6 }, holders: { d30: 56.4e6 }, accrualFees: { d30: 62.0e6 }, tvl: null, chain: null, treasury: null };
 const SECURITY = { chain: "ethereum", home: true, holderCount: 189239, holders: Array.from({ length: 10 }, (_, i) => ({ percent: [15.6, 5.1, 4, 3, 2, 2, 1.5, 1.2, 1, 1][i], contract: i < 6 })), flags: ["Upgradeable (proxy) contract"] };
 const full = (extra) => withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE, chain: { dex30: 6.09e9, stables: 3.2e9, stables90: 3.0e9 } },
   contracts: { ethereum: "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9" }, security: SECURITY, volume24h: 2.3e8, athChange: -74,
@@ -186,13 +186,31 @@ check("traction: trends are rated at display precision; fees and revenue are sho
   assert.equal(row(edge, "feesTrend").display, "+10.0%");
   assert.equal(row(edge, "feesTrend").word, "High");   // rated as the +10.0% it shows, not 9.96%
 });
-check("value accrual: Aave's 0% is rated very low with the buyback caveat; Hyperliquid's 91% is very high", () => {
+check("value accrual is rated on revenue (#54): Aave 0% very low; Hyperliquid 97.6% very high; the fees-based share is shown only", () => {
   const a = row(withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE }), "holdersShare");
   assert.equal(a.word, "Very low");
   assert.equal(a.favour, -2);
+  assert.equal(a.label, "Share of revenue reaching token holders");
   const h = row(withU(FIXTURES.arbitrum, null, { llama: LLAMA_HYPE }), "holdersShare");
-  assert.equal(h.display, "91.0%");
+  assert.equal(h.display, "97.6%");
   assert.equal(h.word, "Very high");
+  const hf = row(withU(FIXTURES.arbitrum, null, { llama: LLAMA_HYPE }), "holdersShareFees");
+  assert.equal(hf.display, "91.0%");
+  assert.equal(hf.level, null, "the fees-based share is context, never rated");
+});
+check("Spark-like pass-through protocol: 4.5% of fees but 75% of revenue reaches holders, rated on the 75%", () => {
+  const spark = { fees: { d30: 17.7e6 }, revenue: { d30: 1.06e6 }, holders: { d30: 0.795e6 }, accrualFees: { d30: 17.7e6 }, tvl: null, chain: null, treasury: null };
+  const t = withU(FIXTURES.arbitrum, null, { llama: spark });
+  assert.equal(row(t, "holdersShare").display, "75.0%");
+  assert.equal(row(t, "holdersShare").word, "Very high");
+  assert.equal(row(t, "holdersShareFees").display, "4.5%");
+});
+check("holders' share of revenue: $0 or unknown revenue gives unknown, never a rating", () => {
+  for (const revenue of [null, { d30: 0 }]) {
+    const r = row(withU(FIXTURES.arbitrum, null, { llama: { ...LLAMA_AAVE, revenue } }), "holdersShare");
+    assert.equal(r.value, null);
+    assert.equal(r.level, null);
+  }
 });
 check("treasury: years of revenue outside its own token, and own-token share", () => {
   const t = withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE });
@@ -305,7 +323,8 @@ check("supply basis is total supply: burned or unminted max supply is a note, ne
 check("stale DefiLlama series: every metric built on it says since when, unrated and missing (#32)", () => {
   const sep6 = Date.UTC(2026, 8, 6) / 1000;
   const t = full({ llama: { ...LLAMA_AAVE, fees: { d30: null, prev: null, stale: sep6 }, accrualFees: { d30: null, prev: null, stale: sep6 } } });
-  for (const id of ["fees30", "feesTrend", "feeMultiple", "holdersShare"]) {
+  // since #54 the rated holders share divides by revenue; the fees-based share is the one on the fees series
+  for (const id of ["fees30", "feesTrend", "feeMultiple", "holdersShareFees"]) {
     const r = row(t, id);
     assert.equal(r.display, "Not updated since 6 Sept 2026", id);
     assert.equal(r.level, null, id);

@@ -72,15 +72,102 @@ check("a chain token in a tiny protocol category is compared with other chains b
   assert.equal(p.level, 1);
   assert.equal(peerPercentile(60, "Foundation", groups, "pf").group, "all fee-earning tokens");
 });
+// A chain is still rated on fees (#54); DeFi tokens are rated on revenue (checks below).
 check("rated metric: FDV ÷ yearly fees uses live fees and FDV against the group, colour = cheap is good", () => {
   const t = { fdv: 2.7e9, marketCap: 2.6e9, llama: { fees: { d30: 37e6 }, revenue: { d30: 5e6 }, tvl: { now: 19e9 } }, peers: { group: "Lending", groups: lending } };
-  const r = analyse(t, HOUSE_RULES, { type: "defi" }).rows.find((x) => x.id === "feeMultiple");
+  const r = analyse(t, HOUSE_RULES, { type: "chain" }).rows.find((x) => x.id === "feeMultiple");
   assert.equal(r.display, "6.08×");
   assert.equal(r.word, "Low");             // 2 of 10 lending peers are cheaper
   assert.equal(r.favour, 1);
   assert.match(r.rule, /cheaper than 80%/i);
-  const noPeers = analyse({ ...t, peers: null }, HOUSE_RULES, { type: "defi" }).rows.find((x) => x.id === "feeMultiple");
+  const noPeers = analyse({ ...t, peers: null }, HOUSE_RULES, { type: "chain" }).rows.find((x) => x.id === "feeMultiple");
   assert.equal(noPeers.level, null);
+});
+
+// D2 (#54): protocols are rated on what they keep (revenue); chains on fees.
+const lendingRev = Array.from({ length: 10 }, (_, i) => ({ id: "l" + i, pf: 3 + i, pr: 10 + 5 * i }));
+check("a DeFi token rates FDV ÷ revenue against its peers and only shows FDV ÷ fees", () => {
+  const t = { fdv: 2.7e9, marketCap: 2.6e9, llama: { fees: { d30: 37e6 }, revenue: { d30: 5e6 }, tvl: { now: 19e9 } }, peers: { group: "Lending", groups: { Lending: lendingRev } } };
+  const rows = analyse(t, HOUSE_RULES, { type: "defi" }).rows;
+  const rev = rows.find((x) => x.id === "revenueMultiple"), fee = rows.find((x) => x.id === "feeMultiple");
+  assert.equal(rev.display, "45.0×");
+  assert.equal(rev.peer.key, "pr", "compared on the peers' revenue multiples");
+  assert.equal(rev.peer.group, "Lending", "the same peer group as the fee multiple used");
+  assert.ok(rev.level != null);
+  assert.equal(fee.display, "6.08×");
+  assert.equal(fee.level, null);
+  assert.match(fee.rule, /not rated/i);
+  // Chain + DeFi (Hyperliquid) follows the DeFi basis
+  const hl = analyse(t, HOUSE_RULES, { type: "chain", alsoDefi: true }).rows;
+  assert.ok(hl.find((x) => x.id === "revenueMultiple").level != null);
+  assert.equal(hl.find((x) => x.id === "feeMultiple").level, null);
+});
+check("a chain keeps FDV ÷ fees rated within chain peers; its revenue multiple is shown only", () => {
+  const chains = Array.from({ length: 9 }, (_, i) => ({ id: "c" + i, pf: 10 + i * 10, pr: 50 + i * 20 }));
+  const t = { fdv: 4e11, marketCap: 4e11, llama: { fees: { d30: 50e6 }, revenue: { d30: 20e6 } }, peers: { group: "Chain", groups: { Chain: chains } } };
+  const rows = analyse(t, HOUSE_RULES, { type: "chain" }).rows;
+  const fee = rows.find((x) => x.id === "feeMultiple"), rev = rows.find((x) => x.id === "revenueMultiple");
+  assert.ok(fee.level != null);
+  assert.equal(fee.peer.group, "Chain");
+  assert.equal(rev.level, null);
+  assert.match(rev.rule, /not rated/i);
+});
+check("a DeFi token with $0 or unknown revenue gets no revenue multiple and no rating (never 'cheap')", () => {
+  for (const revenue of [null, { d30: 0 }]) {
+    const t = { fdv: 2.7e9, llama: { fees: { d30: 37e6 }, revenue }, peers: { group: "Lending", groups: { Lending: lendingRev } } };
+    const rev = analyse(t, HOUSE_RULES, { type: "defi" }).rows.find((x) => x.id === "revenueMultiple");
+    assert.equal(rev.value, null);
+    assert.equal(rev.level, null);
+  }
+});
+
+check("revenue peers: a category with 8+ fee earners but under 8 with revenue falls back to the wider group, and says so", () => {
+  const half = Array.from({ length: 10 }, (_, i) => ({ id: "h" + i, pf: 3 + i, pr: i < 5 ? 10 + i : null }));
+  const groups = { Lending: half, Dexs: Array.from({ length: 6 }, (_, i) => ({ id: "d" + i, pf: 5, pr: 20 + i })) };
+  const t = { fdv: 2.7e9, llama: { fees: { d30: 37e6 }, revenue: { d30: 5e6 } }, peers: { group: "Lending", groups } };
+  const rows = analyse(t, HOUSE_RULES, { type: "chain" }).rows;
+  assert.equal(rows.find((x) => x.id === "feeMultiple").peer.group, "Lending", "fees: 10 peers, its own category");
+  const rev = analyse(t, HOUSE_RULES, { type: "defi" }).rows.find((x) => x.id === "revenueMultiple");
+  assert.equal(rev.peer.group, "all fee-earning tokens");
+  assert.equal(rev.peer.fellBack, true, "the page notes the fallback");
+  assert.equal(rev.peer.n, 11, "only peers with revenue are counted");
+});
+check("the daily benchmark: FDV ÷ (30-day revenue × 12), and no revenue multiple when revenue is 0 or below", () => {
+  const universe = [{ id: "a", fdv: 1.2e9 }, { id: "b", fdv: 1e9 }, { id: "c", fdv: 1e9 }];
+  const idmap = { a: { p: "a", f: 1 }, b: { p: "b", f: 1 }, c: { p: "c", f: 1 } };
+  const fees = { a: { protocol: { v: 10e6, cat: "Lending" } }, b: { protocol: { v: 10e6, cat: "Lending" } }, c: { protocol: { v: 10e6, cat: "Lending" } } };
+  const revenue = { a: { protocol: { v: 2e6 } }, b: { protocol: { v: 0 } }, c: { protocol: { v: -1e6 } } };
+  const { byToken } = buildPeers(universe, idmap, fees, revenue);
+  assert.equal(byToken.a.pr, 50);
+  assert.equal(byToken.b.pr, null);
+  assert.equal(byToken.c.pr, null);
+});
+check("How it works says which types each multiple is rated for", async () => {
+  const src = await import("node:fs").then((m) => m.readFileSync(new URL("../site/methodology.js", import.meta.url), "utf8"));
+  assert.match(src, /Rated for chains only; shown for DeFi protocols\./);
+  assert.match(src, /Rated for DeFi protocols and chains whose protocol side earns fees; shown for chains\./);
+});
+
+check("revenue multiples are never compared with chains' revenue, in the fallback or as a secondary group", () => {
+  const chainRev = Array.from({ length: 20 }, (_, i) => ({ id: "c" + i, pf: 50, pr: 1000 + i }));
+  const few = Array.from({ length: 3 }, (_, i) => ({ id: "f" + i, pf: 5, pr: 20 + i }));
+  const groups = { Chain: chainRev, Lending: few, Dexs: Array.from({ length: 6 }, (_, i) => ({ id: "d" + i, pf: 5, pr: 30 + i })) };
+  const p = peerPercentile(25, "Lending", groups, "pr", "Chain");
+  assert.equal(p.group, "all fee-earning tokens");
+  assert.equal(p.n, 9, "3 Lending + 6 Dexs; the 20 chains are left out");
+  assert.equal(peerPercentile(25, "Lending", groups, "pf").n, 29, "fee multiples still use every group");
+});
+check("a negative revenue gives no revenue multiple and no rating", () => {
+  const t = { fdv: 2.7e9, llama: { fees: { d30: 37e6 }, revenue: { d30: -1e6 } }, peers: { group: "Lending", groups: { Lending: lendingRev } } };
+  const rev = analyse(t, HOUSE_RULES, { type: "defi" }).rows.find((x) => x.id === "revenueMultiple");
+  assert.equal(rev.value, null);
+  assert.equal(rev.level, null);
+});
+check("stale revenue makes the holders' share of revenue unknown; stale fees the fees-based share", () => {
+  const llama = { fees: { d30: 37e6 }, revenue: { d30: 5e6, stale: 1760000000 }, holders: { d30: 1e6 }, accrualFees: { d30: 37e6 } };
+  const rows = analyse({ fdv: 2.7e9, llama }, HOUSE_RULES, { type: "defi" }).rows;
+  assert.equal(rows.find((x) => x.id === "holdersShare").value, null);
+  assert.ok(rows.find((x) => x.id === "holdersShareFees").value != null);
 });
 
 for (const [s, n] of results) console.log(`${s}  ${n}`);

@@ -113,9 +113,13 @@ function tractionLead(t, a) {
   return parts.length ? parts.join("; ") + "." : "DefiLlama returned no fee or TVL data for it.";
 }
 function accrualLead(t, a) {
-  const r = a.rows.find((x) => x.id === "holdersShare");
-  if (r?.value == null) return "DefiLlama has no holders-revenue data for it, so it is unclear whether fees reach token holders.";
-  return r.value === 0 ? `None of ${t.name}'s fees reached token holders in the last 30 days, according to DefiLlama.` : `${r.display} of ${t.name}'s fees reached token holders in the last 30 days, through buybacks, burns or staking payouts.`;
+  const r = a.rows.find((x) => x.id === "holdersShare"), f = a.rows.find((x) => x.id === "holdersShareFees");
+  if (r?.value == null) return f?.value != null
+    ? `${f.display} of ${t.name}'s fees reached token holders in the last 30 days; DefiLlama has no revenue figure to measure it against.`
+    : "DefiLlama has no holders-revenue or revenue data for it, so it is unclear whether what it earns reaches token holders.";
+  // D6 (#54): measured against revenue, what the protocol keeps
+  return r.value === 0 ? `None of ${t.name}'s revenue reached token holders in the last 30 days, according to DefiLlama.`
+    : `${r.display} of what ${t.name} keeps reached token holders in the last 30 days, through buybacks, burns or staking payouts${f?.value != null ? ` (${f.display} of all fees, including what passes through to depositors)` : ""}.`;
 }
 function treasuryLead(t) {
   const tr = t.llama?.treasury;
@@ -123,9 +127,12 @@ function treasuryLead(t) {
 }
 const peerLabel = (p) => `${p.n} ${p.group === "all fee-earning tokens" ? p.group : `${p.group} peers`}`;
 function valuationLead(t, a) {
-  const f = a.rows.find((r) => r.id === "feeMultiple"), m = a.rows.find((r) => r.id === "mcapToTvl");
+  // the multiple the token is rated on (#54): revenue for protocols, fees for chains; else whichever exists
+  const f = a.rows.find((r) => r.id === "feeMultiple"), v = a.rows.find((r) => r.id === "revenueMultiple"), m = a.rows.find((r) => r.id === "mcapToTvl");
+  const rated = [v, f].find((x) => x?.level != null) || [v, f].find((x) => x?.value != null);
+  const what = rated?.id === "revenueMultiple" ? "yearly revenue" : "yearly fees";
   const parts = [];
-  if (f?.value != null) parts.push(`${t.sym} is valued at ${f.display} its yearly fees${f.peer ? `, cheaper than ${f.peer.cheaperThan}% of ${peerLabel(f.peer)}` : ""}`);
+  if (rated?.value != null) parts.push(`${t.sym} is valued at ${rated.display} its ${what}${rated.peer ? `, cheaper than ${rated.peer.cheaperThan}% of ${peerLabel(rated.peer)}` : ""}`);
   if (m?.value != null) parts.push(`its market cap is ${m.display} the value locked in it`);
   return parts.length ? parts.join("; ") + "." : "There are no fees or TVL to value it against.";
 }
@@ -187,14 +194,17 @@ function peersBlock(t, a) {
   const r = a.rows.find((x) => x.peer);
   if (!r || !state.peers) return "";
   const name = r.peer.group;
-  const list = name === "all fee-earning tokens" ? Object.values(state.peers.groups).flat() : state.peers.groups[name] || [];
+  // the same pool the rating used (#54): revenue multiples leave out the Chain group
+  const list = name === "all fee-earning tokens"
+    ? Object.entries(state.peers.groups).filter(([g]) => !(r.peer.key === "pr" && g === "Chain")).flatMap(([, ps]) => ps)
+    : state.peers.groups[name] || [];
   if (!list.length) return "";
   // This token's row always uses the live numbers shown on its cards, not the daily benchmark copy.
   const mine = a.rows.find((x) => x.id === "feeMultiple"), myRev = a.rows.find((x) => x.id === "revenueMultiple");
   const rows = [...list.filter((p) => p.id !== t.id), { id: t.id, pf: mine?.value ?? null, pr: myRev?.value ?? null }]
-    .sort((x, y) => (x.pf ?? Infinity) - (y.pf ?? Infinity));
+    .sort((x, y) => (x[r.peer.key] ?? Infinity) - (y[r.peer.key] ?? Infinity));
   const label = (id) => { const u = state.byId.get(id); return u ? `<b>${esc(u.sym)}</b> <span>${esc(u.name)}</span>` : `<b>${esc(id)}</b>`; };
-  return `<details class="chartbox peers"><summary><span class="label">See the peers: ${esc(name)} (${rows.length})</span><span class="peers-hint">who ${esc(t.sym)} is compared with, cheapest first${r.peer.fellBack ? `; its own category (${esc(state.peers.byToken?.[t.id]?.group || "unknown")}) has fewer than 8 projects, so it is compared with a wider group` : ""}</span></summary>
+  return `<details class="chartbox peers"><summary><span class="label">See the peers: ${esc(name)} (${rows.length})</span><span class="peers-hint">who ${esc(t.sym)} is compared with, cheapest first by ${r.peer.key === "pr" ? "FDV ÷ revenue" : "FDV ÷ fees"}${r.peer.fellBack ? `; its own category (${esc(state.peers.byToken?.[t.id]?.group || "unknown")}) has fewer than 8 projects, so it is compared with a wider group` : ""}</span></summary>
     <div class="peerwrap"><table class="score peertable"><thead><tr><th scope="col">#</th><th scope="col">Token</th><th scope="col" class="num">FDV ÷ fees</th><th scope="col" class="num">FDV ÷ revenue</th></tr></thead><tbody>
     ${rows.map((p, i) => `<tr${p.id === t.id ? ' class="me"' : ""}><td class="num">${i + 1}</td><td>${p.id === t.id ? label(p.id) : `<a href="?t=${encodeURIComponent(p.id)}">${label(p.id)}</a>`}</td>
       <td class="num">${p.pf ? fmt.x(p.pf) : "—"}</td><td class="num">${p.pr ? fmt.x(p.pr) : "—"}</td></tr>`).join("")}

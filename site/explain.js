@@ -97,9 +97,14 @@ export const METRIC_EXPLAIN = {
     terms: ["stablecoin"],
   },
   holdersShare: {
-    what: "The share of fees that reached token holders over the last 30 days, through buybacks, burns or staking payouts.",
-    why: "It answers whether owning the token gives any claim on the business. DefiLlama can miss value returned outside the protocol, such as buybacks run by a foundation, so a zero here deserves a check of the project's own documents.",
-    terms: ["holders-revenue", "buyback", "burn", "fees"],
+    what: "The share of the protocol's revenue (what it keeps after paying depositors, liquidity providers or validators) that reached token holders over the last 30 days, through buybacks, burns or staking payouts.",
+    why: "It answers whether owning the token gives any claim on the business. It is measured against revenue, not fees, because fees include money that was never the protocol's to share: on fees a protocol that passes most of them through looks stingy even when it gives holders most of what it keeps. DefiLlama can miss value returned outside the protocol, such as buybacks run by a foundation, so a zero here deserves a check of the project's own documents.",
+    terms: ["holders-revenue", "buyback", "burn", "revenue"],
+  },
+  holdersShareFees: {
+    what: "The same payouts to token holders, as a share of all fees users paid, including what passed straight through to depositors or liquidity providers.",
+    why: "Context for the rated share of revenue: it shows how much of the total money flowing through the protocol ends up with holders. Shown, never rated.",
+    terms: ["holders-revenue", "fees"],
   },
   treasuryYears: {
     what: "Treasury assets other than the project's own token, divided by a year of revenue.",
@@ -113,12 +118,12 @@ export const METRIC_EXPLAIN = {
   },
   feeMultiple: {
     what: "The fully diluted valuation divided by a year of fees (the last 30 days times twelve).",
-    why: "Like a price-to-sales ratio. It is rated against projects in the same DefiLlama category, because a normal multiple for an exchange is not a normal multiple for a chain.",
+    why: "Like a price-to-sales ratio. Rated for chains only, against other chains: blockspace is a chain's product. For DeFi protocols it is shown but not rated, because fees include what passes straight through to depositors or liquidity providers, so a protocol that keeps little of them would look cheap.",
     terms: ["fdv", "fees", "percentile", "peer-group"],
   },
   revenueMultiple: {
     what: "The fully diluted valuation divided by a year of revenue.",
-    why: "Like a price-to-earnings ratio, measured on the money the project keeps. Rated against the same category of peers.",
+    why: "Like a price-to-earnings ratio, measured on the money the project keeps. Rated for DeFi protocols (and chains whose protocol side earns fees), against projects in the same DefiLlama category, because a normal multiple for an exchange is not a normal multiple for a lending market. Shown but not rated for chains, where \"revenue\" means something different on each chain. No revenue gives no multiple, never a cheap one.",
     terms: ["fdv", "revenue", "percentile", "peer-group"],
   },
   mcapToTvl: {
