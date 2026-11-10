@@ -306,7 +306,7 @@ function scoreTable(t, a) {
 // Area verdicts sit in the same place in both views; each chip jumps to its area.
 function areaChips(a) {
   return `<nav class="areachips" aria-label="Area verdicts">${Object.values(a.byArea).map((d) =>
-    `<a class="chip t-${areaTone(d.avg)}" href="#area-${d.id}"><span class="dot"></span>${esc(d.name)}: ${d.word}</a>`).join("")}</nav>`;
+    `<a class="chip t-${areaTone(d.avg)}" href="#area-${d.id}"><span class="cn">${esc(d.name)}</span><span class="cv"><span class="dot"></span>${d.word}</span></a>`).join("")}</nav>`;
 }
 
 const VIEW_KEY = "tf-view";
