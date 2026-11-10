@@ -281,6 +281,7 @@ function factsheet(t, a) {
     return `<section class="sec" aria-labelledby="sec-${d.id}" id="area-${d.id}">
       <div class="sec-head t-${areaTone(d.avg)}"><span class="label" id="sec-${d.id}">${esc(d.name)}</span><span class="verdict">${d.word}</span></div>
       ${sourceBanner(t, d.id)}
+      ${d.note ? `<p class="areanote" role="note">${esc(d.note)}</p>` : ""}
       ${cards.length ? `<div class="facts">${cards.map((r) => factCard(r, t)).join("")}</div>` : ""}
       ${gaps.length ? gapLine(t, gaps) : ""}
       ${CHARTS[d.id] ? CHARTS[d.id](t, a) : ""}
@@ -291,7 +292,7 @@ function factsheet(t, a) {
 // Table view: one dense scorecard (prototype variant A), same data and rules as the factsheet.
 function scoreTable(t, a) {
   const rows = Object.values(a.byArea).map((d) => `
-    <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}</th></tr>
+    <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}${d.note ? `<p class="areanote" role="note">${esc(d.note)}</p>` : ""}</th></tr>
     ${d.rows.map((r) => `<tr>
       <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra || r.hint ? `<div class="ex">${esc(r.extra || r.hint)}</div>` : ""}${checkLinks(r)}</td>
       <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>

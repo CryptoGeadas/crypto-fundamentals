@@ -574,6 +574,11 @@ export function analyse(token, rules, { type = "narrative", alsoDefi = false, ex
     const avg = rated.length ? rated.reduce((s, r) => s + r.favour, 0) / rated.length : null;
     byArea[a.id] = { id: a.id, name: a.name, rows: rs, avg, word: areaWord(avg, rs) };
   }
+  // D5 (#57): on a chain whose public DeFi is under the house-rule share of its market cap (the #38
+  // test: Bitcoin, Dogecoin, Canton…) the fee multiple stays rated, since fees are real usage, but says
+  // little about a coin used mainly as money.
+  // Only when there is a fee multiple to qualify.
+  if (byArea.valuation && thinChainTvl(token, () => "") && rows.find((x) => x.id === "feeMultiple")?.value != null) byArea.valuation.note = "For coins used mainly as money, fee-based valuation says little.";
   return { rows, byArea, areas, coverage: coverageOf(rows, type) };
 }
 

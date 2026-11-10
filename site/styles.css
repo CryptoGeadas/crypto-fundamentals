@@ -98,6 +98,8 @@
   margin-top: 14px; padding: 10px 14px; border-radius: var(--r-card); font-size: 13px;
   background: color-mix(in srgb, var(--info) 10%, transparent); border: 1px solid color-mix(in srgb, var(--info) 35%, transparent);
 }
+/* a one-line caveat under an area heading (#57) */
+.areanote { margin: 8px 0 0; font-size: 13px; color: var(--muted); font-style: italic; text-transform: none; letter-spacing: normal; font-weight: 400; }
 .kpis { display: flex; gap: 28px; flex-wrap: wrap; margin-top: 16px; }
 .kpi .label { display: block; }
 .kpi b { font-family: var(--font-mono); font-size: 16px; font-weight: 500; }

@@ -367,6 +367,23 @@ check("every rated metric has a house rule, and rules carry the bands", () => {
   }
 });
 
+// D5 (#57): on thin-DeFi chains the fee multiple stays rated, with one line on what it means.
+check("thin-DeFi chains (BTC, DOGE): the valuation section carries the money line; the fee multiple is still rated", () => {
+  const chains = Array.from({ length: 9 }, (_, i) => ({ id: "c" + i, pf: 10 + i * 100, pr: null }));
+  const base = { fdv: 1.9e12, marketCap: 1.9e12, peers: { group: "Chain", groups: { Chain: chains } } };
+  const btc = analyse({ ...base, llama: { fees: { d30: 1.5e7 }, revenue: null, tvl: { now: 7e9, prev: 7e9, chain: true } } }, HOUSE_RULES, { type: "chain" });
+  assert.equal(btc.byArea.valuation.note, "For coins used mainly as money, fee-based valuation says little.");
+  assert.ok(btc.rows.find((r) => r.id === "feeMultiple").level != null, "the fee multiple keeps its rating");
+  const eth = analyse({ ...base, marketCap: 4e11, fdv: 4e11, llama: { fees: { d30: 2e7 }, revenue: null, tvl: { now: 6e10, prev: 6e10, chain: true } } }, HOUSE_RULES, { type: "chain" });
+  assert.equal(eth.byArea.valuation.note, undefined, "ETH: DeFi above the threshold, no line");
+  const hype = analyse({ ...base, llama: { fees: { d30: 9e7 }, revenue: { d30: 8e7 }, tvl: { now: 1e9, prev: 1e9, from: "protocol" } } }, HOUSE_RULES, { type: "chain", alsoDefi: true });
+  assert.equal(hype.byArea.valuation.note, undefined, "Chain + DeFi takes TVL from the protocol: no line");
+  const unknownTvl = analyse({ ...base, llama: { fees: { d30: 1.5e7 }, tvl: null } }, HOUSE_RULES, { type: "chain" });
+  assert.equal(unknownTvl.byArea.valuation.note, undefined, "no TVL figure: the line is not guessed");
+  const noFees = analyse({ ...base, llama: { fees: null, tvl: { now: 7e9, prev: 7e9, chain: true } } }, HOUSE_RULES, { type: "chain" });
+  assert.equal(noFees.byArea.valuation.note, undefined, "no fee multiple to qualify: no line");
+});
+
 for (const [s, n] of results) console.log(`${s}  ${n}`);
 const failed = results.filter(([s]) => s === "FAIL").length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);
