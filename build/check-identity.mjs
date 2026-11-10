@@ -2,7 +2,7 @@
 // Run: node build/check-identity.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { classify, isMemeCategory, isPeggedCategory, pegTarget, pegOf } from "../site/classify.js";
+import { classify, isMemeCategory, isPeggedCategory, isExchangeCategory, pegTarget, pegOf } from "../site/classify.js";
 import { areasFor, analyse, coverageOf, METRICS } from "../site/rating.js";
 import { HOUSE_RULES } from "../site/house-rules.js";
 import { feeEarners, llamaIndex } from "./universe-lib.mjs";
@@ -162,6 +162,44 @@ check("a known target with no price shows unknown, never 0.00%", () => {
     const r = a.rows.find((x) => x.id === "pegDistance");
     assert.equal(r.value, null);
     assert.notEqual(r.display, "0.00%");
+  }
+});
+
+// Exchange tokens (#56): CoinGecko categories as listed live on 10 Nov 2026 for BNB, CRO, OKB, GT, KCS.
+const EXCHANGE_CATS = ["Exchange-based Tokens", "Centralized Exchange (CEX) Token", "BNB Chain Ecosystem"];
+check("exchange tokens are recognised from CoinGecko's exchange categories, whatever their type", () => {
+  assert.ok(isExchangeCategory(EXCHANGE_CATS));
+  assert.ok(!isExchangeCategory(["Decentralized Exchange (DEX)", "Decentralized Finance (DeFi)"]), "a DEX token is not an exchange-business token");
+  const bnb = classify({ p: "binance", c: "BSC", f: 1 }, EXCHANGE_CATS);
+  assert.equal(bnb.type, "chain");
+  assert.equal(bnb.exchange, true);
+  assert.equal(classify(null, ["Centralized Exchange (CEX) Token"]).exchange, true);                // OKB, no DefiLlama entry
+  assert.equal(classify({ p: "aave", f: 1 }, ["Decentralized Finance (DeFi)"]).exchange, false);
+});
+check("exchange tokens: valuation and value-accrual numbers are shown, not rated; other areas unchanged", () => {
+  const t = { fdv: 9e10, marketCap: 9e10, circulatingSupply: 1.4e8, totalSupply: 1.4e8, maxSupply: 2e8, volume24h: 2e9,
+    llama: { fees: { d30: 2e7 }, revenue: { d30: 1e7 }, holders: { d30: 5e6 }, accrualFees: { d30: 2e7 }, tvl: { now: 5e9, prev: 5e9 } },
+    peers: { group: "Chain", groups: { Chain: Array.from({ length: 9 }, (_, i) => ({ id: "c" + i, pf: 10 + i * 30, pr: 20 + i * 40 })) } } };
+  const ex = analyse(t, HOUSE_RULES, { type: "chain", alsoDefi: true, exchange: true });
+  const plain = analyse(t, HOUSE_RULES, { type: "chain", alsoDefi: true });
+  for (const id of ["feeMultiple", "revenueMultiple", "mcapToTvl", "holdersShare"]) {
+    const r = ex.rows.find((x) => x.id === id);
+    assert.ok(r.value != null, `${id} is still shown`);
+    assert.equal(r.level, null, `${id} is not rated`);
+    assert.match(r.rule, /exchange business/, id);
+  }
+  // the peer comparison is still shown, on the multiple its type is judged on (revenue for Chain + DeFi)
+  const rev = ex.rows.find((x) => x.id === "revenueMultiple"), fee = ex.rows.find((x) => x.id === "feeMultiple");
+  assert.ok(rev.peer, "the peer comparison stays visible for the basis multiple");
+  assert.equal(rev.level, null);
+  assert.ok(!fee.peer, "only one multiple carries the peer table");
+  const chainOnly = analyse(t, HOUSE_RULES, { type: "chain", exchange: true }).rows;
+  assert.ok(chainOnly.find((x) => x.id === "feeMultiple").peer, "a plain exchange chain (BNB) is compared on fees");
+  assert.equal(chainOnly.find((x) => x.id === "feeMultiple").level, null);
+  assert.equal(ex.byArea.valuation.word, "Shown only");
+  assert.equal(ex.coverage.share, plain.coverage.share, "coverage is unchanged");
+  for (const id of ["circulatingShare", "fdvToMcap", "volumeToMcap"]) {
+    assert.equal(ex.rows.find((x) => x.id === id).level, plain.rows.find((x) => x.id === id).level, `${id} unchanged`);
   }
 });
 

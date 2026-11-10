@@ -77,6 +77,7 @@ function identity(t, a, cls) {
       <div class="px"><div class="p">${fmt.price(t.price)}</div><div class="c">30d ${fmt.chg(t.change30d)}</div></div>
     </div>
     ${contractsRow(t)}
+    ${cls.exchange ? `<div class="memenote" role="note"><b>Part of this token's value comes from an exchange business that on-chain data doesn't cover.</b> Its valuation and value accrual are shown but not rated.</div>` : ""}
     ${cls.type === "pegged" ? `<div class="memenote" role="note"><b>Fundamental analysis doesn't apply to pegged tokens.</b> This page shows the peg, supply and contract.</div>` : ""}
     ${cls.type === "meme" ? `<div class="memenote" role="note"><b>Fundamental analysis does not apply to memecoins.</b> There is no business, revenue or product to assess, so only supply, holder, market and contract checks are shown.</div>` : ""}
     <div class="kpis">${[["Market cap", fmt.usd(t.marketCap)], ["Fully diluted value", fmt.usd(t.fdv)],
@@ -130,7 +131,7 @@ const peerLabel = (p) => `${p.n} ${p.group === "all fee-earning tokens" ? p.grou
 function valuationLead(t, a) {
   // the multiple the token is rated on (#54): revenue for protocols, fees for chains; else whichever exists
   const f = a.rows.find((r) => r.id === "feeMultiple"), v = a.rows.find((r) => r.id === "revenueMultiple"), m = a.rows.find((r) => r.id === "mcapToTvl");
-  const rated = [v, f].find((x) => x?.level != null) || [v, f].find((x) => x?.value != null);
+  const rated = [v, f].find((x) => x?.level != null) || [v, f].find((x) => x?.peer) || [v, f].find((x) => x?.value != null);
   const what = rated?.id === "revenueMultiple" ? "yearly revenue" : "yearly fees";
   const parts = [];
   if (rated?.value != null) parts.push(`${t.sym} is valued at ${rated.display} its ${what}${rated.peer ? `, cheaper than ${rated.peer.cheaperThan}% of ${peerLabel(rated.peer)}` : ""}`);
@@ -325,7 +326,8 @@ function viewToggle(view) {
 // The type rule, unless the personal always-include list overrides it for this token.
 function clsFor(id, categories) {
   const forced = PERSONAL?.alwaysInclude?.find((x) => x.id === id)?.type;
-  return forced ? { type: forced, alsoDefi: false, overridden: true } : classify(state.idmap?.[id], categories);
+  const base = classify(state.idmap?.[id], categories);
+  return forced ? { type: forced, alsoDefi: false, overridden: true, exchange: base.exchange } : base;
 }
 
 function renderToken(t, via) {

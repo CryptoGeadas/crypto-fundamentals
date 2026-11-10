@@ -502,6 +502,11 @@ export function ruleText(m, rule) {
   return `House rule (${good}): very low < ${b[0]} ≤ low < ${b[1]} ≤ neutral < ${b[2]} ≤ high < ${b[3]} ≤ very high`;
 }
 
+// Exchange tokens (#56): what the token is valued on and what reaches holders comes partly from an
+// exchange business the free data does not see, so these two areas are shown, never rated.
+const EXCHANGE_AREAS = new Set(["valuation", "accrual"]);
+const EXCHANGE_WHY = "Shown, not rated: part of this token's value comes from an exchange business (its profits and the burns paid from them) that on-chain data doesn't cover.";
+
 export function rate(m, token, rules, ctx = {}) {
   const skip = m.unrated ? m.unrated(token) : null;
   const raw = skip ? null : m.val(token);
@@ -515,6 +520,16 @@ export function rate(m, token, rules, ctx = {}) {
   if (skip) { out.rule = skip.rule; return out; }
   if (v == null) { out.rule = "The source returned no data for this token."; return out; }
   if (m.yard === "shown") { out.rule = "Shown for context, deliberately not rated."; return out; }
+  if (ctx.exchange && EXCHANGE_AREAS.has(m.area)) { // #56, before the basis rule
+    out.rule = EXCHANGE_WHY;
+    // the peer comparison stays visible (no level) on the multiple the type is judged on: fees for a chain,
+    // revenue for a protocol
+    if (m.yard === "peer" && (!m.ratedFor || m.ratedFor(ctx))) {
+      const p = peerPercentile(v, token.peers?.group, token.peers?.groups || {}, m.peerKey, token.peers?.secondary);
+      if (p) { out.peer = { ...p, key: m.peerKey }; out.rule += ` For context: cheaper than ${p.cheaperThan}% of ${p.n} ${p.group}${p.fellBack ? "" : " peers"}.`; }
+    }
+    return out;
+  }
   if (m.ratedFor && !m.ratedFor(ctx)) { out.rule = m.shownWhy; return out; } // rated for some types only (#54)
   const rule = rules.metrics[m.id];
   if (!rule) throw new Error(`No house rule for metric "${m.id}"`);
@@ -547,10 +562,10 @@ export function coverageOf(rows, type) {
   return { level, share: Math.round(share * 100) };
 }
 
-export function analyse(token, rules, { type = "narrative", alsoDefi = false } = {}) {
+export function analyse(token, rules, { type = "narrative", alsoDefi = false, exchange = false } = {}) {
   const areas = areasFor(type, alsoDefi);
   const rows = METRICS.filter((m) => areas.includes(m.area) && (!m.types || m.types.includes(type) || (alsoDefi && m.types.includes("defi"))))
-    .map((m) => rate(m, token, rules, { type, alsoDefi }));
+    .map((m) => rate(m, token, rules, { type, alsoDefi, exchange }));
   const byArea = {};
   for (const a of AREAS.filter((x) => areas.includes(x.id))) {
     const rs = rows.filter((r) => r.area === a.id);

@@ -42,8 +42,17 @@ export function pegOf(categories = [], listEntry = null) {
   return { ...pegTarget(categories, listEntry), supply: listEntry?.supply ?? null, supplyPrev: listEntry?.supplyPrev ?? null };
 }
 
+// Exchange-business tokens (#56): BNB, CRO, OKB, GT, KCS… Much of their value comes from a centralised
+// exchange (profits, burns paid from them) that no free on-chain source covers. A flag on top of the
+// type, not a type: BNB stays a Chain and keeps its other ratings.
+const EXCHANGE = new Set(["exchange-based tokens", "centralized exchange (cex) token"]);
+export const isExchangeCategory = (categories = []) => categories.some((c) => EXCHANGE.has(String(c).toLowerCase()));
+
 export function classify(llamaEntry, categories = []) {
-  const e = llamaEntry || {};
+  return { ...baseType(llamaEntry || {}, categories), exchange: isExchangeCategory(categories) };
+}
+
+function baseType(e, categories) {
   if (e.c) return { type: "chain", alsoDefi: Boolean(e.p && e.f) };
   if (isPeggedCategory(categories)) return { type: "pegged", alsoDefi: false };
   if (e.p && e.f) return { type: "defi", alsoDefi: false };
