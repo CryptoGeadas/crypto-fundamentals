@@ -1,6 +1,6 @@
 // Renders the generated parts of the methodology page from the same modules the dashboard uses,
 // so every formula, source and threshold shown here is the one actually applied.
-import { METRICS, AREAS, AREAS_BY_TYPE, ruleText } from "./rating.js";
+import { METRICS, AREAS, AREAS_BY_TYPE, ruleText, tidy } from "./rating.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { TYPES } from "./classify.js";
 import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY } from "./explain.js";
@@ -14,7 +14,9 @@ const typeOrder = ["chain", "pegged", "defi", "meme", "narrative"];
 // The rule as the reader sees it on a token page: a five-step scale, or a sentence when not rated.
 function ruleVisual(m) {
   const r = HOUSE_RULES.metrics[m.id];
-  if (m.yard === "fixed" && r) return scaleHtml({ dir: r.dir, cuts: r.bands.map((x) => m.show(x)) });
+  const floor = m.base ? HOUSE_RULES.trendFloors?.[m.id] : null;
+  const floorLine = floor != null ? `<p class="mrule-plain">Rated only when the smaller of the two periods is at least ${esc(tidy(m.baseShow(floor)))}; below that it is shown as "too small to rate". ${esc(HOUSE_RULES.trendFloorsReason.split(":")[0])}.</p>` : "";
+  if (m.yard === "fixed" && r) return scaleHtml({ dir: r.dir, cuts: r.bands.map((x) => m.show(x)) }) + floorLine;
   if (m.yard === "peer") return peerScaleHtml({});
   return `<p class="mrule-plain">${esc(rule(m))}</p>`;
 }

@@ -183,7 +183,7 @@ check("traction: trends are rated at display precision; fees and revenue are sho
   assert.equal(row(t, "feesTrend").word, "Neutral");
   assert.equal(row(t, "tvlTrend").word, "Very high");
   assert.equal(row(t, "fees30").level, null);
-  const edge = withU(FIXTURES.arbitrum, null, { llama: { ...LLAMA_AAVE, fees: { d30: 109.96, prev: 100 } } });
+  const edge = withU(FIXTURES.arbitrum, null, { llama: { ...LLAMA_AAVE, fees: { d30: 109.96e6, prev: 100e6 } } });
   assert.equal(row(edge, "feesTrend").display, "+10.0%");
   assert.equal(row(edge, "feesTrend").word, "High");   // rated as the +10.0% it shows, not 9.96%
 });
@@ -382,6 +382,57 @@ check("thin-DeFi chains (BTC, DOGE): the valuation section carries the money lin
   assert.equal(unknownTvl.byArea.valuation.note, undefined, "no TVL figure: the line is not guessed");
   const noFees = analyse({ ...base, llama: { fees: null, tvl: { now: 7e9, prev: 7e9, chain: true } } }, HOUSE_RULES, { type: "chain" });
   assert.equal(noFees.byArea.valuation.note, undefined, "no fee multiple to qualify: no line");
+});
+
+// D7 (#58): no trends rated on tiny bases.
+check("a trend whose smaller period is below its floor shows its value with 'too small to rate' and no rating", () => {
+  const a = (t) => analyse(t, HOUSE_RULES, { type: "defi" }).rows;
+  const r = (rows, id) => rows.find((x) => x.id === id);
+  const small = a({ meta: { orgs: ["x"], devAt: "2026-11-01T00:00:00Z", dev: { repos: ["x/y"], commits90: 31, commitsPrev90: 10 } }, llama: { fees: { d30: 9e4, prev: 3e4 }, revenue: { d30: 5e4, prev: 1e4 }, tvl: { now: 8e5, prev: 2e5 } },
+    attention: { watch: 900, change: { pct: 50, from: 600, since: "1 Oct" } } });
+  for (const id of ["commitTrend", "feesTrend", "revenueTrend", "tvlTrend", "watchTrend"]) {
+    const row = r(small, id);
+    assert.ok(row.value != null, `${id} keeps its value`);
+    assert.notEqual(row.display, "No data", id);
+    assert.equal(row.level, null, `${id} not rated`);
+    assert.equal(row.tooSmall, true, id);
+    assert.match(row.rule, /too small to rate/i, id);
+  }
+  assert.equal(r(small, "commitTrend").display, "+210.0%", "Spark's +210% from 10 to 31 commits is shown, not rated");
+});
+check("a trend at or above its floor is rated as before (the smaller period counts)", () => {
+  const rows = analyse({ meta: { orgs: ["x"], devAt: "2026-11-01T00:00:00Z", dev: { repos: ["x/y"], commits90: 120, commitsPrev90: 30 } }, llama: { fees: { d30: 1e5, prev: 2e5 }, revenue: { d30: 2e5, prev: 1e5 }, tvl: { now: 1e6, prev: 3e6 } },
+    attention: { watch: 2000, change: { pct: 100, from: 1000, since: "1 Oct" } } }, HOUSE_RULES, { type: "defi" }).rows;
+  for (const id of ["commitTrend", "feesTrend", "revenueTrend", "tvlTrend", "watchTrend"]) {
+    const row = rows.find((x) => x.id === id);
+    assert.ok(row.level != null, `${id} rated at the floor`);
+    assert.ok(!row.tooSmall, id);
+  }
+});
+check("the four floors are house rules with a written reason", () => {
+  const f = HOUSE_RULES.trendFloors;
+  assert.equal(f.commitTrend, 30);
+  assert.equal(f.feesTrend, 100000);
+  assert.equal(f.revenueTrend, 100000);
+  assert.equal(f.tvlTrend, 1000000);
+  assert.equal(f.watchTrend, 1000);
+  assert.ok(HOUSE_RULES.trendFloorsReason && HOUSE_RULES.trendFloorsReason.length > 30);
+});
+
+check("just under a floor, the rule shows the exact figure; a missing period is never read as 0", () => {
+  const rows = analyse({ llama: { fees: { d30: 99960, prev: 2e5 }, tvl: { now: 999999, prev: 2e6 } }, attention: { watch: 5000, change: { pct: 10 } } }, HOUSE_RULES, { type: "defi" }).rows;
+  const fees = rows.find((x) => x.id === "feesTrend"), tvl = rows.find((x) => x.id === "tvlTrend"), watch = rows.find((x) => x.id === "watchTrend");
+  assert.equal(fees.tooSmall, true);
+  assert.match(fees.rule, /\$99,960 a month, under the \$100K a month needed/);
+  assert.match(tvl.rule, /\$999,999, under the \$1M needed/);
+  assert.ok(!watch.tooSmall, "no starting count: not judged against the floor");
+  assert.ok(watch.level != null);
+});
+check("an unrated reason (no repo, thin chain TVL) wins over the floor", () => {
+  const rows = analyse({ meta: { orgs: [] }, marketCap: 1e12, llama: { tvl: { now: 5e5, prev: 2e5, chain: true } } }, HOUSE_RULES, { type: "chain" }).rows;
+  assert.ok(!rows.find((x) => x.id === "commitTrend").tooSmall);
+  assert.ok(!rows.find((x) => x.id === "tvlTrend").tooSmall);
+  assert.match(rows.find((x) => x.id === "tvlTrend").rule, /public DeFi/);
 });
 
 for (const [s, n] of results) console.log(`${s}  ${n}`);

@@ -280,13 +280,16 @@ const BUSINESS_METRICS = [
     hint: "The part of fees the protocol or chain keeps, rather than paying out to liquidity providers or validators" },
   { id: "feesTrend", precision: 1, area: "traction", label: "Fees trend", yard: "fixed", src: "DefiLlama fees",
     val: (t) => pctChange(t.llama?.fees?.d30, t.llama?.fees?.prev), show: (v) => fmt.chg(v),
+    base: (t) => [t.llama?.fees?.d30, t.llama?.fees?.prev], baseShow: (x) => `${fmt.usd(x)} a month`,
     hint: "Last 30 days against the 30 days ending 90 days earlier" },
   { id: "revenueTrend", precision: 1, area: "traction", label: "Revenue trend", yard: "fixed", src: "DefiLlama revenue",
     val: (t) => pctChange(t.llama?.revenue?.d30, t.llama?.revenue?.prev), show: (v) => fmt.chg(v),
+    base: (t) => [t.llama?.revenue?.d30, t.llama?.revenue?.prev], baseShow: (x) => `${fmt.usd(x)} a month`,
     hint: "Last 30 days against the 30 days ending 90 days earlier" },
   { id: "tvlTrend", precision: 1, area: "traction", label: "TVL trend (30 days)", yard: "fixed", src: "DefiLlama TVL",
     unrated: (t) => thinChainTvl(t, (x) => { const v = pctChange(x.llama.tvl.now, x.llama.tvl.prev); return v == null ? "No data" : fmt.chg(v); }),
     val: (t) => pctChange(t.llama?.tvl?.now, t.llama?.tvl?.prev), show: (v) => fmt.chg(v),
+    base: (t) => [t.llama?.tvl?.now, t.llama?.tvl?.prev], baseShow: (x) => fmt.usd(x),
     extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today${tvlFrom(t)}${t.llama.tvl.estimated ? "; last month's figure is estimated (DefiLlama publishes no history for this group)" : ""}` : "") },
   { id: "dex30", area: "traction", label: "DEX volume on the chain, 30 days", yard: "shown", types: ["chain"], src: "DefiLlama DEX volumes",
     val: (t) => t.llama?.chain?.dex30 ?? null, show: (v) => fmt.usd(v) },
@@ -404,6 +407,7 @@ const DEV_BACKERS = [
     extra: (t) => (t.meta?.dev ? `${t.meta.dev.repos.join(", ")}${t.meta.dev.bots90 ? ` · ${t.meta.dev.bots90} bot commits excluded` : ""}` : "") },
   { id: "commitTrend", precision: 1, area: "dev", label: "Commit trend (90 days vs the 90 before)", yard: "fixed", src: "GitHub",
     unrated: noRepo, val: (t) => pctChange(t.meta?.dev?.commits90, t.meta?.dev?.commitsPrev90), show: (v) => fmt.chg(v),
+    base: (t) => [t.meta?.dev?.commits90, t.meta?.dev?.commitsPrev90], baseShow: (x) => `${x} commits`,
     extra: (t) => (t.meta?.dev ? `${t.meta.dev.commits90} human commits, against ${t.meta.dev.commitsPrev90} before` : "") },
   { id: "raised", area: "backers", label: "Total raised", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama raises",
     unrated: (t) => (t.meta?.raisesAt && !(t.meta.raises || []).length ? notOnRecord("funding rounds") : null),
@@ -439,6 +443,7 @@ const ATTENTION = [
   { id: "watchTrend", precision: 1, area: "attention", label: "Watchlist users, change over ~30 days", yard: "fixed", src: "CoinGecko",
     unrated: (t) => (t.attention?.watch && !t.attention?.change ? noHistory("watchlist counts") : null),
     val: (t) => t.attention?.change?.pct ?? null, show: (v) => fmt.chg(v),
+    base: (t) => [t.attention?.watch, t.attention?.change?.from], baseShow: (x) => `${fmt.num(x)} users`,
     extra: (t) => { const c = t.attention?.change; return c ? `${fmt.num(c.from)} → ${fmt.num(t.attention.watch)} since ${c.since}` : ""; } },
 ];
 METRICS.push(...ATTENTION);
@@ -507,6 +512,11 @@ export function ruleText(m, rule) {
 const EXCHANGE_AREAS = new Set(["valuation", "accrual"]);
 const EXCHANGE_WHY = "Shown, not rated: part of this token's value comes from an exchange business (its profits and the burns paid from them) that on-chain data doesn't cover.";
 
+// "$100.0K" → "$100K" for round floor figures in rule text (#58)
+export const tidy = (s) => String(s).replace(/\.0([KMBT])/g, "$1");
+// the exact figure for a base under its floor, so "$99,960" never reads as "$100K, under the $100K needed"
+const exact = (s, x) => String(s).replace(/\$[\d.]+[KMBT]?|[\d.]+[KMBT]/, (m) => (m.startsWith("$") ? "$" : "") + Math.round(x).toLocaleString("en-US"));
+
 export function rate(m, token, rules, ctx = {}) {
   const skip = m.unrated ? m.unrated(token) : null;
   const raw = skip ? null : m.val(token);
@@ -520,6 +530,18 @@ export function rate(m, token, rules, ctx = {}) {
   if (skip) { out.rule = skip.rule; return out; }
   if (v == null) { out.rule = "The source returned no data for this token."; return out; }
   if (m.yard === "shown") { out.rule = "Shown for context, deliberately not rated."; return out; }
+  // D7 (#58): a trend on a tiny base is shown with "too small to rate", never rated
+  const floor = m.base ? rules.trendFloors?.[m.id] : null;
+  // a period whose figure is missing can't be judged: no floor, rather than reading it as 0
+  const periods = floor != null ? m.base(token) : [];
+  if (floor != null && periods.every((x) => Number.isFinite(x))) {
+    const small = Math.min(...periods);
+    if (small < floor) {
+      out.tooSmall = true;
+      out.rule = `Too small to rate: the smaller of the two periods is ${exact(m.baseShow(small), small)}, under the ${tidy(m.baseShow(floor))} needed. At this size the change swings wildly and says little.`;
+      return out;
+    }
+  }
   if (ctx.exchange && EXCHANGE_AREAS.has(m.area)) { // #56, before the basis rule
     out.rule = EXCHANGE_WHY;
     // the peer comparison stays visible (no level) on the multiple the type is judged on: fees for a chain,

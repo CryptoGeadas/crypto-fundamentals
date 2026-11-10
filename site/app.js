@@ -28,7 +28,7 @@ const EXAMPLES = ["bitcoin", "ethereum", "solana", "aave", "jupiter-exchange-sol
 
 // ---------------------------------------------------------------- rendering
 function strip(r) {
-  if (r.level == null) return `<span class="strip none">${r.notOnRecord ? "Unknown" : r.missing || (r.value == null && !r.unrated) ? "No data" : "Not rated"}</span>`;
+  if (r.level == null) return `<span class="strip none">${r.notOnRecord ? "Unknown" : r.missing || (r.value == null && !r.unrated) ? "No data" : r.tooSmall ? "Too small to rate" : "Not rated"}</span>`;
   const good = r.favour > 0 ? "good" : r.favour < 0 ? "bad" : "neutral";
   return `<span class="strip t-${tone(r.favour)}" role="img" aria-label="Rating: ${r.word} (${good})">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     .map((i) => `<i class="${i <= r.level * 2 ? "on" : ""}"></i>`).join("")}<b>${r.word}</b></span>`;

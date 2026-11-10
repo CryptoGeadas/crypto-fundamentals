@@ -14,6 +14,11 @@ export const HOUSE_RULES = {
   // A chain's TVL (public DeFi deposits) is rated only when it is at least this % of the chain's market
   // cap; below it, TVL likely misses what the chain is mainly used for (#38).
   chainTvlMinSharePct: 1,
+  // D7 (#58): a trend is rated only when the smaller of its two periods reaches this floor. Below it the
+  // change is shown with "too small to rate": +210% from 10 to 31 commits, or a fee trend on a few
+  // thousand dollars a month, swings wildly and says little.
+  trendFloors: { commitTrend: 30, feesTrend: 100000, revenueTrend: 100000, tvlTrend: 1000000, watchTrend: 1000 },
+  trendFloorsReason: "Small numbers swing wildly: going from 10 to 31 commits is +210% but means little, and so does a fee trend on a few thousand dollars a month. A trend is rated only when the smaller of its two periods has at least 30 commits, $100K of fees or revenue in a month, $1M of TVL or 1,000 watchlist users.",
   metrics: {
     // Share of the total supply (what exists now) already circulating, in % (#39).
     circulatingShare: { bands: [30, 50, 70, 90], dir: "up" },
