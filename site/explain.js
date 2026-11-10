@@ -113,7 +113,7 @@ export const METRIC_EXPLAIN = {
   },
   treasuryYears: {
     what: "Treasury assets other than the project's own token, divided by a year of revenue.",
-    why: "It shows how long the project could keep paying its way from reserves that do not depend on its own token price.",
+    why: "It shows how long the project could keep paying its way from reserves that do not depend on its own token price. Shown only for DeFi protocols (and chains whose protocol side earns fees), where revenue actually funds the treasury. For chains and exchange tokens it is left out: a chain's \"revenue\" is burned fees or validator income that never reaches its foundation, and an exchange token's treasury is paid from the exchange.",
     terms: ["treasury", "revenue"],
   },
   treasuryOwnShare: {

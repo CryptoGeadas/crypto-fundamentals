@@ -306,7 +306,11 @@ const BUSINESS_METRICS = [
     val: (t) => { const h = t.llama?.holders?.d30, f = t.llama?.accrualFees?.d30; return h != null && f > 0 ? (h / f) * 100 : null; },
     show: (v) => fmt.pct(v, 1),
     hint: "Includes the fees that pass straight through to depositors or liquidity providers, so it is lower than the share of revenue" },
+  // D8 (#59): only where revenue funds the treasury (a protocol and its DAO). A chain's "revenue" is
+  // burned fees or validator income, and an exchange token's treasury is paid from the exchange: the
+  // ratio would mean nothing, so the row is not shown there at all.
   { id: "treasuryYears", area: "treasury", label: "Treasury outside its own token, in years of revenue", yard: "fixed", src: "DefiLlama treasury",
+    appliesTo: (ctx) => revenueBasis(ctx) && !ctx.exchange,
     val: (t) => { const tr = t.llama?.treasury, r = t.llama?.revenue?.d30; return tr && r ? tr.other / (r * 12) : null; },
     show: (v) => (v >= 100 ? "100+ years" : v.toFixed(1) + " years"),
     extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.other)} in other assets; only wallets DefiLlama tracks` : "") },
@@ -586,7 +590,8 @@ export function coverageOf(rows, type) {
 
 export function analyse(token, rules, { type = "narrative", alsoDefi = false, exchange = false } = {}) {
   const areas = areasFor(type, alsoDefi);
-  const rows = METRICS.filter((m) => areas.includes(m.area) && (!m.types || m.types.includes(type) || (alsoDefi && m.types.includes("defi"))))
+  const rows = METRICS.filter((m) => areas.includes(m.area) && (!m.types || m.types.includes(type) || (alsoDefi && m.types.includes("defi")))
+      && (!m.appliesTo || m.appliesTo({ type, alsoDefi, exchange })))
     .map((m) => rate(m, token, rules, { type, alsoDefi, exchange }));
   const byArea = {};
   for (const a of AREAS.filter((x) => areas.includes(x.id))) {

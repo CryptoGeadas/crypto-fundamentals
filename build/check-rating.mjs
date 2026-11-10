@@ -435,6 +435,21 @@ check("an unrated reason (no repo, thin chain TVL) wins over the floor", () => {
   assert.match(rows.find((x) => x.id === "tvlTrend").rule, /public DeFi/);
 });
 
+// D8 (#59): "treasury in years of revenue" only where revenue funds the treasury.
+check("treasury in years: shown and rated for DeFi and Chain + DeFi; not shown for chains and exchange tokens", () => {
+  const t = withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE });
+  const ids = (o) => analyse(t, HOUSE_RULES, o).rows.map((r) => r.id);
+  assert.ok(ids({ type: "defi" }).includes("treasuryYears"));
+  assert.ok(ids({ type: "chain", alsoDefi: true }).includes("treasuryYears"), "Hyperliquid-like");
+  assert.ok(!ids({ type: "chain" }).includes("treasuryYears"), "ETH, SOL: no row");
+  assert.ok(!ids({ type: "chain", alsoDefi: true, exchange: true }).includes("treasuryYears"), "BNB: no row");
+  assert.ok(!ids({ type: "defi", exchange: true }).includes("treasuryYears"), "an exchange token on DeFi: no row");
+  for (const o of [{ type: "chain" }, { type: "chain", exchange: true }]) {
+    const own = analyse(t, HOUSE_RULES, o).rows.find((r) => r.id === "treasuryOwnShare");
+    assert.ok(own && own.level != null, "own-token share stays shown and rated for everyone");
+  }
+});
+
 for (const [s, n] of results) console.log(`${s}  ${n}`);
 const failed = results.filter(([s]) => s === "FAIL").length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

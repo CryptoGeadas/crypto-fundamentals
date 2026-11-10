@@ -197,7 +197,9 @@ check("exchange tokens: valuation and value-accrual numbers are shown, not rated
   assert.ok(chainOnly.find((x) => x.id === "feeMultiple").peer, "a plain exchange chain (BNB) is compared on fees");
   assert.equal(chainOnly.find((x) => x.id === "feeMultiple").level, null);
   assert.equal(ex.byArea.valuation.word, "Shown only");
-  assert.equal(ex.coverage.share, plain.coverage.share, "coverage is unchanged");
+  // #59: an exchange token has no "treasury in years" row; every row they share has the same data
+  assert.ok(!ex.rows.some((r) => r.id === "treasuryYears") && plain.rows.some((r) => r.id === "treasuryYears"));
+  for (const r of ex.rows) assert.equal(r.value, plain.rows.find((x) => x.id === r.id).value, r.id);
   for (const id of ["circulatingShare", "fdvToMcap", "volumeToMcap"]) {
     assert.equal(ex.rows.find((x) => x.id === id).level, plain.rows.find((x) => x.id === id).level, `${id} unchanged`);
   }
