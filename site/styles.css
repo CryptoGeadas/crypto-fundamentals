@@ -270,6 +270,8 @@ a.mlink:hover { color: var(--accent); border-bottom-color: var(--accent); }
 .fact .ex { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .fact .rule .more, .fact .rule .src { display: block; margin-top: 6px; color: var(--muted); }
 .fact .rule .src { font-size: 11px; color: var(--tertiary); }
+.fact .rule .caveat { display: block; margin: 8px 0 0; padding-top: 8px; border-top: 1px solid var(--border); color: var(--muted); }
+.caveat b { font: 500 10.5px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--tertiary); margin-right: 4px; }
 .sec-head { margin-bottom: 12px; }
 .gaps { margin: 12px 0 0; font-size: 13px; color: var(--muted); line-height: 1.7; }
 .gaps .gw { color: var(--tertiary); }

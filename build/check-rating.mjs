@@ -416,6 +416,18 @@ check("a trend at or above its floor is rated as before (the smaller period coun
     assert.ok(!row.tooSmall, id);
   }
 });
+// #70: a metric's caveat travels with its row, so the token page can show it beside the metric.
+check("every metric caveat reaches its row, whatever the rating; metrics without one carry none", () => {
+  const withNote = METRICS.filter((m) => m.note);
+  assert.ok(withNote.length >= 8);
+  for (const type of ["defi", "chain"]) {
+    const rows = analyse(full(), HOUSE_RULES, { type }).rows;
+    for (const r of rows) assert.equal(r.note, METRICS.find((m) => m.id === r.id).note || "", r.id);
+  }
+  const empty = analyse({}, HOUSE_RULES, { type: "defi" }).rows.find((r) => r.id === "holdersShare");
+  assert.match(empty.note, /buybacks/, "shown even when the source has no data");
+  assert.match(row(full(), "holdersShare").note, /can miss value returned outside the protocol/);
+});
 // #69, principle 9: the chain stablecoin trend has a floor too.
 check("stablecoin trend on a chain: under $10M in the smaller period it is shown as too small to rate; at $10M it is rated", () => {
   const st = (stables, stables90) => analyse({ llama: { chain: { stables, stables90 } } }, HOUSE_RULES, { type: "chain" }).rows.find((x) => x.id === "stablesTrend");

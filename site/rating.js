@@ -530,6 +530,7 @@ export function rate(m, token, rules, ctx = {}) {
   const v = raw != null && m.precision != null ? Number(raw.toFixed(m.precision)) : raw;
   const out = { id: m.id, area: m.area, label: m.label, src: m.src, value: v,
     display: skip ? skip.display : v == null ? "No data" : m.show(v), extra: m.extra ? m.extra(token) : "", hint: m.hint || "", // hint: a fixed definition, shown in the tooltip
+    note: m.note || "", // a known data caveat, shown beside the metric on the token page (#70)
     level: null, word: null, favour: 0, rule: "", unrated: !!skip, missing: Boolean(skip?.missing), notOnRecord: Boolean(skip?.notOnRecord), notApplicable: Boolean(skip?.notApplicable), check: [] };
   // Free places to check by hand, offered only where the source has nothing.
   if ((skip?.notOnRecord || (!skip && v == null)) && m.check) out.check = m.check(token);

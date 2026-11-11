@@ -238,6 +238,9 @@ function sourceBanner(t, area) {
 const checkLinks = (r) => (r.check?.length ? `<div class="ex check">Check elsewhere: ${r.check.map((c) =>
   `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.label)}</a>`).join(" · ")}</div>` : "");
 
+// A known data caveat (#70): in the card's tooltip, and as a line under the metric in the table.
+const caveat = (r, tag) => (r.note ? `<${tag} class="${tag === "div" ? "ex " : ""}caveat"><b>Caveat</b> ${esc(r.note)}</${tag}>` : "");
+
 // Factsheet card: label, value with its rating, at most one line of context. The rule, any further
 // detail and the source sit in the tooltip (hover or keyboard focus), so the card stays scannable.
 function factCard(r, t) {
@@ -249,7 +252,7 @@ function factCard(r, t) {
       <div class="vrow"><span class="vv">${esc(display)}</span>${strip(r)}</div>
       ${context ? `<div class="ex${r.peer ? " peer" : ""}">${esc(context)}</div>` : ""}
       ${checkLinks(r)}
-      <div class="rule" id="rule-${r.id}" role="tooltip">${ruleBox(r)}${more ? `<span class="more">${esc(more)}</span>` : ""}${r.hint ? `<span class="hint">${esc(r.hint)}</span>` : ""}<span class="src">Source: ${esc(r.src)}</span></div>
+      <div class="rule" id="rule-${r.id}" role="tooltip">${ruleBox(r)}${more ? `<span class="more">${esc(more)}</span>` : ""}${r.hint ? `<span class="hint">${esc(r.hint)}</span>` : ""}${caveat(r, "span")}<span class="src">Source: ${esc(r.src)}</span></div>
     </div>`;
 }
 
@@ -294,7 +297,7 @@ function scoreTable(t, a) {
   const rows = Object.values(a.byArea).map((d) => `
     <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}${d.note ? `<p class="areanote" role="note">${esc(d.note)}</p>` : ""}</th></tr>
     ${d.rows.map((r) => `<tr>
-      <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra || r.hint ? `<div class="ex">${esc(r.extra || r.hint)}</div>` : ""}${checkLinks(r)}</td>
+      <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra || r.hint ? `<div class="ex">${esc(r.extra || r.hint)}</div>` : ""}${caveat(r, "div")}${checkLinks(r)}</td>
       <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>
       <td class="rt" title="${esc(r.rule)}">${strip(r)}${r.peer ? `<div class="ex">Cheaper than ${r.peer.cheaperThan}% of ${esc(peerLabel(r.peer))}</div>` : ""}</td>
       <td class="src">${esc(r.src)}</td></tr>`).join("")}`).join("");
