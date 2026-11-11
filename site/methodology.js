@@ -3,7 +3,7 @@
 import { METRICS, AREAS, AREAS_BY_TYPE, ruleText, tidy } from "./rating.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { TYPES } from "./classify.js";
-import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY } from "./explain.js";
+import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY, PRINCIPLES, principlesFor } from "./explain.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 
 const $ = (s) => document.querySelector(s);
@@ -16,8 +16,9 @@ function ruleVisual(m) {
   const r = HOUSE_RULES.metrics[m.id];
   const floor = m.base ? HOUSE_RULES.trendFloors?.[m.id] : null;
   const floorLine = floor != null ? `<p class="mrule-plain">Rated only when the smaller of the two periods is at least ${esc(tidy(m.baseShow(floor)))}; below that it is shown as "too small to rate". ${esc(HOUSE_RULES.trendFloorsReason.split(":")[0])}.</p>` : "";
-  if (m.yard === "fixed" && r) return scaleHtml({ dir: r.dir, cuts: r.bands.map((x) => m.show(x)) }) + floorLine;
-  if (m.yard === "peer") return peerScaleHtml({});
+  const why = r?.reason ? `<p class="mrule-plain"><span class="label">Why these cut-offs</span> ${esc(r.reason)}</p>` : "";
+  if (m.yard === "fixed" && r) return scaleHtml({ dir: r.dir, cuts: r.bands.map((x) => m.show(x)) }) + why + floorLine;
+  if (m.yard === "peer") return peerScaleHtml({}) + why;
   return `<p class="mrule-plain">${esc(rule(m))}</p>`;
 }
 
@@ -44,12 +45,14 @@ function metricList() {
       ${ms.map((m) => {
         const e = METRIC_EXPLAIN[m.id] || {};
         const types = m.types ? ` Applies to: ${m.types.map((t) => TYPES[t]?.label || t).join(", ")}.` : "";
+        const rules = principlesFor(m).map((n) => `<a href="#p-${n}" title="${esc(PRINCIPLES[n - 1].name)}">${n}</a>`).join(", ");
         const terms = (e.terms || []).filter((t) => GLOSSARY[t]).map((t) => `<a href="#g-${t}">${esc(GLOSSARY[t].name)}</a>`).join(", ");
         return `<article class="metric" id="m-${m.id}"><h4>${esc(m.label)}</h4>
           <div class="mrule">${ruleVisual(m)}</div>
           <p class="mwhat">${esc(e.what)} ${esc(e.why)}</p>
           <p class="meta"><span class="label">Source</span> ${esc(m.src)}.${esc(types)}</p>
           ${m.note ? `<p class="meta"><span class="label">Caveat</span> ${esc(m.note)}</p>` : ""}
+          ${rules ? `<p class="meta"><span class="label">Principles</span> ${rules}</p>` : ""}
           ${terms ? `<p class="meta"><span class="label">See also</span> ${terms}</p>` : ""}</article>`;
       }).join("")}</section>`;
   }).join("");
@@ -60,10 +63,11 @@ function glossary() {
     .map(([k, g]) => `<dt id="g-${k}">${esc(g.name)}</dt><dd>${esc(g.text)}</dd>`).join("");
 }
 
+$("#principles-list").innerHTML = PRINCIPLES.map((p) => `<li id="p-${p.n}"><strong>${esc(p.name)}</strong> ${esc(p.text)}</li>`).join("");
 $("#types-table").innerHTML = typesTable();
 $("#metric-list").innerHTML = metricList();
 $("#glossary-list").innerHTML = glossary();
 $("#hr-version").textContent = HOUSE_RULES.version;
-// The page is rendered after load, so honour a #m-… or #g-… link once the targets exist.
+// The page is rendered after load, so honour a #m-…, #g-… or #p-… link once the targets exist.
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 

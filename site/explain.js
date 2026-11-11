@@ -238,3 +238,29 @@ export const GLOSSARY = {
   unlock: { name: "Token unlock", text: "The release of tokens that were locked, typically for the team, investors or ecosystem programmes, into circulation." },
   volume: { name: "Trading volume", text: "The value of a token traded over a period, usually 24 hours." },
 };
+
+// The nine rating principles (#60): the rules every rating follows. Shown on the "How it works" page
+// and linked from each metric they apply to. build/check-docs.mjs checks the code against them.
+export const PRINCIPLES = [
+  { n: 1, name: "Same meaning or no rating.", text: "A number is rated only where it means the same thing for every token it is rated on. Where it does not, it is shown without a rating, or rated only for the types of token where it holds." },
+  { n: 2, name: "Measure where the business is.", text: "Fees, revenue and TVL are taken from the same place: the protocol when the token's value comes from a protocol, the chain when it comes from the chain." },
+  { n: 3, name: "Supply means what exists now.", text: "Valuation and circulating share use total supply, the tokens that exist today. A higher maximum may be unminted or already burned, so it is only a note. One exception: supply locked beyond twelve months is measured against the maximum on the unlock schedule, because it needs a ceiling." },
+  { n: 4, name: "Unknown is never none.", text: "Missing, unrecorded or stale data is shown as unknown. It is never shown as zero and never counted as good." },
+  { n: 5, name: "Trust the source's own signals first.", text: "When DefiLlama itself reports no figure for the latest day, or marks deposits as already counted in another product, the page follows that signal. A 14-day age limit is only a second check." },
+  { n: 6, name: "A token is the same token in any wrapper.", text: "Wrapped and staked forms of a token count as the token, for example when a treasury holds its own token in staked form." },
+  { n: 7, name: "Context is shown, not rated.", text: "Numbers that mostly reflect size or price history, such as watchlist size and distance from the all-time high, are shown without a rating." },
+  { n: 8, name: "Every threshold is a written house rule with its reason.", text: "Every cut-off sits in one public file, and its reason is shown under its scale in the metric list below." },
+  { n: 9, name: "No trends on tiny bases.", text: "A change from 10 to 31 commits is +210% and means little. A trend is rated only when the smaller of its two periods reaches a minimum size." },
+];
+
+// Which principles a metric shows most directly. Principle 8 (every rated metric) and 9 (every trend
+// with a minimum base) are added from the metric itself in principlesFor.
+export const METRIC_PRINCIPLES = {
+  circulatingShare: [1, 3], fdvToMcap: [3], lockedBeyond12m: [3],
+  feeMultiple: [1, 2], revenueMultiple: [1, 2], mcapToTvl: [1, 2],
+  fees30: [2, 5], revenue30: [2, 5], feesTrend: [2, 5], revenueTrend: [2, 5], tvlTrend: [1, 2, 5],
+  treasuryYears: [1], treasuryOwnShare: [6],
+  exploitLoss: [4], audits: [4], raised: [4], contractFlags: [4],
+  watchlist: [7], athDistance: [7],
+};
+export const principlesFor = (m) => [...new Set([...(METRIC_PRINCIPLES[m.id] || []), ...(m.yard !== "shown" ? [8] : []), ...(m.base ? [9] : [])])].sort((a, b) => a - b);

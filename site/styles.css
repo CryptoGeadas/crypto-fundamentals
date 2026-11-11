@@ -244,6 +244,10 @@ table.score .ex { color: var(--muted); font-size: 11px; margin-top: 3px; overflo
 .glossary dt { font: 600 14px var(--display); margin-top: 14px; scroll-margin-top: 16px; }
 .glossary dt:target { color: var(--accent); }
 .glossary dd { margin: 4px 0 0; color: var(--muted); max-width: 75ch; }
+.principles { padding-left: 22px; margin: 12px 0 0; }
+.principles li { margin-top: 10px; max-width: 75ch; color: var(--muted); scroll-margin-top: 88px; }
+.principles li strong { color: var(--fg); font-weight: 600; }
+.principles li:target strong { color: var(--accent); }
 table.types td.ar, table.types th.ar { text-align: center; font-size: 11px; }
 .small { font-size: 12px; }
 @media (max-width: 640px) { table.types th.ar, table.types td.ar { display: none; } }
