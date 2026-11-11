@@ -67,6 +67,15 @@ export async function feeSummary(slug, dataType) {
   return { ...feeWindows(chart, undefined, { reportsLatestDay: d.total24h != null }), monthly: monthlySums(chart) };
 }
 
+const STABLECOIN_CHAINS = "https://stablecoins.llama.fi/stablecoinchains";
+// Whether to request a chain's stablecoin chart: yes when DefiLlama lists stablecoins on it, and also
+// when the list itself could not be read (then the chart request decides, as before).
+export function hasStablecoinChart(list, chain) {
+  if (!Array.isArray(list)) return true;
+  const want = String(chain || "").toLowerCase();
+  return list.some((x) => String(x?.name || "").toLowerCase() === want);
+}
+
 const chainSlug = (name) => name.toLowerCase().replace(/\s+/g, "-");
 
 // Which DefiLlama series a token's fees and revenue come from: a chain's own fees, except "Chain + DeFi"
@@ -111,7 +120,10 @@ export async function loadLlama(id, entry, defi, cls, now = Date.now() / 1000) {
     }));
     jobs.push(Promise.all([
       settle(json(`${API}/overview/dexs/${encodeURIComponent(entry.c)}?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true`)),
-      settle(json(`https://stablecoins.llama.fi/stablecoincharts/${encodeURIComponent(entry.c)}`)),
+      // #71: DefiLlama has no stablecoin chart for about half the chains (Bitcoin, …) and answers 404,
+      // which the browser logs as an error. Its own list of chains with stablecoins says which to ask for.
+      settle(json(STABLECOIN_CHAINS)).then((list) => (hasStablecoinChart(list, entry.c)
+        ? settle(json(`https://stablecoins.llama.fi/stablecoincharts/${encodeURIComponent(entry.c)}`)) : null)),
     ]).then(([dex, st]) => {
       const usd = (row) => row?.totalCirculatingUSD?.peggedUSD ?? null;
       const stNow = st?.length ? usd(st[st.length - 1]) : null;
