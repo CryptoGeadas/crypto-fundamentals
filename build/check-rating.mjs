@@ -247,11 +247,18 @@ check("security: flags counted (1 = Low), exploit loss is net of returned funds"
   assert.equal(ex.word, "Low");
   assert.equal(row(full(), "audits").level, null);
 });
-check("market: distance from ATH uses the neutral colour whatever its level", () => {
-  const r = row(full(), "athDistance");
-  assert.equal(r.word, "Low");
-  assert.equal(r.favour, 0);
-  assert.equal(row(full(), "volumeToMcap").display, "16.9%");
+// #68, principle 7: context is shown, not rated.
+check("market: distance from ATH is shown for context, never rated, and stays out of the Market verdict", () => {
+  const a = analyse(full(), HOUSE_RULES, { type: "defi" });
+  const r = a.rows.find((x) => x.id === "athDistance"), vol = a.rows.find((x) => x.id === "volumeToMcap");
+  assert.ok(r.value != null && r.display !== "No data", "the value is still shown");
+  assert.equal(r.level, null);
+  assert.equal(r.word, null);
+  assert.equal(r.scale, undefined, "no five-step scale");
+  assert.match(r.rule, /not rated/i);
+  assert.equal(HOUSE_RULES.metrics.athDistance, undefined, "no bands left behind");
+  assert.equal(vol.display, "16.9%");
+  assert.equal(a.byArea.market.avg, vol.favour, "the verdict is the rated metrics only: volume, not the ATH distance");
 });
 check("development: human contributors and commit trend; queued or repo-less projects are missing, not rated", () => {
   assert.equal(row(full(), "contributors90").word, "High");
@@ -408,6 +415,22 @@ check("a trend at or above its floor is rated as before (the smaller period coun
     assert.ok(row.level != null, `${id} rated at the floor`);
     assert.ok(!row.tooSmall, id);
   }
+});
+// #69, principle 9: the chain stablecoin trend has a floor too.
+check("stablecoin trend on a chain: under $10M in the smaller period it is shown as too small to rate; at $10M it is rated", () => {
+  const st = (stables, stables90) => analyse({ llama: { chain: { stables, stables90 } } }, HOUSE_RULES, { type: "chain" }).rows.find((x) => x.id === "stablesTrend");
+  const small = st(150000, 50000);
+  assert.equal(small.display, "+200.0%", "the change is still shown");
+  assert.equal(small.level, null);
+  assert.equal(small.tooSmall, true);
+  assert.match(small.rule, /too small to rate/i);
+  assert.match(small.rule, /\$50,000, under the \$10M needed/);
+  const atFloor = st(12e6, 10e6);
+  assert.ok(atFloor.level != null && !atFloor.tooSmall, "rated at the floor");
+  const noHistory = st(5e6, null);
+  assert.ok(!noHistory.tooSmall && noHistory.level == null && noHistory.display === "No data", "a missing period is unknown, not too small");
+  assert.equal(HOUSE_RULES.trendFloors.stablesTrend, 10000000);
+  assert.match(HOUSE_RULES.trendFloorsReason, /\$10M of stablecoins/);
 });
 check("the four floors are house rules with a written reason", () => {
   const f = HOUSE_RULES.trendFloors;

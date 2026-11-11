@@ -148,7 +148,7 @@ export const METRIC_EXPLAIN = {
   },
   athDistance: {
     what: "How far the current price is below the token's all-time high.",
-    why: "Context only, shown in a neutral colour: a large drawdown can mean opportunity or lasting decline.",
+    why: "Context only, shown but not rated: a large drawdown can mean opportunity or lasting decline.",
     terms: ["all-time-high"],
   },
   contractFlags: {

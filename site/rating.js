@@ -295,6 +295,7 @@ const BUSINESS_METRICS = [
     val: (t) => t.llama?.chain?.dex30 ?? null, show: (v) => fmt.usd(v) },
   { id: "stablesTrend", precision: 1, area: "traction", label: "Stablecoins on the chain, 90-day trend", yard: "fixed", types: ["chain"], src: "DefiLlama stablecoins",
     val: (t) => pctChange(t.llama?.chain?.stables, t.llama?.chain?.stables90), show: (v) => fmt.chg(v),
+    base: (t) => [t.llama?.chain?.stables, t.llama?.chain?.stables90], baseShow: (x) => fmt.usd(x),
     extra: (t) => (t.llama?.chain?.stables ? `${fmt.usd(t.llama.chain.stables)} in stablecoins today` : "") },
   // D6 (#54): measured against revenue, what the protocol keeps; the fees-based share below is context.
   { id: "holdersShare", precision: 1, area: "accrual", label: "Share of revenue reaching token holders", yard: "fixed", src: "DefiLlama holders revenue",
@@ -375,9 +376,10 @@ const HOLDER_MARKET_SECURITY = [
   { id: "volumeToMcap", precision: 1, area: "market", label: "Daily volume ÷ market cap", yard: "fixed", src: "CoinGecko",
     val: (t) => (t.volume24h && t.marketCap ? (t.volume24h / t.marketCap) * 100 : null), show: (v) => fmt.pct(v, 1),
     extra: (t) => (t.volume24h ? `${fmt.usd(t.volume24h)} traded in 24 hours` : "") },
-  { id: "athDistance", precision: 0, area: "market", label: "Distance from all-time high", yard: "fixed", src: "CoinGecko",
+  { id: "athDistance", precision: 0, area: "market", label: "Distance from all-time high", yard: "shown", src: "CoinGecko",
     val: (t) => t.athChange ?? null, show: (v) => fmt.pct(v, 0),
-    note: "Context only, shown in a neutral colour: a big drawdown can mean opportunity or decline." },
+    // #68, principle 7: context is shown, not rated
+    note: "Context only, not rated: a big drawdown can mean opportunity or decline." },
   { id: "contractFlags", area: "security", label: "Contract risk flags", yard: "fixed", src: "GoPlus",
     unrated: notChecked, val: (t) => (t.security ? t.security.flags.length : null), show: (v) => (v === 0 ? "None" : `${v} flag${v > 1 ? "s" : ""}`),
     extra: (t) => (t.security?.flags?.length ? t.security.flags.join(" · ") : t.security ? "No owner powers, taxes or honeypot behaviour found" : "") },

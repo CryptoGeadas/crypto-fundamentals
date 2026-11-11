@@ -17,8 +17,8 @@ export const HOUSE_RULES = {
   // D7 (#58): a trend is rated only when the smaller of its two periods reaches this floor. Below it the
   // change is shown with "too small to rate": +210% from 10 to 31 commits, or a fee trend on a few
   // thousand dollars a month, swings wildly and says little.
-  trendFloors: { commitTrend: 30, feesTrend: 100000, revenueTrend: 100000, tvlTrend: 1000000, watchTrend: 1000 },
-  trendFloorsReason: "Small numbers swing wildly: going from 10 to 31 commits is +210% but means little, and so does a fee trend on a few thousand dollars a month. A trend is rated only when the smaller of its two periods has at least 30 commits, $100K of fees or revenue in a month, $1M of TVL or 1,000 watchlist users.",
+  trendFloors: { commitTrend: 30, feesTrend: 100000, revenueTrend: 100000, tvlTrend: 1000000, watchTrend: 1000, stablesTrend: 10000000 },
+  trendFloorsReason: "Small numbers swing wildly: going from 10 to 31 commits is +210% but means little, and so does a fee trend on a few thousand dollars a month. A trend is rated only when the smaller of its two periods has at least 30 commits, $100K of fees or revenue in a month, $1M of TVL, 1,000 watchlist users or $10M of stablecoins on the chain.",
   metrics: {
     // Share of the total supply (what exists now) already circulating, in % (#39).
     circulatingShare: { bands: [30, 50, 70, 90], dir: "up" },
@@ -49,8 +49,7 @@ export const HOUSE_RULES = {
     top10Share: { bands: [20, 35, 50, 70], dir: "down" },
     // Market health: 24h volume ÷ market cap, %.
     volumeToMcap: { bands: [1, 3, 8, 20], dir: "up" },
-    // Distance from the all-time high, %. Context only: neither good nor bad on its own.
-    athDistance: { bands: [-90, -70, -40, -15], dir: "none" },
+    // Distance from the all-time high is context: shown, never rated, so it has no bands (#68).
     // Security: number of contract risk flags raised by GoPlus.
     contractFlags: { bands: [0.5, 1.5, 2.5, 3.5], dir: "down" },
     // Past exploits, net loss after returned funds, in $ millions.
