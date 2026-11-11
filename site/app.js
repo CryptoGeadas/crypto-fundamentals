@@ -1,4 +1,4 @@
-import { analyse, fmt, tone, areaTone } from "./rating.js";
+import { analyse, fmt, tone } from "./rating.js";
 import { classify, TYPES, pegOf } from "./classify.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
@@ -282,7 +282,7 @@ function factsheet(t, a) {
   return Object.values(a.byArea).map((d) => {
     const cards = d.rows.filter((r) => !isGap(t, r)), gaps = d.rows.filter((r) => isGap(t, r));
     return `<section class="sec" aria-labelledby="sec-${d.id}" id="area-${d.id}">
-      <div class="sec-head t-${areaTone(d.avg)}"><span class="label" id="sec-${d.id}">${esc(d.name)}</span><span class="verdict">${d.word}</span></div>
+      <div class="sec-head t-${d.tone}"><span class="label" id="sec-${d.id}">${esc(d.name)}</span><span class="verdict">${d.word}</span></div>
       ${sourceBanner(t, d.id)}
       ${d.note ? `<p class="areanote" role="note">${esc(d.note)}</p>` : ""}
       ${cards.length ? `<div class="facts">${cards.map((r) => factCard(r, t)).join("")}</div>` : ""}
@@ -295,7 +295,7 @@ function factsheet(t, a) {
 // Table view: one dense scorecard (prototype variant A), same data and rules as the factsheet.
 function scoreTable(t, a) {
   const rows = Object.values(a.byArea).map((d) => `
-    <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${areaTone(d.avg)}">${d.word}</span>${sourceBanner(t, d.id)}${d.note ? `<p class="areanote" role="note">${esc(d.note)}</p>` : ""}</th></tr>
+    <tr class="grp" id="area-${d.id}"><th colspan="4" scope="rowgroup"><span>${esc(d.name)}</span> <span class="verdict t-${d.tone}">${d.word}</span>${sourceBanner(t, d.id)}${d.note ? `<p class="areanote" role="note">${esc(d.note)}</p>` : ""}</th></tr>
     ${d.rows.map((r) => `<tr>
       <td><a class="tl mlink" href="methodology.html#m-${r.id}" title="How this is measured">${esc(r.label)}</a>${r.extra || r.hint ? `<div class="ex">${esc(r.extra || r.hint)}</div>` : ""}${caveat(r, "div")}${checkLinks(r)}</td>
       <td class="v">${esc(unavailable(t, r) ? "Source unavailable" : r.display)}</td>
@@ -309,7 +309,7 @@ function scoreTable(t, a) {
 // Area verdicts sit in the same place in both views; each chip jumps to its area.
 function areaChips(a) {
   return `<nav class="areachips" aria-label="Area verdicts">${Object.values(a.byArea).map((d) =>
-    `<a class="chip t-${areaTone(d.avg)}" href="#area-${d.id}"><span class="cn">${esc(d.name)}</span><span class="cv"><span class="dot"></span>${d.word}</span></a>`).join("")}</nav>`;
+    `<a class="chip t-${d.tone}" href="#area-${d.id}"><span class="cn">${esc(d.name)}</span><span class="cv"><span class="dot"></span>${d.word}</span></a>`).join("")}</nav>`;
 }
 
 const VIEW_KEY = "tf-view";

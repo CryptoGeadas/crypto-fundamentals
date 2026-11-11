@@ -602,7 +602,8 @@ export function analyse(token, rules, { type = "narrative", alsoDefi = false, ex
     if (!rs.length) continue; // area applies but has no metrics yet
     const rated = rs.filter((r) => r.level != null);
     const avg = rated.length ? rated.reduce((s, r) => s + r.favour, 0) / rated.length : null;
-    byArea[a.id] = { id: a.id, name: a.name, rows: rs, avg, word: areaWord(avg, rs) };
+    const v = verdictOf(avg, rated.length, rules);
+    byArea[a.id] = { id: a.id, name: a.name, rows: rs, avg, word: v.word ?? areaWord(null, rs), tone: v.tone, soft: v.soft };
   }
   // D5 (#57): on a chain whose public DeFi is under the house-rule share of its market cap (the #38
   // test: Bitcoin, Dogecoin, Canton…) the fee multiple stays rated, since fees are real usage, but says
@@ -615,6 +616,16 @@ export function analyse(token, rules, { type = "narrative", alsoDefi = false, ex
 export function areaWord(avg, rows = []) {
   if (avg == null) return rows.some((r) => r.value != null || (r.unrated && !r.missing)) ? "Shown only" : "No data";
   return avg >= 1 ? "Strong" : avg >= 0.34 ? "Good" : avg > -0.34 ? "Mixed" : avg > -1 ? "Weak" : "Poor";
+}
+
+// An area's verdict word and colour from its average favour and how many metrics were rated (#72):
+// with fewer rated metrics than the house rule asks for, the extreme words step one in
+// (Strong → Good, Poor → Weak). The average itself is kept as it is.
+export function verdictOf(avg, nRated, rules) {
+  if (avg == null) return { word: null, tone: "n", soft: false };
+  const thin = nRated < (rules?.verdictMinRated ?? 1);
+  const v = thin ? Math.max(-0.99, Math.min(0.99, avg)) : avg;
+  return { word: areaWord(v), tone: areaTone(v), soft: v !== avg };
 }
 
 // Tone class for colour: g2/g1 good, n neutral, b1/b2 bad.

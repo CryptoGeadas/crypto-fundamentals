@@ -19,6 +19,9 @@ export const HOUSE_RULES = {
   // thousand dollars a month, swings wildly and says little.
   trendFloors: { commitTrend: 30, feesTrend: 100000, revenueTrend: 100000, tvlTrend: 1000000, watchTrend: 1000, stablesTrend: 10000000 },
   trendFloorsReason: "Small numbers swing wildly: going from 10 to 31 commits is +210% but means little, and so does a fee trend on a few thousand dollars a month. A trend is rated only when the smaller of its two periods has at least 30 commits, $100K of fees or revenue in a month, $1M of TVL, 1,000 watchlist users or $10M of stablecoins on the chain.",
+  // #72: an area verdict resting on fewer rated metrics than this never uses the extreme words.
+  verdictMinRated: 2,
+  verdictMinRatedReason: "An area verdict built on one rated metric is thin evidence, so it never says Strong or Poor: the strongest it can say is Good or Weak. With two or more rated metrics, all five words can be used.",
   metrics: {
     // Share of the total supply (what exists now) already circulating, in % (#39).
     circulatingShare: { bands: [30, 50, 70, 90], dir: "up",

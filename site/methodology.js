@@ -68,6 +68,7 @@ $("#types-table").innerHTML = typesTable();
 $("#metric-list").innerHTML = metricList();
 $("#glossary-list").innerHTML = glossary();
 $("#hr-version").textContent = HOUSE_RULES.version;
+$("#verdict-rule").textContent = HOUSE_RULES.verdictMinRatedReason;
 // The page is rendered after load, so honour a #m-…, #g-… or #p-… link once the targets exist.
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 

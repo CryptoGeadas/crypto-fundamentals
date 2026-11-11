@@ -5,7 +5,7 @@
 // Run: node build/check-rating.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { analyse, rate, levelFromBands, favourOf, METRICS, fmt } from "../site/rating.js";
+import { analyse, rate, levelFromBands, favourOf, METRICS, fmt, verdictOf } from "../site/rating.js";
 import { HOUSE_RULES } from "../site/house-rules.js";
 
 // Fixtures use real values from the 1 Oct 2026 prototype snapshot, rounded.
@@ -427,6 +427,27 @@ check("every metric caveat reaches its row, whatever the rating; metrics without
   const empty = analyse({}, HOUSE_RULES, { type: "defi" }).rows.find((r) => r.id === "holdersShare");
   assert.match(empty.note, /buybacks/, "shown even when the source has no data");
   assert.match(row(full(), "holdersShare").note, /can miss value returned outside the protocol/);
+});
+// #72: one rated metric is thin evidence, so its area never gets an extreme verdict word.
+check("an area with one rated metric is never Strong or Poor; its average is kept as it is", () => {
+  const m = analyse(full(), HOUSE_RULES, { type: "defi" }).byArea.market;
+  assert.equal(m.rows.filter((r) => r.level != null).length, 1, "market rests on volume alone");
+  assert.equal(m.avg, 1, "volume is High: the average itself is unchanged");
+  assert.equal(m.word, "Good");
+  assert.equal(m.tone, "g1");
+  assert.equal(m.soft, true);
+  assert.deepEqual(verdictOf(-2, 1, HOUSE_RULES), { word: "Weak", tone: "b1", soft: true });
+  assert.deepEqual(verdictOf(2, 1, HOUSE_RULES), { word: "Good", tone: "g1", soft: true });
+  assert.deepEqual(verdictOf(0.5, 1, HOUSE_RULES), { word: "Good", tone: "g1", soft: false }, "not extreme: nothing to soften");
+});
+check("with two or more rated metrics the extreme words stay", () => {
+  assert.deepEqual(verdictOf(2, 2, HOUSE_RULES), { word: "Strong", tone: "g2", soft: false });
+  assert.deepEqual(verdictOf(-1.5, 3, HOUSE_RULES), { word: "Poor", tone: "b2", soft: false });
+  assert.deepEqual(verdictOf(null, 0, HOUSE_RULES), { word: null, tone: "n", soft: false });
+});
+check("the one-metric rule is a house rule with its reason", () => {
+  assert.equal(HOUSE_RULES.verdictMinRated, 2);
+  assert.match(HOUSE_RULES.verdictMinRatedReason, /one rated metric/i);
 });
 // #69, principle 9: the chain stablecoin trend has a floor too.
 check("stablecoin trend on a chain: under $10M in the smaller period it is shown as too small to rate; at $10M it is rated", () => {
