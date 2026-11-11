@@ -8,7 +8,7 @@ const fmtNum = (v) => {
 const fmtDate = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-const fmtUsd = (v) => "$" + fmtNum(v);
+const fmtUsd = (v) => (v < 0 ? "-$" : "$") + fmtNum(Math.abs(v));
 
 // Monthly fees (solid) next to revenue (light), last 12 months.
 export function feesChart(fees, revenue, { w = 640, h = 190 } = {}) {
@@ -16,7 +16,11 @@ export function feesChart(fees, revenue, { w = 640, h = 190 } = {}) {
   const rev = Object.fromEntries((revenue || []).map((x) => [x.m, x.v]));
   const max = Math.max(...fees.map((x) => x.v), ...fees.map((x) => rev[x.m] || 0), 1);
   const padB = 22, padT = 18, bw = (w - 8) / fees.length;
-  const H = (v) => (v / max) * (h - padB - padT);
+  // DefiLlama can report a negative month (refunds or incentives counted against revenue).
+  // SVG has no negative bar height, so a negative month is a 2px stub on the axis:
+  // still hoverable, and its tooltip keeps the real negative amount.
+  const NEG_STUB = 2;
+  const H = (v) => (v < 0 ? NEG_STUB : (v / max) * (h - padB - padT));
   const month = (m) => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
   const bars = fees.map((x, i) => {
     const x0 = 4 + i * bw, r = rev[x.m] || 0;
