@@ -11,6 +11,7 @@ import { createCache, TTL } from "./cache.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 import { trendingDays, watchChange } from "./attention.js";
 import { supplyGrowth } from "./supply.js";
+import { LEADS, peerLabel, row } from "./leads.js";
 import { esc } from "./format.js";
 
 const $ = (s) => document.querySelector(s);
@@ -87,109 +88,6 @@ function identity(t, a, cls) {
       .map(([l, v, tip]) => `<div class="kpi"><span class="label">${l}</span><b${tip ? ` class="tip" tabindex="0" data-tip="${esc(tip)}"` : ""}>${v}</b></div>`).join("")}</div>`;
 }
 
-function leadSentence(t, a) {
-  const circ = a.rows.find((r) => r.id === "circulatingShare");
-  const fdvm = a.rows.find((r) => r.id === "fdvToMcap");
-  const parts = [];
-  if (circ.unrated) parts.push(`${t.sym} has no maximum supply, so its dilution depends on how fast new tokens are issued`);
-  else if (circ.value != null) parts.push(`${circ.display} of ${t.sym}'s eventual supply is already circulating`);
-  if (fdvm.value != null) parts.push(`its fully diluted value is ${fdvm.display} its market cap`);
-  let text = parts.length ? parts.join("; ") + "." : "CoinGecko has no supply data for this token.";
-  const next = a.rows.find((r) => r.id === "nextUnlockShare");
-  const y = a.rows.find((r) => r.id === "unlocks12m");
-  if (next && next.value != null) text += ` Next unlock: ${next.extra}.`;
-  else if (next?.display === "None scheduled") text += " No unlock is scheduled.";
-  if (y && y.value != null) text += ` ${y.display.replace(" of circulating", "")} of circulating supply is due to unlock in the next 12 months.`;
-  else if (!t.unlocks) text += " DefiLlama does not track an unlock schedule for it.";
-  return text;
-}
-
-// One plain sentence of facts that opens each area (Factsheet layout).
-const money = (v) => fmt.usd(v);
-function tractionLead(t, a) {
-  const L = t.llama, f = a.rows.find((r) => r.id === "feesTrend"), tv = a.rows.find((r) => r.id === "tvlTrend");
-  const parts = [];
-  if (L?.fees?.d30 != null) parts.push(`${t.name} earned ${money(L.fees.d30)} in fees over the last 30 days${f?.value != null ? ` (${f.display} against the same window three months earlier)` : ""}${L.revenue?.d30 != null ? `, of which ${money(L.revenue.d30)} was revenue` : ""}`);
-  if (L?.tvl?.now) parts.push(`${money(L.tvl.now)} is locked in it${tv?.value != null ? ` (${tv.display} in 30 days)` : ""}`);
-  if (L?.chain?.dex30) parts.push(`${money(L.chain.dex30)} traded on its DEXs in 30 days`);
-  return parts.length ? parts.join("; ") + "." : "DefiLlama returned no fee or TVL data for it.";
-}
-function accrualLead(t, a) {
-  const r = a.rows.find((x) => x.id === "holdersShare"), f = a.rows.find((x) => x.id === "holdersShareFees");
-  if (r?.value == null) return f?.value != null
-    ? `${f.display} of ${t.name}'s fees reached token holders in the last 30 days; DefiLlama has no revenue figure to measure it against.`
-    : "DefiLlama has no holders-revenue or revenue data for it, so it is unclear whether what it earns reaches token holders.";
-  // D6 (#54): measured against revenue, what the protocol keeps
-  return r.value === 0 ? `None of ${t.name}'s revenue reached token holders in the last 30 days, according to DefiLlama.`
-    : `${r.display} of what ${t.name} keeps reached token holders in the last 30 days, through buybacks, burns or staking payouts${f?.value != null ? ` (${f.display} of all fees, including what passes through to depositors)` : ""}.`;
-}
-function treasuryLead(t) {
-  const tr = t.llama?.treasury;
-  return tr ? `The treasury holds ${money(tr.other)} in other assets and ${money(tr.own)} in ${t.sym}.` : "DefiLlama does not track a treasury for it.";
-}
-const peerLabel = (p) => `${p.n} ${p.group === "all fee-earning tokens" ? p.group : `${p.group} peers`}`;
-function valuationLead(t, a) {
-  // the multiple the token is rated on (#54): revenue for protocols, fees for chains; else whichever exists
-  const f = a.rows.find((r) => r.id === "feeMultiple"), v = a.rows.find((r) => r.id === "revenueMultiple"), m = a.rows.find((r) => r.id === "mcapToTvl");
-  const rated = [v, f].find((x) => x?.level != null) || [v, f].find((x) => x?.peer) || [v, f].find((x) => x?.value != null);
-  const what = rated?.id === "revenueMultiple" ? "yearly revenue" : "yearly fees";
-  const parts = [];
-  if (rated?.value != null) parts.push(`${t.sym} is valued at ${rated.display} its ${what}${rated.peer ? `, cheaper than ${rated.peer.cheaperThan}% of ${peerLabel(rated.peer)}` : ""}`);
-  if (m?.value != null) parts.push(`its market cap is ${m.display} the value locked in it`);
-  return parts.length ? parts.join("; ") + "." : "There are no fees or TVL to value it against.";
-}
-function holdersLead(t, a) {
-  const r = a.rows.find((x) => x.id === "top10Share");
-  if (r?.display === "Native asset") return `${t.name} is a chain's native coin, so there is no token contract or holder list to inspect.`;
-  if (r?.value == null) return "The holder list could not be checked.";
-  if (t.security.chain === "solana") return `The 10 largest wallets hold ${r.display} of the supply. On Solana these can include team, exchange and treasury wallets, which are not single owners.`;
-  const c = t.security.holders.filter((h) => h.contract).length;
-  return `The 10 largest wallets hold ${r.display} of the supply; ${c} of them are contracts such as exchanges, bridges, staking or treasuries, not single owners.`;
-}
-function marketLead(t, a) {
-  const v = a.rows.find((x) => x.id === "volumeToMcap"), h = a.rows.find((x) => x.id === "athDistance");
-  const parts = [];
-  if (v?.value != null) parts.push(`${money(t.volume24h)} traded in the last 24 hours, ${v.display} of its market cap`);
-  if (h?.value != null) parts.push(`the price is ${Math.abs(h.value).toFixed(0)}% below its all-time high`);
-  return parts.length ? parts.join("; ") + "." : "CoinGecko has no market data for it.";
-}
-// Pegged assets (#53): the peg, then the supply and which way it moved.
-function pegLead(t, a) {
-  const d = a.rows.find((x) => x.id === "pegDistance"), s = a.rows.find((x) => x.id === "pegSupply"), c = a.rows.find((x) => x.id === "pegSupplyChange");
-  const parts = [];
-  if (d?.value != null) parts.push(`${t.sym} trades ${Math.abs(d.value) < 0.005 ? "at" : `${d.display} from`} its ${fmt.price(t.peg.target)} peg`);
-  else parts.push(`It is not known what ${t.sym} is pegged to in the free data, so its peg can't be checked here`);
-  if (s?.value != null) parts.push(`${s.display} tokens are in circulation${c?.value != null ? ` (${c.display} in 30 days)` : ""}`);
-  return parts.join("; ") + ".";
-}
-
-function securityLead(t, a) {
-  const f = a.rows.find((x) => x.id === "contractFlags"), e = a.rows.find((x) => x.id === "exploitLoss");
-  const parts = [];
-  if (f?.display === "Native asset") parts.push("As a native coin it has no token contract to audit");
-  else if (f?.value != null) parts.push(f.value === 0 ? "GoPlus found no risky owner powers, taxes or honeypot behaviour in the contract" : `GoPlus raises ${f.display} on the contract: ${t.security.flags.join(", ").toLowerCase()}`);
-  const n = (t.defiExtra?.hacks || []).length, ex = n === 1 ? "1 exploit" : `${n} exploits`;
-  if (e?.value != null) parts.push(e.value === 0 ? `DefiLlama records ${ex}, with the funds returned in full` : `DefiLlama records ${ex}, with ${e.display} lost after returned funds`);
-  else if (e?.notOnRecord) parts.push("DefiLlama's exploit list has nothing on file for it, which is not proof that none happened");
-  return parts.length ? parts.join("; ") + "." : "The contract could not be checked.";
-}
-function devLead(t, a) {
-  const c = a.rows.find((x) => x.id === "contributors90");
-  if (!c || c.value == null) return c?.display === "Not measured yet" ? "Development activity is still queued for measurement by the daily job." : c?.notOnRecord ? "Neither DefiLlama nor CoinGecko links a GitHub organisation for it, so its development activity is unknown." : "No public GitHub repository is linked for it.";
-  const d = t.meta.dev;
-  return `${c.display} people (bots excluded) made ${d.commits90} commits in the last 90 days across ${d.repos.length} recently active repositories, against ${d.commitsPrev90} commits in the 90 days before.`;
-}
-function backersLead(t, a) {
-  const r = a.rows.find((x) => x.id === "raised"), g = a.rows.find((x) => x.id === "age");
-  const parts = [];
-  const n = t.meta?.raises?.length || 0, rounds = `${n} recorded round${n > 1 ? "s" : ""}`;
-  if (r?.value) parts.push(`It raised ${r.display} across ${rounds}`);
-  else if (r?.value === 0) parts.push(`DefiLlama lists ${rounds} with undisclosed amounts`);
-  else if (r?.notOnRecord) parts.push("DefiLlama has no funding rounds on file for it, which does not mean it raised nothing");
-  if (g?.value != null) parts.push(`the token has traded for ${g.display}`);
-  return parts.length ? parts.join("; ") + "." : "No funding or age data for it.";
-}
-const LEADS = { peg: pegLead, valuation: valuationLead, holders: holdersLead, market: marketLead, security: securityLead, dev: devLead, backers: backersLead, dilution: leadSentence, traction: tractionLead, accrual: accrualLead, treasury: treasuryLead };
 // Charts shown under an area's facts.
 // The peer group behind the valuation ratings, cheapest first, with this token highlighted.
 function peersBlock(t, a) {
@@ -202,7 +100,7 @@ function peersBlock(t, a) {
     : state.peers.groups[name] || [];
   if (!list.length) return "";
   // This token's row always uses the live numbers shown on its cards, not the daily benchmark copy.
-  const mine = a.rows.find((x) => x.id === "feeMultiple"), myRev = a.rows.find((x) => x.id === "revenueMultiple");
+  const mine = row(a, "feeMultiple"), myRev = row(a, "revenueMultiple");
   const rows = [...list.filter((p) => p.id !== t.id), { id: t.id, pf: mine?.value ?? null, pr: myRev?.value ?? null }]
     .sort((x, y) => (x[r.peer.key] ?? Infinity) - (y[r.peer.key] ?? Infinity));
   const label = (id) => { const u = state.byId.get(id); return u ? `<b>${esc(u.sym)}</b> <span>${esc(u.name)}</span>` : `<b>${esc(id)}</b>`; };
