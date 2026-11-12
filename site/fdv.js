@@ -32,3 +32,13 @@ export function cleanSupply(circulating, totalSupply, maxSupply) {
 
 // Max supply is worth a note when it is more than 10% above total supply.
 export const maxGap = (maxSupply, totalSupply) => maxSupply > 0 && totalSupply > 0 && maxSupply > totalSupply * 1.1;
+
+// CoinGecko's market cap this far from its own price × circulating supply is a contradiction, not a
+// timing gap (those stay under 3%): QuantixAI showed 411.6M against 999.1M (#30). Neither figure can be
+// trusted, so the market cap becomes unknown and nothing is rated on it.
+export const MCAP_CONTRADICTION = 0.25;
+export function cleanMarketCap(marketCap, price, circulating) {
+  if (!(marketCap > 0)) return null;
+  if (price > 0 && circulating > 0 && Math.abs((price * circulating) / marketCap - 1) > MCAP_CONTRADICTION) return null;
+  return marketCap;
+}

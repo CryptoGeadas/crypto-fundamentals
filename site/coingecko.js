@@ -1,5 +1,5 @@
 // CoinGecko keyless API, called from the visitor's browser (no server, no key).
-import { fdvOf, cleanSupply } from "./fdv.js";
+import { fdvOf, cleanSupply, cleanMarketCap } from "./fdv.js";
 const BASE = "https://api.coingecko.com/api/v3";
 
 export class SourceError extends Error {
@@ -50,7 +50,7 @@ export function normalise(c) {
     rank: c.market_cap_rank ?? null,
     price: usd(md.current_price),
     change30d: md.price_change_percentage_30d ?? null,
-    marketCap: num(usd(md.market_cap)),
+    marketCap: cleanMarketCap(num(usd(md.market_cap)), usd(md.current_price), num(md.circulating_supply)),   // contradiction → unknown (#30)
     fdv: fdvOf(usd(md.current_price), supply.max, supply.total),   // price × total supply (#39)
     fdvCoinGecko: num(usd(md.fully_diluted_valuation)),
     volume24h: num(usd(md.total_volume)),

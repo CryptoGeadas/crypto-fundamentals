@@ -2,7 +2,7 @@
 // sources publish themselves. The step (build/step-audit.mjs) fetches; build/audit-issue.mjs keeps the
 // "Data drift" issue in sync. Drift is reported, never acted on: it doesn't change data or fail a run.
 
-import { fdvOf, cleanSupply } from "../site/fdv.js";
+import { fdvOf, cleanSupply, MCAP_CONTRADICTION } from "../site/fdv.js";
 
 export const DRIFT_TITLE = "Data drift";
 
@@ -10,7 +10,8 @@ export const DRIFT_TITLE = "Data drift";
 // page itself (#26); CoinGecko's FDV (on total supply, or contradicting itself) is no longer used by the
 // page, which computes FDV from price and supply (#29, #31); a max supply below circulating is shown on
 // the page as out of date (#30).
-export const INFO_ONLY = new Set(["circulating", "fdvTotal", "fdv", "supply"]);
+// A market cap that contradicts price × circulating is shown as unknown on the page (#30, "mcapUnknown").
+export const INFO_ONLY = new Set(["circulating", "fdvTotal", "fdv", "supply", "mcapUnknown"]);
 export const actionable = (items = []) => items.filter((it) => !INFO_ONLY.has(it.check));
 
 // Tolerances, as a share of the source's figure. Each says why it is that loose.
@@ -22,6 +23,7 @@ export const TOL = {
   supply: 0.25, // DefiLlama and CoinGecko define "circulating" differently (treasury, staking); only big gaps matter
   fees: 0.01,   // same source, same days: anything beyond rounding is a calculation error on our side
   tvl: 0.05,    // the job's TVL can be up to a day older than DefiLlama's live figure
+  tvlFloor: 10_000, // below this on both sides a few dollars are a big share: noise, not drift (tribe-2: $7)
 };
 
 const off = (ours, theirs) => (theirs ? Math.abs(ours / theirs - 1) : null);
@@ -35,7 +37,8 @@ export function coingeckoDrift(m) {
   const p = m.current_price;
   if (m.market_cap > 0 && m.circulating_supply > 0) {
     const d = off(p * m.circulating_supply, m.market_cap);
-    if (d > TOL.mcap) out.push({ check: "mcap", id: m.id, detail: `market cap ${n(m.market_cap)} vs price × circulating ${n(p * m.circulating_supply)} (${pct(d)} apart)` });
+    if (d > MCAP_CONTRADICTION) out.push({ check: "mcapUnknown", id: m.id, detail: `market cap ${n(m.market_cap)} vs price × circulating ${n(p * m.circulating_supply)} (${pct(d)} apart): shown as unknown` });
+    else if (d > TOL.mcap) out.push({ check: "mcap", id: m.id, detail: `market cap ${n(m.market_cap)} vs price × circulating ${n(p * m.circulating_supply)} (${pct(d)} apart)` });
   }
   // CoinGecko may compute FDV from max supply or from total supply. Matching neither is a contradiction;
   // matching total while max is >10% higher is a definition lead: FDV-based figures understate future dilution.
@@ -77,7 +80,7 @@ export function feeDrift(id, ours, theirs) {
 // The job's TVL vs DefiLlama's protocol TVL.
 export function tvlDrift(id, ours, theirs) {
   const d = off(ours ?? 0, theirs);
-  return theirs > 0 && d > TOL.tvl ? [{ check: "tvl", id, detail: `stored TVL ${n(ours ?? 0)} vs DefiLlama's ${n(theirs)} (${pct(d)} apart)` }] : [];
+  return theirs > 0 && Math.max(ours ?? 0, theirs) >= TOL.tvlFloor && d > TOL.tvl ? [{ check: "tvl", id, detail: `stored TVL ${n(ours ?? 0)} vs DefiLlama's ${n(theirs)} (${pct(d)} apart)` }] : [];
 }
 
 // A fixed-size slice of a sorted list, continuing where yesterday stopped (wraps around).
@@ -109,7 +112,7 @@ export function decideDrift(allItems, previousKeys = [], openIssue = null) {
   return fresh.length ? "update+comment" : "update";
 }
 
-const LABEL = { pageFdv: "Page FDV implausible (FDV ÷ market cap)", mcap: "CoinGecko market cap", fdv: "CoinGecko FDV (contradiction)", fdvTotal: "FDV counts total, not max supply (page understates future dilution)", supply: "CoinGecko supply", circulating: "Circulating supply (sources disagree)", fees30: "30-day fees", tvl: "TVL" };
+const LABEL = { pageFdv: "Page FDV implausible (FDV ÷ market cap)", mcap: "CoinGecko market cap", mcapUnknown: "CoinGecko market cap (contradiction, shown as unknown)", fdv: "CoinGecko FDV (contradiction)", fdvTotal: "FDV counts total, not max supply (page understates future dilution)", supply: "CoinGecko supply", circulating: "Circulating supply (sources disagree)", fees30: "30-day fees", tvl: "TVL" };
 
 export function driftBody(allItems, { runUrl = "", at = new Date().toISOString(), sampled = {} } = {}) {
   const items = actionable(allItems), info = allItems.length - items.length;

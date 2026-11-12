@@ -4,7 +4,9 @@
 
 import assert from "node:assert/strict";
 import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, decideDrift, driftBody, keyOf, carryOver, TOL, INFO_ONLY } from "./audit-lib.mjs";
-import { fdvOf, cleanSupply } from "../site/fdv.js";
+import { fdvOf, cleanSupply, cleanMarketCap } from "../site/fdv.js";
+import { normalise } from "../site/coingecko.js";
+import { buildUniverse } from "./universe-lib.mjs";
 
 const results = [];
 function check(name, fn) {
@@ -14,7 +16,8 @@ function check(name, fn) {
 check("CoinGecko: consistent rows pass; market cap, FDV and supply contradictions are flagged", () => {
   const ok = { id: "aave", current_price: 180, market_cap: 2.778e9, circulating_supply: 15.435e6, fully_diluted_valuation: 2.88e9, max_supply: 16e6, total_supply: 16e6 };
   assert.deepEqual(coingeckoDrift(ok), []);
-  assert.deepEqual(coingeckoDrift({ ...ok, market_cap: 2.0e9 }).map((x) => x.check), ["mcap"]);
+  assert.deepEqual(coingeckoDrift({ ...ok, market_cap: 2.65e9 }).map((x) => x.check), ["mcap"]);       // 4.8%: a lead
+  assert.deepEqual(coingeckoDrift({ ...ok, market_cap: 2.0e9 }).map((x) => x.check), ["mcapUnknown"]); // 39%: shown as unknown (#30)
   assert.deepEqual(coingeckoDrift({ ...ok, fully_diluted_valuation: 4e9 }).map((x) => x.check), ["fdv"]);
   // Stargate-like: FDV = price × total supply while max supply is 8× higher → a definition lead, not a contradiction.
   const stg = { id: "stargate-finance", current_price: 0.174, market_cap: 21e6, circulating_supply: 120.7e6, total_supply: 120.8e6, max_supply: 1e9, fully_diluted_valuation: 21.02e6 };
@@ -28,6 +31,19 @@ check("CoinGecko: consistent rows pass; market cap, FDV and supply contradiction
   assert.deepEqual(coingeckoDrift({ ...ok, max_supply: null, total_supply: 16e6 }), []);
   assert.deepEqual(coingeckoDrift({ id: "x", current_price: 0 }), []);
 });
+check("#30: a CoinGecko market cap contradicting price × circulating is unknown on the page, the token list and in the audit", () => {
+  // QuantixAI, 11 Nov 2026: price 999.15, circulating 1M, market cap 411.6M.
+  const q = { id: "quantixai", symbol: "qai", name: "QuantixAI", current_price: 999.15, circulating_supply: 1e6, market_cap: 411.6e6, total_supply: 4e6, market_cap_rank: 200 };
+  assert.equal(cleanMarketCap(411.6e6, 999.15, 1e6), null);
+  assert.equal(cleanMarketCap(2.65e9, 180, 15.435e6), 2.65e9, "timing gaps keep the figure");
+  assert.equal(cleanMarketCap(5e6, null, null), 5e6, "nothing to check against: kept");
+  const page = normalise({ id: "quantixai", market_data: { current_price: { usd: 999.15 }, market_cap: { usd: 411.6e6 }, circulating_supply: 1e6, total_supply: 4e6 } });
+  assert.equal(page.marketCap, null);
+  assert.equal(buildUniverse([q], {})[0].mcap, null);
+  const items = coingeckoDrift(q);
+  assert.deepEqual(items.map((x) => x.check), ["mcapUnknown"]);
+  assert.ok(INFO_ONLY.has("mcapUnknown"), "nothing left to fix: kept out of the issue");
+});
 check("supply, fees and TVL comparisons use their own tolerances", () => {
   assert.equal(supplyDrift("spark-2", 4.03e9, 3.42e9).length, 0);           // 18% apart: within 25%
   assert.equal(supplyDrift("x", 5e9, 3e9).length, 1);
@@ -36,6 +52,8 @@ check("supply, fees and TVL comparisons use their own tolerances", () => {
   assert.equal(tvlDrift("spark-2", 7.24e9, 7.25e9).length, 0);
   assert.equal(tvlDrift("spark-2", 9.64e9, 7.25e9).length, 1);              // the old double count (#25) is caught
   assert.equal(feeDrift("x", 5, 0).length, 0, "no published figure: nothing to compare");
+  assert.equal(tvlDrift("tribe-2", 7, 7.46).length, 0, "a few dollars apart on a $7 TVL is noise (#30)");
+  assert.equal(tvlDrift("x", 9000, 20000).length, 1, "one side above the floor: still compared");
   assert.ok(TOL.fees < TOL.tvl && TOL.tvl < TOL.supply);
 });
 check("info-only items stay in the data but never open, comment on or keep open the issue (#29)", () => {
