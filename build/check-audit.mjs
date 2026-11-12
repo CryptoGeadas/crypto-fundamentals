@@ -4,7 +4,7 @@
 
 import assert from "node:assert/strict";
 import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, decideDrift, driftBody, keyOf, carryOver, TOL, INFO_ONLY } from "./audit-lib.mjs";
-import { fdvOf, cleanSupply, cleanMarketCap } from "../site/fdv.js";
+import { fdvOf, cleanSupply, cleanMarketCap, plausibleFdv } from "../site/fdv.js";
 import { normalise } from "../site/coingecko.js";
 import { buildUniverse } from "./universe-lib.mjs";
 
@@ -43,6 +43,18 @@ check("#30: a CoinGecko market cap contradicting price × circulating is unknown
   const items = coingeckoDrift(q);
   assert.deepEqual(items.map((x) => x.check), ["mcapUnknown"]);
   assert.ok(INFO_ONLY.has("mcapUnknown"), "nothing left to fix: kept out of the issue");
+});
+check("#30: a page FDV over 50× market cap is unknown on the page and the token list (owner's call, adi-token)", () => {
+  // adi-token, 11 Nov 2026: price 8.02, circulating 9.44M, total and max 1B, market cap 75.7M → FDV 106×.
+  const a = { id: "adi-token", symbol: "adi", name: "ADI", current_price: 8.02, circulating_supply: 9.44e6, market_cap: 75.7e6, total_supply: 1e9, max_supply: 1e9, market_cap_rank: 250 };
+  assert.equal(plausibleFdv(8.02e9, 75.7e6), null);
+  assert.equal(plausibleFdv(2.88e9, 2.778e9), 2.88e9);
+  assert.equal(plausibleFdv(5e9, null), 5e9, "no market cap to check against: kept");
+  const page = normalise({ id: "adi-token", market_data: { current_price: { usd: 8.02 }, market_cap: { usd: 75.7e6 }, circulating_supply: 9.44e6, total_supply: 1e9, max_supply: 1e9 } });
+  assert.equal(page.fdv, null);
+  assert.equal(page.marketCap, 75.7e6);
+  assert.equal(buildUniverse([a], {})[0].fdv, null);
+  assert.ok(INFO_ONLY.has("pageFdv"), "nothing left to fix: kept out of the issue");
 });
 check("supply, fees and TVL comparisons use their own tolerances", () => {
   assert.equal(supplyDrift("spark-2", 4.03e9, 3.42e9).length, 0);           // 18% apart: within 25%

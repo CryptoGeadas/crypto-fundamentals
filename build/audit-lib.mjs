@@ -2,7 +2,7 @@
 // sources publish themselves. The step (build/step-audit.mjs) fetches; build/audit-issue.mjs keeps the
 // "Data drift" issue in sync. Drift is reported, never acted on: it doesn't change data or fail a run.
 
-import { fdvOf, cleanSupply, MCAP_CONTRADICTION } from "../site/fdv.js";
+import { fdvOf, cleanSupply, MCAP_CONTRADICTION, FDV_RATIO_MAX } from "../site/fdv.js";
 
 export const DRIFT_TITLE = "Data drift";
 
@@ -10,8 +10,9 @@ export const DRIFT_TITLE = "Data drift";
 // page itself (#26); CoinGecko's FDV (on total supply, or contradicting itself) is no longer used by the
 // page, which computes FDV from price and supply (#29, #31); a max supply below circulating is shown on
 // the page as out of date (#30).
+// A page FDV over 50× market cap is shown as unknown too (#30, owner's call on adi-token).
 // A market cap that contradicts price × circulating is shown as unknown on the page (#30, "mcapUnknown").
-export const INFO_ONLY = new Set(["circulating", "fdvTotal", "fdv", "supply", "mcapUnknown"]);
+export const INFO_ONLY = new Set(["circulating", "fdvTotal", "fdv", "supply", "mcapUnknown", "pageFdv"]);
 export const actionable = (items = []) => items.filter((it) => !INFO_ONLY.has(it.check));
 
 // Tolerances, as a share of the source's figure. Each says why it is that loose.
@@ -19,7 +20,7 @@ export const TOL = {
   mcap: 0.03,   // CoinGecko updates price, supply and market cap at slightly different moments
   fdv: 0.03,    // same as above
   fdvMax: 0.10, // max supply this much above total before "FDV counts total supply" is worth a mention
-  fdvRatio: 50, // the page's own FDV over 50× market cap: under 2% circulating is rare enough to check by hand
+  fdvRatio: FDV_RATIO_MAX, // the page's own FDV over 50× market cap: treated as a source error, FDV shown as unknown (#30)
   supply: 0.25, // DefiLlama and CoinGecko define "circulating" differently (treasury, staking); only big gaps matter
   fees: 0.01,   // same source, same days: anything beyond rounding is a calculation error on our side
   tvl: 0.05,    // the job's TVL can be up to a day older than DefiLlama's live figure
@@ -112,7 +113,7 @@ export function decideDrift(allItems, previousKeys = [], openIssue = null) {
   return fresh.length ? "update+comment" : "update";
 }
 
-const LABEL = { pageFdv: "Page FDV implausible (FDV ÷ market cap)", mcap: "CoinGecko market cap", mcapUnknown: "CoinGecko market cap (contradiction, shown as unknown)", fdv: "CoinGecko FDV (contradiction)", fdvTotal: "FDV counts total, not max supply (page understates future dilution)", supply: "CoinGecko supply", circulating: "Circulating supply (sources disagree)", fees30: "30-day fees", tvl: "TVL" };
+const LABEL = { pageFdv: "Page FDV implausible (FDV ÷ market cap), shown as unknown", mcap: "CoinGecko market cap", mcapUnknown: "CoinGecko market cap (contradiction, shown as unknown)", fdv: "CoinGecko FDV (contradiction)", fdvTotal: "FDV counts total, not max supply (page understates future dilution)", supply: "CoinGecko supply", circulating: "Circulating supply (sources disagree)", fees30: "30-day fees", tvl: "TVL" };
 
 export function driftBody(allItems, { runUrl = "", at = new Date().toISOString(), sampled = {} } = {}) {
   const items = actionable(allItems), info = allItems.length - items.length;

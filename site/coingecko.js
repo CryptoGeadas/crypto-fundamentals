@@ -1,5 +1,5 @@
 // CoinGecko keyless API, called from the visitor's browser (no server, no key).
-import { fdvOf, cleanSupply, cleanMarketCap } from "./fdv.js";
+import { fdvOf, cleanSupply, cleanMarketCap, plausibleFdv } from "./fdv.js";
 const BASE = "https://api.coingecko.com/api/v3";
 
 export class SourceError extends Error {
@@ -42,6 +42,7 @@ export function normalise(c) {
   // Contradicting supply figures cleaned once, for FDV and the supply rows alike (#30): a junk total
   // becomes unknown; a max below circulating stays (the token is capped) but is shown as out of date.
   const supply = cleanSupply(num(md.circulating_supply), num(md.total_supply), num(md.max_supply));
+  const marketCap = cleanMarketCap(num(usd(md.market_cap)), usd(md.current_price), num(md.circulating_supply));   // contradiction → unknown (#30)
   return {
     id: c.id,
     name: c.name,
@@ -50,8 +51,8 @@ export function normalise(c) {
     rank: c.market_cap_rank ?? null,
     price: usd(md.current_price),
     change30d: md.price_change_percentage_30d ?? null,
-    marketCap: cleanMarketCap(num(usd(md.market_cap)), usd(md.current_price), num(md.circulating_supply)),   // contradiction → unknown (#30)
-    fdv: fdvOf(usd(md.current_price), supply.max, supply.total),   // price × total supply (#39)
+    marketCap,
+    fdv: plausibleFdv(fdvOf(usd(md.current_price), supply.max, supply.total), marketCap),   // over 50× market cap → unknown (#30)   // price × total supply (#39)
     fdvCoinGecko: num(usd(md.fully_diluted_valuation)),
     volume24h: num(usd(md.total_volume)),
     watchlist: num(c.watchlist_portfolio_users),   // CoinGecko users following it (attention area)

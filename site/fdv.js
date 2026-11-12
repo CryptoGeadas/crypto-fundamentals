@@ -42,3 +42,9 @@ export function cleanMarketCap(marketCap, price, circulating) {
   if (price > 0 && circulating > 0 && Math.abs((price * circulating) / marketCap - 1) > MCAP_CONTRADICTION) return null;
   return marketCap;
 }
+
+// The page's FDV over this many times the market cap means under 2% of supply circulates. That is rare
+// enough to be a source error (adi-token: 9.4M of 1B circulating, 106×; owner's call on #30), so FDV
+// becomes unknown and nothing is rated on it, rather than a wild dilution rating.
+export const FDV_RATIO_MAX = 50;
+export const plausibleFdv = (fdv, marketCap) => (fdv > 0 && marketCap > 0 && fdv / marketCap > FDV_RATIO_MAX ? null : fdv);
