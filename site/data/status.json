@@ -1,11 +1,11 @@
 {
-  "generated": "2026-11-11T15:03:59.780Z",
-  "startedAt": "2026-11-11T14:27:55.313Z",
-  "healthy": true,
+  "generated": "2026-11-12T15:54:45.164Z",
+  "startedAt": "2026-11-12T15:19:46.001Z",
+  "healthy": false,
   "sources": {
     "defillama": "ok",
     "coingecko": "ok",
-    "defillama-unlocks": "ok",
+    "defillama-unlocks": "degraded",
     "github": "ok",
     "audit": "ok"
   },
@@ -13,50 +13,52 @@
     "idmap": {
       "status": "updated",
       "count": 3040,
-      "lastSuccess": "2026-11-11T14:29:45.654Z"
+      "lastSuccess": "2026-11-12T15:20:34.710Z"
     },
     "universe": {
       "status": "updated",
-      "count": 652,
-      "lastSuccess": "2026-11-11T14:29:45.654Z"
+      "count": 651,
+      "lastSuccess": "2026-11-12T15:20:34.710Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 221,
-      "lastSuccess": "2026-11-11T14:29:49.838Z"
+      "count": 222,
+      "lastSuccess": "2026-11-12T15:21:03.330Z"
     },
     "defi": {
       "status": "updated",
-      "count": 423,
-      "lastSuccess": "2026-11-11T14:30:44.473Z"
+      "count": 420,
+      "lastSuccess": "2026-11-12T15:22:29.267Z"
     },
     "peers": {
       "status": "updated",
       "count": 289,
-      "lastSuccess": "2026-11-11T14:30:45.059Z"
+      "lastSuccess": "2026-11-12T15:22:30.913Z"
     },
     "meta": {
       "status": "updated",
-      "count": 562,
-      "lastSuccess": "2026-11-11T14:35:56.366Z"
+      "count": 559,
+      "lastSuccess": "2026-11-12T15:26:42.016Z"
     },
     "attention": {
       "status": "updated",
-      "count": 731,
-      "lastSuccess": "2026-11-11T15:00:58.001Z"
+      "count": 735,
+      "lastSuccess": "2026-11-12T15:51:43.624Z"
     },
     "supply": {
       "status": "updated",
-      "count": 660,
-      "lastSuccess": "2026-11-11T14:29:45.654Z"
+      "count": 667,
+      "lastSuccess": "2026-11-12T15:20:34.710Z"
     }
   },
-  "problems": [],
-  "retries": [
+  "problems": [
     {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
+      "level": "warning",
+      "source": "defillama-unlocks",
+      "message": "Schedule for pharos-network not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
+    }
+  ],
+  "retries": [
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
