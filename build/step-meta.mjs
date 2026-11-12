@@ -13,20 +13,20 @@ const GH = "https://api.github.com";
 const DAY = 86_400;
 const MIN_TOKENS = 200;
 
-function gh(path) {
+function gh(net, path) {
   const headers = { accept: "application/vnd.github+json", "user-agent": "crypto-fundamentals-daily" };
   if (process.env.GITHUB_TOKEN) headers.authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  return fetch(`${GH}${path}`, { headers }).then(async (r) => {
+  return net.get(`${GH}${path}`, "github", { headers, tries: 2 }).then(async (r) => {
     if (r.status === 404 || r.status === 409) return null;            // missing org / empty repo
     if (!r.ok) throw new Error(`GitHub ${r.status}${r.status === 403 ? " (rate limit)" : ""} for ${path.split("?")[0]}`);
     return r.json();
   });
 }
 
-async function commitsBetween(repo, since, until) {
+async function commitsBetween(net, repo, since, until) {
   const out = [];
   for (let page = 1; page <= 3; page++) {
-    const batch = await gh(`/repos/${repo}/commits?since=${since}&until=${until}&per_page=100&page=${page}`);
+    const batch = await gh(net, `/repos/${repo}/commits?since=${since}&until=${until}&per_page=100&page=${page}`);
     if (!batch?.length) break;
     out.push(...batch);
     if (batch.length < 100) break;
@@ -34,16 +34,16 @@ async function commitsBetween(repo, since, until) {
   return out;
 }
 
-async function devStats(orgs, now) {
+async function devStats(net, orgs, now) {
   const lists = [];
-  for (const org of orgs.slice(0, 2)) lists.push((await gh(`/users/${encodeURIComponent(org)}/repos?sort=pushed&per_page=40`)) || []);
+  for (const org of orgs.slice(0, 2)) lists.push((await gh(net, `/users/${encodeURIComponent(org)}/repos?sort=pushed&per_page=40`)) || []);
   const repos = pickRepos(lists);
   if (!repos.length) return null;
   const iso = (t) => new Date(t * 1000).toISOString();
   let cur = [], prev = [];
   for (const r of repos) {
-    cur = cur.concat(await commitsBetween(r, iso(now - 90 * DAY), iso(now)));
-    prev = prev.concat(await commitsBetween(r, iso(now - 180 * DAY), iso(now - 90 * DAY)));
+    cur = cur.concat(await commitsBetween(net, r, iso(now - 90 * DAY), iso(now)));
+    prev = prev.concat(await commitsBetween(net, r, iso(now - 180 * DAY), iso(now - 90 * DAY)));
   }
   const a = humanActivity(cur), b = humanActivity(prev);
   return { repos, contributors90: a.contributors, commits90: a.commits, commitsPrev90: b.commits, bots90: a.bots };
@@ -73,7 +73,7 @@ export async function metaStep({ report, net, data }) {
   const raisesDue = dueFor("raises", RAISES_MAX_AGE_DAYS, withProtocol, stored, now, (process.env.RAISES_CAP ? Number(process.env.RAISES_CAP) : 40));
   let raisesDone = 0;
   for (const id of raisesDue) {
-    const res = await fetch(`${API}/protocol/${encodeURIComponent(idmap.map[id].p)}`, { headers: { accept: "application/json" } }).catch(() => null);
+    const res = await net.get(`${API}/protocol/${encodeURIComponent(idmap.map[id].p)}`, "defillama", { tries: 2 }).catch(() => null);
     if (res?.ok) {
       try { const d = await res.json(); tokens[id] = { ...tokens[id], raises: summariseRaises(d.raises), raisesAt: new Date().toISOString() }; raisesDone++; }
       catch { report.warn("defillama", `Funding rounds for ${id} unreadable; kept previous.`); }
@@ -90,7 +90,7 @@ export async function metaStep({ report, net, data }) {
   const devDue = dueFor("dev", DEV_MAX_AGE_DAYS, withOrgs, stored, now, (process.env.DEV_CAP ? Number(process.env.DEV_CAP) : 50));
   let devDone = 0, devFailed = 0;
   for (const id of devDue) {
-    try { tokens[id] = { ...tokens[id], dev: await devStats(tokens[id].orgs, now), devAt: new Date().toISOString() }; devDone++; }
+    try { tokens[id] = { ...tokens[id], dev: await devStats(net, tokens[id].orgs, now), devAt: new Date().toISOString() }; devDone++; }
     catch (e) {
       devFailed++;
       if (/rate limit/.test(e.message)) { report.warn("github", `${e.message}; the rest of today's development refresh postponed.`); break; }

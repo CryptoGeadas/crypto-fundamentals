@@ -8,21 +8,14 @@
 
 import { readFile } from "node:fs/promises";
 import { ALERT_TITLE, decideAlert, alertBody } from "./report.mjs";
+import { githubIssues } from "./github.mjs";
 
 const dryRun = process.argv.includes("--dry-run");
 const repo = process.env.GITHUB_REPOSITORY || "CryptoGeadas/crypto-fundamentals";
 const token = process.env.GITHUB_TOKEN;
 const runUrl = process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_SERVER_URL}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}` : "";
 
-async function gh(method, path, body) {
-  const res = await fetch(`https://api.github.com/repos/${repo}${path}`, {
-    method,
-    headers: { authorization: `Bearer ${token}`, accept: "application/vnd.github+json", "user-agent": "crypto-fundamentals-alert" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(`GitHub API ${method} ${path} → HTTP ${res.status}: ${await res.text()}`);
-  return res.status === 204 ? null : res.json();
-}
+const gh = githubIssues({ repo, token, agent: "crypto-fundamentals-alert" });
 
 async function main() {
   const status = JSON.parse(await readFile(new URL("../site/data/status.json", import.meta.url), "utf8"));
