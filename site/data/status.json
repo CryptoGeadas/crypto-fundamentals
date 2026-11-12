@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-12T15:54:45.164Z",
-  "startedAt": "2026-11-12T15:19:46.001Z",
+  "generated": "2026-11-12T21:26:29.146Z",
+  "startedAt": "2026-11-12T21:09:42.965Z",
   "healthy": false,
   "sources": {
     "defillama": "ok",
@@ -13,84 +13,52 @@
     "idmap": {
       "status": "updated",
       "count": 3040,
-      "lastSuccess": "2026-11-12T15:20:34.710Z"
+      "lastSuccess": "2026-11-12T21:10:31.662Z"
     },
     "universe": {
       "status": "updated",
-      "count": 651,
-      "lastSuccess": "2026-11-12T15:20:34.710Z"
+      "count": 648,
+      "lastSuccess": "2026-11-12T21:10:31.662Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 222,
-      "lastSuccess": "2026-11-12T15:21:03.330Z"
+      "count": 221,
+      "lastSuccess": "2026-11-12T21:10:59.367Z"
     },
     "defi": {
       "status": "updated",
-      "count": 420,
-      "lastSuccess": "2026-11-12T15:22:29.267Z"
+      "count": 419,
+      "lastSuccess": "2026-11-12T21:11:04.408Z"
     },
     "peers": {
       "status": "updated",
       "count": 289,
-      "lastSuccess": "2026-11-12T15:22:30.913Z"
+      "lastSuccess": "2026-11-12T21:11:06.552Z"
     },
     "meta": {
       "status": "updated",
-      "count": 559,
-      "lastSuccess": "2026-11-12T15:26:42.016Z"
+      "count": 557,
+      "lastSuccess": "2026-11-12T21:13:29.898Z"
     },
     "attention": {
       "status": "updated",
-      "count": 735,
-      "lastSuccess": "2026-11-12T15:51:43.624Z"
+      "count": 736,
+      "lastSuccess": "2026-11-12T21:23:26.727Z"
     },
     "supply": {
       "status": "updated",
-      "count": 667,
-      "lastSuccess": "2026-11-12T15:20:34.710Z"
+      "count": 664,
+      "lastSuccess": "2026-11-12T21:10:31.662Z"
     }
   },
   "problems": [
     {
       "level": "warning",
       "source": "defillama-unlocks",
-      "message": "Schedule for pharos-network not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
+      "message": "Schedule for pearl-2 not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
     }
   ],
   "retries": [
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
