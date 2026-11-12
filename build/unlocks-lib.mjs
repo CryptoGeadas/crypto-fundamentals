@@ -57,20 +57,9 @@ export function summariseDataset(e, now = Date.now() / 1000) {
     generatedAt: new Date(now * 1000).toISOString() };
 }
 
-// Cumulative unlocked supply at time `ts` (seconds), from monthly rows, linear between rows.
-export function unlockedAt(monthly, ts) {
-  if (!monthly?.length) return null;
-  const total = (r) => r.slice(1).reduce((a, b) => a + b, 0);
-  if (ts <= monthly[0][0]) return total(monthly[0]);
-  for (let i = 1; i < monthly.length; i++) {
-    if (ts <= monthly[i][0]) {
-      const [a, b] = [monthly[i - 1], monthly[i]];
-      const f = (ts - a[0]) / (b[0] - a[0] || 1);
-      return total(a) + (total(b) - total(a)) * f;
-    }
-  }
-  return total(monthly[monthly.length - 1]);
-}
+// Cumulative unlocked supply at a time: one helper for the page and the build (#78).
+export { unlockedAt } from "../site/rating.js";
+import { unlockedAt } from "../site/rating.js";
 
 // Tokens whose detail should be fetched this run: missing, older than a week, or whose stored
 // next unlock has passed (schedule moved on). Oldest first, capped.

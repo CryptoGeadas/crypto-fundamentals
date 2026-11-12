@@ -1,5 +1,5 @@
 import { analyse, fmt, tone } from "./rating.js";
-import { classify, TYPES, pegOf } from "./classify.js";
+import { classify, TYPES } from "./classify.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
 import { addressKind, buildAddressIndex, lookupAddress, searchUniverse, tickerClashes } from "./search.js";
@@ -9,9 +9,8 @@ import { fetchSecurity } from "./goplus.js";
 import { loadLlama, loadStablecoinList, pegFromList } from "./llama.js";
 import { createCache, TTL } from "./cache.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
-import { trendingDays, watchChange } from "./attention.js";
-import { supplyGrowth } from "./supply.js";
 import { LEADS, peerLabel, row } from "./leads.js";
+import { assembleToken, setLlama, setPeg, setSecurity } from "./assemble.js";
 import { esc } from "./format.js";
 
 const $ = (s) => document.querySelector(s);
@@ -341,13 +340,12 @@ async function load(id, via, { fresh = false } = {}) {
       cache.get(`cg:${id}`, TTL.market, () => fetchToken(id, { onRetry: () => seq === state.loadSeq && renderLoading("CoinGecko is busy; trying again in a few seconds…") }), { fresh }),
       loadUnlockDetail(id),
     ]);
-    const t = market.value;
-    t.fetchedAt = new Date(market.at);
-    t.sourceFailed = {};
-    const cls = clsFor(id, t.categories);
+    const cls = clsFor(id, market.value.categories);
+    // sourceFailed is filled here while the lookups run, then handed to the assembly
+    const failed = {};
     // Slow data: failures are never cached (a failed source keeps its Retry button).
-    const securityJob = cache.get(`gp:${id}`, TTL.slow, () => fetchSecurity(t), { fresh, keep: () => true })
-      .catch(() => { t.sourceFailed.goplus = true; return { value: null, at: null }; });
+    const securityJob = cache.get(`gp:${id}`, TTL.slow, () => fetchSecurity(market.value), { fresh, keep: () => true })
+      .catch(() => { failed.goplus = true; return { value: null, at: null }; });
     const firstPriceJob = cache.get(`fp:${id}`, TTL.slow, () => fetch(`https://coins.llama.fi/prices/first/coingecko:${encodeURIComponent(id)}`).then((r) => r.json())
       .then((d) => d.coins?.[`coingecko:${id}`]?.timestamp ?? null).catch(() => null), { fresh });
     // A pegged token has no protocol data to show (#53): only its peg data is read from DefiLlama, so a
@@ -358,28 +356,14 @@ async function load(id, via, { fresh = false } = {}) {
     const pegJob = pegged
       // only this token's small result is cached (the full list is about 0.5 MB); not listed = { listed: false }
       ? cache.get(`peg:${id}`, TTL.slow, () => loadStablecoinList().then((list) => pegFromList(list, id) ?? { listed: false }), { fresh })
-        .catch(() => { t.sourceFailed.defillama = true; return { value: null, at: null }; })
+        .catch(() => { failed.defillama = true; return { value: null, at: null }; })
       : Promise.resolve({ value: null, at: null });
-    const u = state.unlocks?.[id];
-    t.unlocks = u ? { ...u, detail } : null;
-    t.supplyGrowthNow = supplyGrowth({ history: state.supply?.[id], unlocks: u }); // #55: null = unknown
     const [llama, security, firstPrice, peg] = await Promise.all([llamaJob, securityJob, firstPriceJob, pegJob]);
-    if (pegged) {
-      const st = peg.value?.listed === false ? null : peg.value;
-      t.peg = pegOf(t.categories, st);
-    }
-    t.llama = llama.value;
-    if (t.llama?.failed) t.sourceFailed.defillama = true;
-    t.security = security.value;
-    t.firstPriceTs = firstPrice.value;
-    // When each part of the page was fetched: the oldest slow lookup is what the refresh line reports.
-    const slowAts = [llama, security, firstPrice, peg].filter((x) => entry || x !== llama).map((x) => x.at).filter(Boolean);
-    t.dataAt = { market: market.at, slow: slowAts.length ? Math.min(...slowAts) : market.at };
-    t.meta = state.meta?.[id] || null;
-    t.attention = { trending: trendingDays(id, state.attention?.trending), watch: t.watchlist ?? null,
-      change: watchChange(state.attention?.watch?.[id], t.watchlist) };
-    t.defiExtra = state.defi?.[id] ? { hacks: state.defi[id].hacks || [], audits: state.defi[id].audits || null } : null;
-    t.peers = state.peers ? { group: state.peers.byToken?.[id]?.group, groups: state.peers.groups, secondary: entry?.c ? "Chain" : null } : null;
+    // One assembly for the page and the checks (#78): assemble.js builds the token the ratings read.
+    const t = assembleToken(market.value, cls, {
+      marketAt: market.at, entry, detail, llama, firstPrice,
+      security: { ...security, failed: Boolean(failed.goplus) }, peg: { ...peg, failed: Boolean(failed.defillama) },
+    }, { unlocks: state.unlocks, supply: state.supply, meta: state.meta, attention: state.attention, defi: state.defi, peers: state.peers });
     if (seq === state.loadSeq) renderToken(t, via);
   } catch (e) {
     if (seq === state.loadSeq) renderError(e.message || "Something went wrong.", () => load(id, via));
@@ -397,16 +381,14 @@ async function retrySource(source, btn) {
     const entry = state.idmap?.[t.id];
     if (clsFor(t.id, t.categories).type === "pegged") {
       // a pegged token reads only DefiLlama's stablecoin list (#53)
-      t.sourceFailed.defillama = false;
-      const st = await loadStablecoinList().then((list) => pegFromList(list, t.id), () => { t.sourceFailed.defillama = true; return null; });
-      if (!t.sourceFailed.defillama) t.peg = pegOf(t.categories, st);
+      const st = await loadStablecoinList().then((list) => ({ value: pegFromList(list, t.id) }), () => ({ failed: true }));
+      setPeg(t, st.value, Boolean(st.failed));
     } else {
-      t.llama = await loadLlama(t.id, entry, state.defi?.[t.id], clsFor(t.id, t.categories)).catch(() => ({ failed: true }));
-      t.sourceFailed.defillama = Boolean(t.llama?.failed);
+      setLlama(t, await loadLlama(t.id, entry, state.defi?.[t.id], clsFor(t.id, t.categories)).catch(() => ({ failed: true })));
     }
   } else if (source === "goplus") {
-    t.sourceFailed.goplus = false;
-    t.security = await fetchSecurity(t).catch(() => { t.sourceFailed.goplus = true; return null; });
+    const sec = await fetchSecurity(t).then((value) => ({ value }), () => ({ failed: true }));
+    setSecurity(t, sec.value, Boolean(sec.failed));
   }
   if (state.current === cur) renderToken(t, via);
 }
