@@ -1,14 +1,9 @@
+import { esc, fmt } from "./format.js";
 // Small dependency-free SVG charts. Colours come from CSS tokens (sapphire ramp by opacity),
 // so they follow the light/dark theme.
 
-const fmtNum = (v) => {
-  const a = Math.abs(v);
-  return a >= 1e12 ? (v / 1e12).toFixed(2) + "T" : a >= 1e9 ? (v / 1e9).toFixed(2) + "B" : a >= 1e6 ? (v / 1e6).toFixed(1) + "M" : a >= 1e3 ? (v / 1e3).toFixed(1) + "K" : String(Math.round(v));
-};
 const fmtDate = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-const fmtUsd = (v) => (v < 0 ? "-$" : "$") + fmtNum(Math.abs(v));
 
 // Monthly fees (solid) next to revenue (light), last 12 months.
 export function feesChart(fees, revenue, { w = 640, h = 190 } = {}) {
@@ -24,12 +19,12 @@ export function feesChart(fees, revenue, { w = 640, h = 190 } = {}) {
   const month = (m) => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" });
   const bars = fees.map((x, i) => {
     const x0 = 4 + i * bw, r = rev[x.m] || 0;
-    return `<rect x="${(x0 + bw * 0.08).toFixed(1)}" y="${(h - padB - H(x.v)).toFixed(1)}" width="${(bw * 0.4).toFixed(1)}" height="${H(x.v).toFixed(1)}" class="b1"><title>${esc(x.m)} fees ${fmtUsd(x.v)}</title></rect>
-      <rect x="${(x0 + bw * 0.5).toFixed(1)}" y="${(h - padB - H(r)).toFixed(1)}" width="${(bw * 0.4).toFixed(1)}" height="${H(r).toFixed(1)}" class="b2"><title>${esc(x.m)} revenue ${fmtUsd(r)}</title></rect>
+    return `<rect x="${(x0 + bw * 0.08).toFixed(1)}" y="${(h - padB - H(x.v)).toFixed(1)}" width="${(bw * 0.4).toFixed(1)}" height="${H(x.v).toFixed(1)}" class="b1"><title>${esc(x.m)} fees ${fmt.usd(x.v)}</title></rect>
+      <rect x="${(x0 + bw * 0.5).toFixed(1)}" y="${(h - padB - H(r)).toFixed(1)}" width="${(bw * 0.4).toFixed(1)}" height="${H(r).toFixed(1)}" class="b2"><title>${esc(x.m)} revenue ${fmt.usd(r)}</title></rect>
       ${i % 2 === 0 ? `<text x="${(x0 + bw / 2).toFixed(1)}" y="${h - 6}" class="ax" text-anchor="middle">${month(x.m)}</text>` : ""}`;
   }).join("");
   return `<figure class="chart"><svg viewBox="0 0 ${w} ${h}" class="svg" role="img" aria-label="Monthly fees and revenue">${bars}
-      <text x="4" y="11" class="ax">${fmtUsd(max)} a month</text></svg>
+      <text x="4" y="11" class="ax">${fmt.usd(max)} a month</text></svg>
     <figcaption class="legend"><span class="lg"><i></i>Fees</span><span class="lg"><i style="opacity:.4"></i>Revenue</span></figcaption></figure>`;
 }
 
@@ -56,7 +51,7 @@ export function unlockChart(detail, maxSupply, { w = 640, h = 220 } = {}) {
   const now = Date.now() / 1000;
   const marker = now > x0 && now < x1
     ? `<line x1="${X(now)}" x2="${X(now)}" y1="${padT - 6}" y2="${h - padB}" class="now"/><text x="${X(now) + 4}" y="${padT}" class="ax">today</text>` : "";
-  const maxLine = maxSupply ? `<line x1="${padL}" x2="${w - padL}" y1="${Y(maxSupply)}" y2="${Y(maxSupply)}" class="maxline"/><text x="${w - padL}" y="${Y(maxSupply) - 4}" class="ax" text-anchor="end">max supply ${fmtNum(maxSupply)}</text>` : "";
+  const maxLine = maxSupply ? `<line x1="${padL}" x2="${w - padL}" y1="${Y(maxSupply)}" y2="${Y(maxSupply)}" class="maxline"/><text x="${w - padL}" y="${Y(maxSupply) - 4}" class="ax" text-anchor="end">max supply ${fmt.num(maxSupply)}</text>` : "";
   const legend = cats.map((c, i) => `<span class="lg"><i style="opacity:${opacity(i)}"></i>${esc(c)}</span>`).join("");
   return `<figure class="chart"><svg viewBox="0 0 ${w} ${h}" class="svg" role="img" aria-label="Unlock schedule by category">${paths}${maxLine}${marker}
       <text x="${padL}" y="${h - 6}" class="ax">${fmtDate(x0)}</text><text x="${w - padL}" y="${h - 6}" class="ax" text-anchor="end">${fmtDate(x1)}</text></svg>

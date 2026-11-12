@@ -5,6 +5,9 @@
 
 import assert from "node:assert/strict";
 import { feesChart } from "../site/charts.js";
+import { readdirSync, readFileSync } from "node:fs";
+import { esc, fmt } from "../site/format.js";
+import { fmt as ratingFmt } from "../site/rating.js";
 
 const results = [];
 const check = (name, fn) => { try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", `${name} — ${e.message}`]); } };
@@ -57,6 +60,23 @@ check("positive months are drawn exactly as before", () => {
   assert.equal(top.y, 18);
   assert.equal(all.find((r) => r.title === "2026-10 revenue $3.0M").height, 75);
   assert.equal(all.find((r) => r.title === "2026-08 revenue $0").height, 0);
+});
+
+// #75: one HTML escape and one money formatter for the whole page.
+check("the HTML escape and the money formatter are each defined once, in format.js", () => {
+  const dir = new URL("../site/", import.meta.url);
+  const copies = readdirSync(dir).filter((f) => f.endsWith(".js") && f !== "format.js").filter((f) => {
+    const text = readFileSync(new URL(f, dir), "utf8");
+    return /const esc\s*=|function esc\(|"&amp;"/.test(text) || /const fmtUsd|const fmtNum|\/ 1e9\)\.toFixed/.test(text);
+  });
+  assert.deepEqual(copies, []);
+  assert.equal(ratingFmt, fmt, "rating.js hands on the same formatter object");
+  assert.equal(esc(`<a href="x">Tom & 'Jerry'</a>`), "&lt;a href=&quot;x&quot;&gt;Tom &amp; &#39;Jerry&#39;&lt;/a&gt;");
+  assert.equal(esc(null), "");
+});
+check("money totals: abbreviated, a negative carries its sign in front, unknown is a dash", () => {
+  assert.deepEqual([2.5e12, 1.234e9, 5.67e6, 4321, 12.5, -1.7e6, -300_000, null, NaN].map(fmt.usd),
+    ["$2.50T", "$1.23B", "$5.7M", "$4.3K", "$12.50", "-$1.7M", "-$300.0K", "—", "—"]);
 });
 
 for (const [s, n] of results) console.log(`${s}  ${n}`);

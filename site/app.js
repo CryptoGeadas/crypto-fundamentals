@@ -11,11 +11,11 @@ import { createCache, TTL } from "./cache.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 import { trendingDays, watchChange } from "./attention.js";
 import { supplyGrowth } from "./supply.js";
+import { esc } from "./format.js";
 
 const $ = (s) => document.querySelector(s);
 // Personal version only: the local server injects window.TF_PERSONAL. On the public site it is absent.
 const PERSONAL = window.TF_PERSONAL || null;
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 const state = {
   id: new URLSearchParams(location.search).get("t"),

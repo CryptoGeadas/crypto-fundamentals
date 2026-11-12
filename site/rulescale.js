@@ -1,8 +1,8 @@
 // The house rule drawn as a five-step scale instead of a sentence of inequalities. Shared by the
 // token page tooltips and the methodology page, so both show a rule the same way.
 import { LEVELS, favourOf, tone } from "./rating.js";
+import { esc } from "./format.js";
 
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const DIR = { up: "Higher is better", down: "Lower is better", none: "Context only: neither good nor bad" };
 
 // Fixed thresholds: cuts are the four band edges as displayed (e.g. "0.10×"); level (1-5) marks the token.

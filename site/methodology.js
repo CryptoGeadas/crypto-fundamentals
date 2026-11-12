@@ -5,9 +5,9 @@ import { HOUSE_RULES } from "./house-rules.js";
 import { TYPES } from "./classify.js";
 import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY, PRINCIPLES, principlesFor } from "./explain.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
+import { esc } from "./format.js";
 
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const areaName = (id) => AREAS.find((a) => a.id === id)?.name || id;
 const typeOrder = ["chain", "pegged", "defi", "meme", "narrative"];
 
