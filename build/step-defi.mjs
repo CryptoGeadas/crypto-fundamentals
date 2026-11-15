@@ -64,7 +64,7 @@ export async function defiStep({ report, net, data }) {
   const treasury = Object.fromEntries(Object.entries(stored).map(([id, v]) => [id, v.treasury ?? null]));
   let fetched = 0;
   for (const id of due) {
-    const res = await net.get(`${API}/treasury/${encodeURIComponent(candidates[id])}`, "defillama", { tries: 2 }).catch(() => null);
+    const res = await net.get(`${API}/treasury/${encodeURIComponent(candidates[id])}`, "defillama", { tries: 1 }).catch(() => null);   // no retry: a miss keeps the previous value and comes round again (#79)
     if (res?.ok) {
       try { treasury[id] = treasurySummary(await res.json(), symOf[id]); fetched++; }
       catch (e) { report.warn("defillama", `Treasury for ${id} unreadable (${e.message}); kept previous.`); }

@@ -73,7 +73,7 @@ export async function metaStep({ report, net, data }) {
   const raisesDue = dueFor("raises", RAISES_MAX_AGE_DAYS, withProtocol, stored, now, (process.env.RAISES_CAP ? Number(process.env.RAISES_CAP) : 40));
   let raisesDone = 0;
   for (const id of raisesDue) {
-    const res = await net.get(`${API}/protocol/${encodeURIComponent(idmap.map[id].p)}`, "defillama", { tries: 2 }).catch(() => null);
+    const res = await net.get(`${API}/protocol/${encodeURIComponent(idmap.map[id].p)}`, "defillama", { tries: 1 }).catch(() => null);   // no retry: a miss keeps the previous value and comes round again (#79)
     if (res?.ok) {
       try { const d = await res.json(); tokens[id] = { ...tokens[id], raises: summariseRaises(d.raises), raisesAt: new Date().toISOString() }; raisesDone++; }
       catch { report.warn("defillama", `Funding rounds for ${id} unreadable; kept previous.`); }

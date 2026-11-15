@@ -5,7 +5,8 @@
 // Run: node build/check-rating.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { analyse, rate, levelFromBands, favourOf, METRICS, fmt, verdictOf } from "../site/rating.js";
+import { analyse, rate, levelFromBands, favourOf, METRICS, verdictOf } from "../site/rating.js";
+import { fmt } from "../site/format.js";
 import { HOUSE_RULES } from "../site/house-rules.js";
 
 // Fixtures use real values from the 1 Oct 2026 prototype snapshot, rounded.

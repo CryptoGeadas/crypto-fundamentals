@@ -43,9 +43,9 @@ import { peerPercentile } from "./peers.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { maxGap } from "./fdv.js";
 import { fmt } from "./format.js";
+import { unlockedAt } from "./unlocked.js";
 
 // Formatters live in format.js (one copy for the page, the charts and the methodology page; #75).
-export { fmt };
 
 // ---------------------------------------------------------------- metric definitions
 // yard: "fixed" (house-rule bands) | "shown" (context, never rated).
@@ -109,18 +109,6 @@ const YEAR = 365 * 86400;
 const nowSec = () => Date.now() / 1000;
 const fmtDay = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
-export function unlockedAt(monthly, ts) {
-  if (!monthly?.length) return null;
-  const total = (r) => r.slice(1).reduce((a, b) => a + b, 0);
-  if (ts <= monthly[0][0]) return total(monthly[0]);
-  for (let i = 1; i < monthly.length; i++) {
-    if (ts <= monthly[i][0]) {
-      const a = monthly[i - 1], b = monthly[i];
-      return total(a) + (total(b) - total(a)) * ((ts - a[0]) / (b[0] - a[0] || 1));
-    }
-  }
-  return total(monthly[monthly.length - 1]);
-}
 
 // Supply due in the next 12 months: from the full schedule when we have it, otherwise null.
 export function unlocks12mAmount(u, now = nowSec()) {

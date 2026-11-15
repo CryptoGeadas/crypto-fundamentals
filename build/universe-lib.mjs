@@ -57,6 +57,7 @@ export function buildUniverse(markets, llama, platformsById = {}) {
     if (rank > TOP_N && !inLlama) continue;
     seen.add(m.id);
     const mcap = cleanMarketCap(m.market_cap, m.current_price, m.circulating_supply);   // same rule as the page (#30)
+    const rawFdv = fdvOf(m.current_price, m.max_supply, m.total_supply, m.circulating_supply ?? null), fdv = plausibleFdv(rawFdv, mcap);
     tokens.push({
       id: m.id,
       sym: String(m.symbol || "").toUpperCase(),
@@ -65,7 +66,7 @@ export function buildUniverse(markets, llama, platformsById = {}) {
       img: m.image || "",
       llama: inLlama ? 1 : 0,
       mcap,
-      fdv: plausibleFdv(fdvOf(m.current_price, m.max_supply, m.total_supply, m.circulating_supply ?? null), mcap),   // same definition as the page (#39, #30)
+      fdv, ...(rawFdv && !fdv ? { fdvOff: 1 } : {}),   // same definition as the page (#39, #30); fdvOff: over 50× market cap, shown as unknown (#79)
       addr: cleanPlatforms(platformsById[m.id]),
     });
   }

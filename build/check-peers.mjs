@@ -50,6 +50,15 @@ check("plain chains compare on chain fees; Chain + DeFi in its protocol category
   assert.ok(!byToken.nofdv);
   assert.deepEqual(Object.keys(groups).sort(), ["Chain", "Derivatives", "Lending"]);
 });
+check("#79: a token whose FDV is unknown under the 50× rule is left out, never ranked on its market cap", () => {
+  const idmap = { aave: { p: "aave", f: 1 }, odd: { p: "aave", f: 1 }, nosupply: { p: "aave", f: 1 } };
+  const fees = { aave: FEES.aave, odd: FEES.aave, nosupply: FEES.aave };
+  const universe = [{ id: "aave", fdv: 2.7e9 }, { id: "odd", fdv: null, mcap: 75e6, fdvOff: 1 }, { id: "nosupply", fdv: null, mcap: 2.7e9 }];
+  const { byToken, groups } = buildPeers(universe, idmap, fees, fees);
+  assert.ok(!byToken.odd, "FDV over 50× market cap: the page shows it as unknown");
+  assert.ok(byToken.nosupply, "no supply data at all still falls back to market cap, as before");
+  assert.ok(!Object.values(groups).flat().some((p) => p.id === "odd"));
+});
 const lending = { Lending: [3, 5, 8, 10, 12, 15, 20, 30, 45, 60].map((pf, i) => ({ id: "l" + i, pf })), Dexs: [{ id: "d", pf: 9 }] };
 check("percentile: cheapest 20% = very low, dearest 20% = very high, 'cheaper than' is the share above", () => {
   assert.equal(peerPercentile(2, "Lending", lending, "pf").level, 1);

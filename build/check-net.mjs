@@ -33,11 +33,33 @@ await check("a source that hangs times out, is retried, then fails with the host
   let calls = 0;
   const hang = (_u, i) => new Promise((_res, rej) => { calls++; i.signal.addEventListener("abort", () => rej(i.signal.reason)); });
   const { net, report } = netWith(hang);
-  const alive = setInterval(() => {}, 10); // a timeout signal's own timer does not keep Node running
-  try { await assert.rejects(net.get("https://slow.example/x", "defillama", { tries: 2, timeoutMs: 20 }), /slow\.example unreachable after 2 attempts/); }
-  finally { clearInterval(alive); }
+  // no keep-alive needed: the helper's own timer keeps Node running while it waits (#79)
+  await assert.rejects(net.get("https://slow.example/x", "defillama", { tries: 2, timeoutMs: 20 }), /slow\.example unreachable after 2 attempts/);
   assert.equal(calls, 2);
   assert.match(report.retries[0].message, /no answer in 0s/);
+});
+await check("the timeout is for the answer to start: a slow download after a fast first answer is not cut off (#79)", async () => {
+  let signal;
+  const slowBody = async (_u, i) => { signal = i.signal; return { ok: true, status: 200, json: () => new Promise((r) => setTimeout(() => r({ rows: 3 }), 60)) }; };
+  const { net } = netWith(slowBody);
+  assert.deepEqual(await net.getJson("https://api.llama.fi/big", "defillama", { timeoutMs: 20 }), { rows: 3 });
+  assert.equal(signal.aborted, false);
+});
+await check("the download has its own, longer limit; a retried answer is released first (#79)", async () => {
+  let signal, cancelled = 0;
+  const seq = [{ ok: false, status: 503, body: { cancel: async () => { cancelled++; } } }, answer(200)];
+  const { net } = netWith(async (_u, i) => { signal = i.signal; return seq.shift(); });
+  assert.equal((await net.get("https://api.llama.fi/x", "defillama", { timeoutMs: 20, bodyTimeoutMs: 30 })).status, 200);
+  assert.equal(cancelled, 1);
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(signal.aborted, true);
+});
+await check("a rate-limited treasury or funding-round call is asked once: no 60 s wait per protocol (#79)", async () => {
+  let calls = 0;
+  const { net, waits } = netWith(async () => { calls++; return answer(429); });
+  assert.equal((await net.get("https://api.llama.fi/treasury/x", "defillama", { tries: 1 })).status, 429);
+  assert.deepEqual([calls, waits.length], [1, 0]);
+  for (const f of ["step-defi.mjs", "step-meta.mjs"]) assert.match(readFileSync(new URL(f, import.meta.url), "utf8"), /"defillama", \{ tries: 1 \}\)\.catch/, f);
 });
 await check("get: 'no data' (404) comes back at once as a Response, so a step can tell it from a failure", async () => {
   let calls = 0;

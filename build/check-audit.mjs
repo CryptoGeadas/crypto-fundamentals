@@ -3,7 +3,7 @@
 // Run: node build/check-audit.mjs   (exit code 1 on any failure)
 
 import assert from "node:assert/strict";
-import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, decideDrift, driftBody, keyOf, carryOver, TOL, INFO_ONLY } from "./audit-lib.mjs";
+import { coingeckoDrift, supplyDrift, feeDrift, tvlDrift, rotate, decideDrift, driftBody, keyOf, carryOver, TOL, INFO_ONLY, actionable } from "./audit-lib.mjs";
 import { fdvOf, cleanSupply, cleanMarketCap, plausibleFdv } from "../site/fdv.js";
 import { normalise } from "../site/coingecko.js";
 import { buildUniverse } from "./universe-lib.mjs";
@@ -17,16 +17,13 @@ check("CoinGecko: consistent rows pass; market cap, FDV and supply contradiction
   const ok = { id: "aave", current_price: 180, market_cap: 2.778e9, circulating_supply: 15.435e6, fully_diluted_valuation: 2.88e9, max_supply: 16e6, total_supply: 16e6 };
   assert.deepEqual(coingeckoDrift(ok), []);
   assert.deepEqual(coingeckoDrift({ ...ok, market_cap: 2.65e9 }).map((x) => x.check), ["mcap"]);       // 4.8%: a lead
-  assert.deepEqual(coingeckoDrift({ ...ok, market_cap: 2.0e9 }).map((x) => x.check), ["mcapUnknown"]); // 39%: shown as unknown (#30)
+  assert.deepEqual(coingeckoDrift({ ...ok, market_cap: 2.0e9 }).map((x) => x.check), ["mcap"]);        // 39%: still a lead, the figure is kept (#79)
+  assert.deepEqual(coingeckoDrift({ ...ok, market_cap: 1.5e9 }).map((x) => x.check), ["mcapUnknown"]); // 85%: shown as unknown (#30)
   assert.deepEqual(coingeckoDrift({ ...ok, fully_diluted_valuation: 4e9 }).map((x) => x.check), ["fdv"]);
   // Stargate-like: FDV = price × total supply while max supply is 8× higher → a definition lead, not a contradiction.
   const stg = { id: "stargate-finance", current_price: 0.174, market_cap: 21e6, circulating_supply: 120.7e6, total_supply: 120.8e6, max_supply: 1e9, fully_diluted_valuation: 21.02e6 };
   assert.deepEqual(coingeckoDrift(stg).map((x) => x.check), ["fdvTotal"]);
   assert.deepEqual(coingeckoDrift({ ...ok, circulating_supply: 17e6, market_cap: 180 * 17e6 }).map((x) => x.check), ["supply"]);
-  // #36: the page's own FDV must stay plausible: a 0.5% float (200×) is still flagged for a hand check;
-  // a total over 1,000× circulating is cleaned to unknown first (#30), so it never reaches the page.
-  assert.ok(coingeckoDrift({ ...ok, total_supply: 3e9, max_supply: null, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).includes("pageFdv"));
-  assert.ok(!coingeckoDrift({ ...ok, total_supply: 1e15, max_supply: null, fully_diluted_valuation: 2.88e9 }).map((x) => x.check).includes("pageFdv"));
   // Uncapped: FDV is checked against total supply.
   assert.deepEqual(coingeckoDrift({ ...ok, max_supply: null, total_supply: 16e6 }), []);
   assert.deepEqual(coingeckoDrift({ id: "x", current_price: 0 }), []);
@@ -36,6 +33,8 @@ check("#30: a CoinGecko market cap contradicting price × circulating is unknown
   const q = { id: "quantixai", symbol: "qai", name: "QuantixAI", current_price: 999.15, circulating_supply: 1e6, market_cap: 411.6e6, total_supply: 4e6, market_cap_rank: 200 };
   assert.equal(cleanMarketCap(411.6e6, 999.15, 1e6), null);
   assert.equal(cleanMarketCap(2.65e9, 180, 15.435e6), 2.65e9, "timing gaps keep the figure");
+  assert.equal(cleanMarketCap(1e9, 1.4, 1e9), 1e9, "40% apart (circulating updated first after a large unlock): kept (#79)");
+  assert.equal(cleanMarketCap(1e9, 1.6, 1e9), null, "60% apart: a contradiction");
   assert.equal(cleanMarketCap(5e6, null, null), 5e6, "nothing to check against: kept");
   const page = normalise({ id: "quantixai", market_data: { current_price: { usd: 999.15 }, market_cap: { usd: 411.6e6 }, circulating_supply: 1e6, total_supply: 4e6 } });
   assert.equal(page.marketCap, null);
@@ -54,7 +53,7 @@ check("#30: a page FDV over 50× market cap is unknown on the page and the token
   assert.equal(page.fdv, null);
   assert.equal(page.marketCap, 75.7e6);
   assert.equal(buildUniverse([a], {})[0].fdv, null);
-  assert.ok(INFO_ONLY.has("pageFdv"), "nothing left to fix: kept out of the issue");
+  assert.ok(!INFO_ONLY.has("pageFdv"), "the page shows it as unknown, so the audit has no page-FDV check (#79)");
 });
 check("supply, fees and TVL comparisons use their own tolerances", () => {
   assert.equal(supplyDrift("spark-2", 4.03e9, 3.42e9).length, 0);           // 18% apart: within 25%
@@ -100,13 +99,13 @@ check("contradicting CoinGecko supply figures are cleaned before FDV (#30, live 
   assert.equal(cleanSupply(120.7e6, 120.8e6, 1e9).total, 120.8e6);
   assert.equal(cleanSupply(null, 5e9, null).total, 5e9, "no circulating figure: nothing to check against");
 });
-check("Ferrum and Snowbank no longer give an implausible page FDV; ADI's real low float still asks for a hand check", () => {
+check("Ferrum, Snowbank and ADI: the page's FDV is cleaned or unknown, and the audit raises nothing actionable for it", () => {
   const ferrum = { id: "ferrum-network", current_price: 0.070821, market_cap: 20326366, circulating_supply: 287009850, total_supply: 164126873063397, max_supply: 615617784, fully_diluted_valuation: 11623653077661 };
   const snow = { id: "snowbank", current_price: 227.16, market_cap: 36264350, circulating_supply: 159640.027, total_supply: 159640027327531, max_supply: null, fully_diluted_valuation: 36264349888621880 };
   const adi = { id: "adi-token", current_price: 8.05, market_cap: 75907234, circulating_supply: 9434511, total_supply: 999999999, max_supply: 999999999, fully_diluted_valuation: 8045698578 };
-  assert.ok(!coingeckoDrift(ferrum).some((x) => x.check === "pageFdv"));
-  assert.ok(!coingeckoDrift(snow).some((x) => x.check === "pageFdv"));
-  assert.match(coingeckoDrift(adi).find((x) => x.check === "pageFdv").detail, /\(total supply 1000\.00M\)/);
+  for (const m of [ferrum, snow, adi]) assert.deepEqual(actionable(coingeckoDrift(m)), [], m.id);
+  for (const m of [ferrum, snow, adi]) assert.ok(!coingeckoDrift(m).some((x) => x.check === "pageFdv"), "the audit has no page-FDV check (#79)");
+  assert.equal(plausibleFdv(fdvOf(adi.current_price, adi.max_supply, adi.total_supply, adi.circulating_supply), adi.market_cap), null);
 });
 check("max below circulating is shown on the page as out of date, so it is info only", () => {
   const gala = { id: "gala", current_price: 0.00174824, market_cap: 88986417, circulating_supply: 50.902e9, total_supply: 50.902e9, max_supply: 50e9, fully_diluted_valuation: 88986522 };
@@ -118,7 +117,7 @@ check("carried items leave when their token was re-checked today or is no longer
     { check: "fees30", id: "chutes", detail: "d" },      // no longer a fee token: never picked again (#30)
     { check: "fees30", id: "solana", detail: "d" },      // re-checked today
     { check: "tvl", id: "instadapp", detail: "d" },      // not its turn: carried
-    { check: "pageFdv", id: "x", detail: "d" },          // not sampled: comes back fresh from today's run
+    { check: "mcap", id: "x", detail: "d" },             // not sampled: comes back fresh from today's run
   ];
   const kept = carryOver(prev, { fees30: new Set(["solana"]), tvl: new Set() }, { fees30: new Set(["solana"]), tvl: new Set(["instadapp"]) });
   assert.deepEqual(kept.map(keyOf), ["tvl:instadapp"]);

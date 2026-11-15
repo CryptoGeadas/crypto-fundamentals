@@ -7,7 +7,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { assembleToken, setLlama, setPeg, setSecurity } from "../site/assemble.js";
 import { normalise } from "../site/coingecko.js";
-import { analyse, unlockedAt } from "../site/rating.js";
+import { analyse } from "../site/rating.js";
+import { unlockedAt } from "../site/unlocked.js";
 import { HOUSE_RULES } from "../site/house-rules.js";
 import { LEADS } from "../site/leads.js";
 import * as unlocksLib from "./unlocks-lib.mjs";
@@ -121,7 +122,9 @@ check("the page builds its token only through the assembly, on first load and on
 });
 check("one unlock date helper is shared by the page and the build", () => {
   assert.equal(unlocksLib.unlockedAt, unlockedAt);
-  assert.doesNotMatch(readFileSync(new URL("./unlocks-lib.mjs", import.meta.url), "utf8"), /export function unlockedAt/);
+  const lib = readFileSync(new URL("./unlocks-lib.mjs", import.meta.url), "utf8");
+  assert.ok(!lib.includes("export function unlockedAt"));
+  assert.ok(!lib.includes("rating.js"), "the build's unlock step does not load the rating module (#79)");
 });
 
 for (const [s, n] of results) console.log(`${s}  ${n}`);

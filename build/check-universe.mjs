@@ -75,6 +75,16 @@ check("addresses: kind detection, EVM case-insensitive, Solana exact", () => {
   assert.equal(lookupAddress(idx, "jupyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"), null);
 });
 
+check("#79: the token list marks an FDV that is unknown under the 50× rule, so peers can leave it out", () => {
+  const adi = { id: "adi-token", symbol: "adi", name: "ADI", market_cap_rank: 250, current_price: 8.05, market_cap: 75907234, circulating_supply: 9434511, total_supply: 999999999, max_supply: 999999999 };
+  const plain = { id: "aave", symbol: "aave", name: "Aave", market_cap_rank: 40, current_price: 180, market_cap: 2.778e9, circulating_supply: 15.435e6, total_supply: 16e6, max_supply: 16e6 };
+  const nosupply = { id: "x", symbol: "x", name: "X", market_cap_rank: 60, current_price: 1, market_cap: 1e9 };
+  const [a, b, c] = ["adi-token", "aave", "x"].map((id) => buildUniverse([adi, plain, nosupply], {}).find((t) => t.id === id));
+  assert.deepEqual([a.fdv, a.fdvOff], [null, 1]);
+  assert.equal(b.fdvOff, undefined);
+  assert.deepEqual([c.fdv, c.fdvOff], [null, undefined], "no supply data is unknown, but not marked: nothing was refused");
+});
+
 for (const [s, n] of results) console.log(`${s}  ${n}`);
 const failed = results.filter(([s]) => s === "FAIL").length;
 console.log(`\n${results.length - failed}/${results.length} checks passed`);

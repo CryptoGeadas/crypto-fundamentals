@@ -1,4 +1,4 @@
-import { analyse, fmt, tone } from "./rating.js";
+import { analyse, tone } from "./rating.js";
 import { classify, TYPES } from "./classify.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { fetchToken } from "./coingecko.js";
@@ -11,7 +11,7 @@ import { createCache, TTL } from "./cache.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 import { LEADS, peerLabel, row } from "./leads.js";
 import { assembleToken, setLlama, setPeg, setSecurity } from "./assemble.js";
-import { esc } from "./format.js";
+import { esc, fmt } from "./format.js";
 
 const $ = (s) => document.querySelector(s);
 // Personal version only: the local server injects window.TF_PERSONAL. On the public site it is absent.

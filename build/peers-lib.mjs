@@ -40,6 +40,9 @@ export function buildPeers(universeTokens, idmap, fees, revenue) {
   for (const t of universeTokens) {
     const e = idmap[t.id] || {};
     const f = fees[t.id], r = revenue[t.id];
+    // FDV the page shows as unknown (over 50× market cap) is not replaced by the market cap: the
+    // token is left out, never ranked on a figure the page does not trust (#79)
+    if (t.fdvOff) continue;
     const fdv = t.fdv || t.mcap;
     if (!fdv) continue;
     let group, f30, r30;

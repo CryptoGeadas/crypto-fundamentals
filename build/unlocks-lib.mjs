@@ -58,8 +58,8 @@ export function summariseDataset(e, now = Date.now() / 1000) {
 }
 
 // Cumulative unlocked supply at a time: one helper for the page and the build (#78).
-export { unlockedAt } from "../site/rating.js";
-import { unlockedAt } from "../site/rating.js";
+export { unlockedAt } from "../site/unlocked.js";
+import { unlockedAt } from "../site/unlocked.js";
 
 // Tokens whose detail should be fetched this run: missing, older than a week, or whose stored
 // next unlock has passed (schedule moved on). Oldest first, capped.

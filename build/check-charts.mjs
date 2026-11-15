@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { feesChart } from "../site/charts.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { esc, fmt } from "../site/format.js";
-import { fmt as ratingFmt } from "../site/rating.js";
+import * as rating from "../site/rating.js";
 
 const results = [];
 const check = (name, fn) => { try { fn(); results.push(["PASS", name]); } catch (e) { results.push(["FAIL", `${name} — ${e.message}`]); } };
@@ -70,7 +70,7 @@ check("the HTML escape and the money formatter are each defined once, in format.
     return /const esc\s*=|function esc\(|"&amp;"/.test(text) || /const fmtUsd|const fmtNum|\/ 1e9\)\.toFixed/.test(text);
   });
   assert.deepEqual(copies, []);
-  assert.equal(ratingFmt, fmt, "rating.js hands on the same formatter object");
+  assert.equal(rating.fmt, undefined, "one import path: format.js (#79)");
   assert.equal(esc(`<a href="x">Tom & 'Jerry'</a>`), "&lt;a href=&quot;x&quot;&gt;Tom &amp; &#39;Jerry&#39;&lt;/a&gt;");
   assert.equal(esc(null), "");
 });
