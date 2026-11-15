@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-14T14:11:54.599Z",
-  "startedAt": "2026-11-14T13:36:36.508Z",
+  "generated": "2026-11-15T14:31:10.531Z",
+  "startedAt": "2026-11-15T13:59:04.646Z",
   "healthy": true,
   "sources": {
     "defillama": "ok",
@@ -13,42 +13,42 @@
     "idmap": {
       "status": "updated",
       "count": 3041,
-      "lastSuccess": "2026-11-14T13:37:25.354Z"
+      "lastSuccess": "2026-11-15T14:00:53.518Z"
     },
     "universe": {
       "status": "updated",
       "count": 655,
-      "lastSuccess": "2026-11-14T13:37:25.354Z"
+      "lastSuccess": "2026-11-15T14:00:53.518Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 222,
-      "lastSuccess": "2026-11-14T13:37:41.954Z"
+      "count": 221,
+      "lastSuccess": "2026-11-15T14:00:56.837Z"
     },
     "defi": {
       "status": "updated",
-      "count": 421,
-      "lastSuccess": "2026-11-14T13:39:31.266Z"
+      "count": 419,
+      "lastSuccess": "2026-11-15T14:01:16.001Z"
     },
     "peers": {
       "status": "updated",
       "count": 290,
-      "lastSuccess": "2026-11-14T13:39:31.853Z"
+      "lastSuccess": "2026-11-15T14:01:16.534Z"
     },
     "meta": {
       "status": "updated",
-      "count": 560,
-      "lastSuccess": "2026-11-14T13:41:55.951Z"
+      "count": 561,
+      "lastSuccess": "2026-11-15T14:03:00.902Z"
     },
     "attention": {
       "status": "updated",
-      "count": 739,
-      "lastSuccess": "2026-11-14T14:07:57.916Z"
+      "count": 740,
+      "lastSuccess": "2026-11-15T14:28:01.767Z"
     },
     "supply": {
       "status": "updated",
-      "count": 678,
-      "lastSuccess": "2026-11-14T13:37:25.354Z"
+      "count": 682,
+      "lastSuccess": "2026-11-15T14:00:53.518Z"
     }
   },
   "problems": [],
@@ -107,10 +107,6 @@
     },
     {
       "source": "coingecko",
-      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
-    },
-    {
-      "source": "audit",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
     },
     {
