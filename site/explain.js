@@ -3,6 +3,8 @@
 // cannot drift from what the dashboard actually does. build/check-docs.mjs fails if a metric or a
 // referenced glossary term is missing here.
 
+import { METRICS } from "./rating.js";
+
 export const AREA_INTROS = {
   peg: "For pegged assets only (stablecoins, tokenized gold or funds, wrapped and liquid-staking tokens): whether the price holds its target, and whether money is coming in or leaving. Their price follows something else, so valuation, dilution and growth do not apply.",
   attention: "Whether people are paying attention to the token, measured with free CoinGecko data: how often it appears in CoinGecko's trending searches and whether its watchlist is growing. A stand-in for social chatter, not Twitter data, which is not available for free.",
@@ -18,190 +20,8 @@ export const AREA_INTROS = {
   backers: "Who funded the project and how long the token has existed. Shown for context, never rated.",
 };
 
-export const METRIC_EXPLAIN = {
-  supplyGrowth: {
-    what: "How fast the number of tokens in circulation grew over the last 30 days, turned into a yearly rate. It comes from CoinGecko's circulating supply, recorded every day, or from DefiLlama's own 30-day figure until that record covers a month.",
-    why: "New tokens spread the same value over more units, whatever the reason: issuance to validators (Solana), unlocks to investors and teams, or farming emissions. Tokens being burned make it negative, which is good for holders. It is the one dilution number that works for every token, with or without a maximum supply. CoinGecko sometimes corrects a token's circulating supply in one step, which shows here as a jump.",
-    terms: ["circulating-supply", "unlock"],
-  },
-  pegDistance: {
-    what: "How far the price is from the value the token is meant to hold, in percent: the price against $1 for a dollar stablecoin.",
-    why: "A pegged token is only worth its target if it holds it. A gap of more than a fraction of a percent means the market doubts the backing or the redemption. Shown as unknown when the free data does not say what the target is.",
-  },
-  pegSupply: {
-    what: "How many tokens are in circulation, across all chains where DefiLlama tracks the stablecoin, otherwise CoinGecko's circulating supply.",
-    why: "For a pegged token, supply is the money people have put in. It shows the token's size and is the base for the 30-day change.",
-  },
-  pegSupplyChange: {
-    what: "The change in supply over the last 30 days, from DefiLlama's stablecoin list.",
-    why: "New tokens are minted when people deposit money, and burned when they redeem. A rising supply means money coming in; a falling one means people taking money out. Shown, not rated: neither is good or bad by itself.",
-  },
-  circulatingShare: {
-    what: "The share of the token's total supply (everything that exists now, locked or not) that is already in circulation.",
-    why: "The rest is locked and will be released over time, diluting holders. A maximum supply above the total is noted but not used: the difference may be supply still to be minted or supply already burned. A token with a small share circulating has most of its dilution still ahead. Tokens without a maximum supply are not rated here, because their circulating share of today's supply is always close to 100% and says nothing about future issuance.",
-    terms: ["circulating-supply", "max-supply", "dilution"],
-  },
-  fdvToMcap: {
-    what: "The fully diluted valuation divided by the market cap.",
-    why: "It shows how much bigger the token's value would be if every token that will ever exist were already circulating at today's price. A ratio well above 1 means a lot of supply is still locked.",
-    terms: ["fdv", "market-cap"],
-  },
-  nextUnlockShare: {
-    what: "The size of the next scheduled unlock, as a share of the tokens circulating today.",
-    why: "A large unlock can bring selling pressure from investors or team members receiving tokens. When nothing is scheduled the metric is shown but not rated: no scheduled unlock is not good news on its own if a lot of supply remains locked.",
-    terms: ["unlock", "cliff-unlock", "circulating-supply"],
-  },
-  nextUnlockVsVolume: {
-    what: "The dollar value of the next unlock divided by one day of trading volume.",
-    why: "It compares the new supply with how much the market can absorb. An unlock worth several days of trading is harder to absorb than one worth a fraction of a day.",
-    terms: ["unlock", "volume"],
-  },
-  unlocks12m: {
-    what: "The tokens due to unlock over the next twelve months on the published schedule, as a share of today's circulating supply.",
-    why: "It captures the dilution of the coming year, from both cliff and linear unlocks.",
-    terms: ["unlock", "cliff-unlock", "linear-unlock"],
-  },
-  lockedBeyond12m: {
-    what: "The share of the maximum supply that is neither circulating today nor scheduled to unlock in the next twelve months.",
-    why: "This supply either unlocks later or has no published schedule at all. A large share is an open-ended dilution risk that a twelve-month view alone would miss.",
-    terms: ["max-supply", "unlock"],
-  },
-  fees30: {
-    what: "Everything users paid to use the protocol or chain over the last 30 days.",
-    why: "Fees are the clearest sign of real usage. Shown, not rated, because size alone depends on the kind of project.",
-    terms: ["fees"],
-  },
-  revenue30: {
-    what: "The part of those fees the protocol or chain keeps, after paying liquidity providers or validators.",
-    why: "Revenue is what could, in principle, fund the project or reach token holders. Shown, not rated.",
-    terms: ["revenue", "fees"],
-  },
-  feesTrend: {
-    what: "Fees over the last 30 days compared with the 30 days that ended 90 days earlier.",
-    why: "Growth or decline matters more than a single snapshot: a growing project and a shrinking one can show the same fees today.",
-    terms: ["fees"],
-  },
-  revenueTrend: {
-    what: "Revenue over the last 30 days compared with the 30 days that ended 90 days earlier.",
-    why: "The same as the fees trend, for the money the project keeps.",
-    terms: ["revenue"],
-  },
-  tvlTrend: {
-    what: "The change in total value locked over the last 30 days.",
-    why: "Money flowing in or out is a direct signal of trust and usage. Thirty days rather than ninety, because a longer history would cost several megabytes per protocol to fetch.",
-    terms: ["tvl"],
-  },
-  dex30: {
-    what: "Trading volume on the decentralised exchanges of a chain over the last 30 days.",
-    why: "It shows how much economic activity happens on the chain. Shown, not rated.",
-    terms: ["dex", "volume"],
-  },
-  stablesTrend: {
-    what: "The change in the value of stablecoins held on the chain over the last 90 days.",
-    why: "Stablecoins are the cash of a chain. Growing balances suggest people are bringing money to use there.",
-    terms: ["stablecoin"],
-  },
-  holdersShare: {
-    what: "The share of the protocol's revenue (what it keeps after paying depositors, liquidity providers or validators) that reached token holders over the last 30 days, through buybacks, burns or staking payouts.",
-    why: "It answers whether owning the token gives any claim on the business. It is measured against revenue, not fees, because fees include money that was never the protocol's to share: on fees a protocol that passes most of them through looks stingy even when it gives holders most of what it keeps. DefiLlama can miss value returned outside the protocol, such as buybacks run by a foundation, so a zero here deserves a check of the project's own documents.",
-    terms: ["holders-revenue", "buyback", "burn", "revenue"],
-  },
-  holdersShareFees: {
-    what: "The same payouts to token holders, as a share of all fees users paid, including what passed straight through to depositors or liquidity providers.",
-    why: "Context for the rated share of revenue: it shows how much of the total money flowing through the protocol ends up with holders. Shown, never rated.",
-    terms: ["holders-revenue", "fees"],
-  },
-  treasuryYears: {
-    what: "Treasury assets other than the project's own token, divided by a year of revenue.",
-    why: "It shows how long the project could keep paying its way from reserves that do not depend on its own token price. Shown only for DeFi protocols (and chains whose protocol side earns fees), where revenue actually funds the treasury. For chains and exchange tokens it is left out: a chain's \"revenue\" is burned fees or validator income that never reaches its foundation, and an exchange token's treasury is paid from the exchange.",
-    terms: ["treasury", "revenue"],
-  },
-  treasuryOwnShare: {
-    what: "The share of the treasury held in the project's own token.",
-    why: "A treasury made mostly of its own token loses value exactly when the project needs it most, and selling it to fund work pushes the price down.",
-    terms: ["treasury"],
-  },
-  feeMultiple: {
-    what: "The fully diluted valuation divided by a year of fees (the last 30 days times twelve).",
-    why: "Like a price-to-sales ratio. Rated for chains only, against other chains: blockspace is a chain's product. For DeFi protocols it is shown but not rated, because fees include what passes straight through to depositors or liquidity providers, so a protocol that keeps little of them would look cheap.",
-    terms: ["fdv", "fees", "percentile", "peer-group"],
-  },
-  revenueMultiple: {
-    what: "The fully diluted valuation divided by a year of revenue.",
-    why: "Like a price-to-earnings ratio, measured on the money the project keeps. Rated for DeFi protocols (and chains whose protocol side earns fees), against projects in the same DefiLlama category, because a normal multiple for an exchange is not a normal multiple for a lending market. Shown but not rated for chains, where \"revenue\" means something different on each chain. No revenue gives no multiple, never a cheap one.",
-    terms: ["fdv", "revenue", "percentile", "peer-group"],
-  },
-  mcapToTvl: {
-    what: "The market cap divided by the total value locked in the protocol.",
-    why: "How much the market pays for each dollar people trust the protocol with. Low values can mean undervaluation or that the locked money is not very sticky.",
-    terms: ["market-cap", "tvl"],
-  },
-  top10Share: {
-    what: "The share of the total supply held by the ten largest wallets, read from the token's home chain.",
-    why: "Concentrated ownership means a few parties can move the price. The ten largest wallets often include exchanges, bridges, staking contracts and treasuries, which hold tokens for many people, so read it together with the holder list.",
-    terms: ["holder-concentration", "home-chain"],
-  },
-  volumeToMcap: {
-    what: "One day of trading volume as a share of the market cap.",
-    why: "It shows how easily the token can be bought or sold without moving the price. Very high values can also reflect speculation.",
-    terms: ["volume", "market-cap"],
-  },
-  athDistance: {
-    what: "How far the current price is below the token's all-time high.",
-    why: "Context only, shown but not rated: a large drawdown can mean opportunity or lasting decline.",
-    terms: ["all-time-high"],
-  },
-  contractFlags: {
-    what: "The number of risky features GoPlus finds in the token contract.",
-    why: "Owner powers to mint, change balances, pause transfers or blacklist wallets, trading taxes and honeypot behaviour all put holders at the mercy of whoever controls the contract. An upgradeable contract is flagged too: it is common and often legitimate, but it means the rules can change.",
-    terms: ["honeypot", "mint-authority", "proxy-contract"],
-  },
-  exploitLoss: {
-    what: "Money lost in past exploits recorded by DefiLlama, minus any funds returned.",
-    why: "A history of losses says something about how carefully the project is built and run. It is rated only when an exploit is on record; when DefiLlama's list has nothing, the page says unknown rather than none.",
-    terms: ["exploit"],
-  },
-  audits: {
-    what: "The number of audit reports DefiLlama links for the project.",
-    why: "Shown, never rated: DefiLlama's audit data is patchy and often recorded only on sub-protocols, so a low count does not prove a lack of audits.",
-    terms: ["audit"],
-  },
-  contributors90: {
-    what: "The number of distinct people who committed code in the last 90 days, across the project's main public repositories.",
-    why: "It shows whether a team is still building. Bot accounts are excluded, and the main repositories are the most starred among those active in the last six months. Projects that build in private repositories will look quieter than they are.",
-    terms: ["repository", "commit"],
-  },
-  commitTrend: {
-    what: "Human commits in the last 90 days compared with the 90 days before.",
-    why: "Rising or falling development activity, with the same caveats as the contributor count.",
-    terms: ["commit"],
-  },
-  trendingDays: {
-    what: "On how many of the last 30 days the coin was in CoinGecko's trending searches, checked once a day.",
-    why: "A sudden run of trending days usually means a wave of retail interest, often around news or hype. It is a proxy for social chatter, not Twitter data.",
-    terms: ["trending-searches"],
-  },
-  watchlist: {
-    what: "How many CoinGecko users follow the coin in a watchlist or portfolio, live.",
-    why: "A rough measure of how many people care about it. Large, old coins always lead on this, so it is context rather than a signal.",
-    terms: ["watchlist"],
-  },
-  watchTrend: {
-    what: "The change in watchlist users against a snapshot from about 30 days ago (recorded weekly by the daily job).",
-    why: "Growing interest shows up here before it shows up in fundamentals; a shrinking watchlist means people are moving on.",
-    terms: ["watchlist"],
-  },
-  raised: {
-    what: "The total raised in funding rounds recorded by DefiLlama, with the lead investors.",
-    why: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule. DefiLlama's list is incomplete, so an empty record is shown as unknown, with links to check elsewhere.",
-    terms: ["funding-round"],
-  },
-  age: {
-    what: "How long the token has traded, from its first recorded price.",
-    why: "Shown, never rated. It is the age of the current token, not the project: a migrated token (LEND to AAVE) restarts the clock.",
-    terms: [],
-  },
-};
+// Each metric's explanation lives on its record in rating.js (explain: { what, why, terms }, #77).
+export const METRIC_EXPLAIN = Object.fromEntries(METRICS.map((m) => [m.id, m.explain]));
 
 export const GLOSSARY = {
   "all-time-high": { name: "All-time high", text: "The highest price a token has ever traded at." },
@@ -253,14 +73,7 @@ export const PRINCIPLES = [
   { n: 9, name: "No trends on tiny bases.", text: "A change from 10 to 31 commits is +210% and means little. A trend is rated only when the smaller of its two periods reaches a minimum size." },
 ];
 
-// Which principles a metric shows most directly. Principle 8 (every rated metric) and 9 (every trend
+// Which principles a metric shows most directly: its record's principles (#77). Principle 8 (every rated metric) and 9 (every trend
 // with a minimum base) are added from the metric itself in principlesFor.
-export const METRIC_PRINCIPLES = {
-  circulatingShare: [1, 3], fdvToMcap: [3], lockedBeyond12m: [3],
-  feeMultiple: [1, 2], revenueMultiple: [1, 2], mcapToTvl: [1, 2],
-  fees30: [2, 5], revenue30: [2, 5], feesTrend: [2, 5], revenueTrend: [2, 5], tvlTrend: [1, 2, 5],
-  treasuryYears: [1], treasuryOwnShare: [6],
-  exploitLoss: [4], audits: [4], raised: [4], contractFlags: [4],
-  watchlist: [7], athDistance: [7],
-};
+export const METRIC_PRINCIPLES = Object.fromEntries(METRICS.filter((m) => m.principles.length).map((m) => [m.id, m.principles]));
 export const principlesFor = (m) => [...new Set([...(METRIC_PRINCIPLES[m.id] || []), ...(m.yard !== "shown" ? [8] : []), ...(m.base ? [9] : [])])].sort((a, b) => a - b);

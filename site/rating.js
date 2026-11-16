@@ -53,6 +53,8 @@ import { unlockedAt } from "./unlocked.js";
 export const METRICS = [
   {
     id: "circulatingShare",
+    explain: { what: "The share of the token's total supply (everything that exists now, locked or not) that is already in circulation.", why: "The rest is locked and will be released over time, diluting holders. A maximum supply above the total is noted but not used: the difference may be supply still to be minted or supply already burned. A token with a small share circulating has most of its dilution still ahead. Tokens without a maximum supply are not rated here, because their circulating share of today's supply is always close to 100% and says nothing about future issuance.", terms: ["circulating-supply","max-supply","dilution"] },
+    principles: [1,3],
     area: "dilution",
     label: "Circulating share of total supply",
     yard: "fixed",
@@ -70,6 +72,8 @@ export const METRICS = [
   },
   {
     id: "fdvToMcap",
+    explain: { what: "The fully diluted valuation divided by the market cap.", why: "It shows how much bigger the token's value would be if every token that will ever exist were already circulating at today's price. A ratio well above 1 means a lot of supply is still locked.", terms: ["fdv","market-cap"] },
+    principles: [3],
     area: "dilution",
     label: "FDV ÷ market cap",
     yard: "fixed",
@@ -88,6 +92,8 @@ export const METRICS = [
   },
   {
     id: "supplyGrowth",
+    explain: { what: "How fast the number of tokens in circulation grew over the last 30 days, turned into a yearly rate. It comes from CoinGecko's circulating supply, recorded every day, or from DefiLlama's own 30-day figure until that record covers a month.", why: "New tokens spread the same value over more units, whatever the reason: issuance to validators (Solana), unlocks to investors and teams, or farming emissions. Tokens being burned make it negative, which is good for holders. It is the one dilution number that works for every token, with or without a maximum supply. CoinGecko sometimes corrects a token's circulating supply in one step, which shows here as a jump.", terms: ["circulating-supply","unlock"] },
+    principles: [],
     precision: 1,
     area: "dilution",
     label: "Circulating supply growth per year",
@@ -150,7 +156,7 @@ const UNCAPPED_RULE = "Not rated: this token has no maximum supply, so new coins
 
 const UNLOCK_METRICS = [
   {
-    id: "nextUnlockShare", area: "dilution", label: "Next unlock, % of circulating", yard: "fixed", src: "DefiLlama unlock page",
+    id: "nextUnlockShare", explain: { what: "The size of the next scheduled unlock, as a share of the tokens circulating today.", why: "A large unlock can bring selling pressure from investors or team members receiving tokens. When nothing is scheduled the metric is shown but not rated: no scheduled unlock is not good news on its own if a lot of supply remains locked.", terms: ["unlock","cliff-unlock","circulating-supply"] }, principles: [], area: "dilution", label: "Next unlock, % of circulating", yard: "fixed", src: "DefiLlama unlock page",
     unrated: noneScheduled,
     val: (t) => { const n = nextEvent(t.unlocks); const c = t.unlocks?.circ; return n && c ? (n.amount / c) * 100 : null; },
     show: (v) => fmt.pct(v, 2),
@@ -162,7 +168,7 @@ const UNLOCK_METRICS = [
     },
   },
   {
-    id: "nextUnlockVsVolume", area: "dilution", label: "Next unlock vs daily volume", yard: "fixed", src: "DefiLlama unlock page, CoinGecko",
+    id: "nextUnlockVsVolume", explain: { what: "The dollar value of the next unlock divided by one day of trading volume.", why: "It compares the new supply with how much the market can absorb. An unlock worth several days of trading is harder to absorb than one worth a fraction of a day.", terms: ["unlock","volume"] }, principles: [], area: "dilution", label: "Next unlock vs daily volume", yard: "fixed", src: "DefiLlama unlock page, CoinGecko",
     unrated: noneScheduled,
     val: (t) => { const n = nextEvent(t.unlocks); return n && t.volume24h && t.price ? (n.amount * t.price) / t.volume24h : null; },
     show: (v) => fmt.x(v),
@@ -173,7 +179,7 @@ const UNLOCK_METRICS = [
     },
   },
   {
-    id: "unlocks12m", area: "dilution", label: "Unlocks due in the next 12 months", yard: "fixed", src: "DefiLlama unlock page",
+    id: "unlocks12m", explain: { what: "The tokens due to unlock over the next twelve months on the published schedule, as a share of today's circulating supply.", why: "It captures the dilution of the coming year, from both cliff and linear unlocks.", terms: ["unlock","cliff-unlock","linear-unlock"] }, principles: [], area: "dilution", label: "Unlocks due in the next 12 months", yard: "fixed", src: "DefiLlama unlock page",
     unrated: (t) => {
       if (noSchedule(t)) return noSchedule(t);
       const a = unlocks12mAmount(t.unlocks), c = t.unlocks?.circ;
@@ -192,7 +198,7 @@ const UNLOCK_METRICS = [
     },
   },
   {
-    id: "lockedBeyond12m", area: "dilution", label: "Locked supply not unlocking within 12 months", yard: "fixed", src: "DefiLlama unlock page",
+    id: "lockedBeyond12m", explain: { what: "The share of the maximum supply that is neither circulating today nor scheduled to unlock in the next twelve months.", why: "This supply either unlocks later or has no published schedule at all. A large share is an open-ended dilution risk that a twelve-month view alone would miss.", terms: ["max-supply","unlock"] }, principles: [3], area: "dilution", label: "Locked supply not unlocking within 12 months", yard: "fixed", src: "DefiLlama unlock page",
     unrated: (t) => noSchedule(t) || (uncapped(t) ? { display: "Uncapped supply", rule: UNCAPPED_RULE } : null),
     val: (t) => {
       const u = t.unlocks, a = unlocks12mAmount(u), max = u?.max || u?.detail?.maxSupply;
@@ -227,52 +233,52 @@ function thinChainTvl(t, display) {
 export const pctChange = (now, before) => (now != null && before ? (now / before - 1) * 100 : null);
 
 const BUSINESS_METRICS = [
-  { id: "fees30", area: "traction", label: "Fees, last 30 days", yard: "shown", src: "DefiLlama fees",
+  { id: "fees30", explain: { what: "Everything users paid to use the protocol or chain over the last 30 days.", why: "Fees are the clearest sign of real usage. Shown, not rated, because size alone depends on the kind of project.", terms: ["fees"] }, principles: [2,5], stale: ["fees"], area: "traction", label: "Fees, last 30 days", yard: "shown", src: "DefiLlama fees",
     val: (t) => t.llama?.fees?.d30 ?? null, show: (v) => fmt.usd(v),
     extra: (t) => [t.llama?.feesFrom === "protocol"
       ? `From the protocol, the business behind the token${t.llama.chainFees?.d30 != null ? `; the chain itself earned ${fmt.usd(t.llama.chainFees.d30)} in gas fees` : ""}` : "",
       throughNote(t.llama?.fees)].filter(Boolean).join("; ") },
-  { id: "revenue30", area: "traction", label: "Revenue, last 30 days", yard: "shown", src: "DefiLlama revenue",
+  { id: "revenue30", explain: { what: "The part of those fees the protocol or chain keeps, after paying liquidity providers or validators.", why: "Revenue is what could, in principle, fund the project or reach token holders. Shown, not rated.", terms: ["revenue","fees"] }, principles: [2,5], stale: ["revenue"], area: "traction", label: "Revenue, last 30 days", yard: "shown", src: "DefiLlama revenue",
     val: (t) => t.llama?.revenue?.d30 ?? null, show: (v) => fmt.usd(v), extra: (t) => throughNote(t.llama?.revenue),
     hint: "The part of fees the protocol or chain keeps, rather than paying out to liquidity providers or validators" },
-  { id: "feesTrend", precision: 1, area: "traction", label: "Fees trend", yard: "fixed", src: "DefiLlama fees",
+  { id: "feesTrend", explain: { what: "Fees over the last 30 days compared with the 30 days that ended 90 days earlier.", why: "Growth or decline matters more than a single snapshot: a growing project and a shrinking one can show the same fees today.", terms: ["fees"] }, principles: [2,5], stale: ["fees"], precision: 1, area: "traction", label: "Fees trend", yard: "fixed", src: "DefiLlama fees",
     val: (t) => pctChange(t.llama?.fees?.d30, t.llama?.fees?.prev), show: (v) => fmt.chg(v),
     base: (t) => [t.llama?.fees?.d30, t.llama?.fees?.prev], baseShow: (x) => `${fmt.usd(x)} a month`,
     hint: "Last 30 days against the 30 days ending 90 days earlier" },
-  { id: "revenueTrend", precision: 1, area: "traction", label: "Revenue trend", yard: "fixed", src: "DefiLlama revenue",
+  { id: "revenueTrend", explain: { what: "Revenue over the last 30 days compared with the 30 days that ended 90 days earlier.", why: "The same as the fees trend, for the money the project keeps.", terms: ["revenue"] }, principles: [2,5], stale: ["revenue"], precision: 1, area: "traction", label: "Revenue trend", yard: "fixed", src: "DefiLlama revenue",
     val: (t) => pctChange(t.llama?.revenue?.d30, t.llama?.revenue?.prev), show: (v) => fmt.chg(v),
     base: (t) => [t.llama?.revenue?.d30, t.llama?.revenue?.prev], baseShow: (x) => `${fmt.usd(x)} a month`,
     hint: "Last 30 days against the 30 days ending 90 days earlier" },
-  { id: "tvlTrend", precision: 1, area: "traction", label: "TVL trend (30 days)", yard: "fixed", src: "DefiLlama TVL",
+  { id: "tvlTrend", explain: { what: "The change in total value locked over the last 30 days.", why: "Money flowing in or out is a direct signal of trust and usage. Thirty days rather than ninety, because a longer history would cost several megabytes per protocol to fetch.", terms: ["tvl"] }, principles: [1,2,5], precision: 1, area: "traction", label: "TVL trend (30 days)", yard: "fixed", src: "DefiLlama TVL",
     unrated: (t) => thinChainTvl(t, (x) => { const v = pctChange(x.llama.tvl.now, x.llama.tvl.prev); return v == null ? "No data" : fmt.chg(v); }),
     val: (t) => pctChange(t.llama?.tvl?.now, t.llama?.tvl?.prev), show: (v) => fmt.chg(v),
     base: (t) => [t.llama?.tvl?.now, t.llama?.tvl?.prev], baseShow: (x) => fmt.usd(x),
     extra: (t) => (t.llama?.tvl?.now ? `${fmt.usd(t.llama.tvl.now)} locked today${tvlFrom(t)}${t.llama.tvl.estimated ? "; last month's figure is estimated (DefiLlama publishes no history for this group)" : ""}` : "") },
-  { id: "dex30", area: "traction", label: "DEX volume on the chain, 30 days", yard: "shown", types: ["chain"], src: "DefiLlama DEX volumes",
+  { id: "dex30", explain: { what: "Trading volume on the decentralised exchanges of a chain over the last 30 days.", why: "It shows how much economic activity happens on the chain. Shown, not rated.", terms: ["dex","volume"] }, principles: [], area: "traction", label: "DEX volume on the chain, 30 days", yard: "shown", types: ["chain"], src: "DefiLlama DEX volumes",
     val: (t) => t.llama?.chain?.dex30 ?? null, show: (v) => fmt.usd(v) },
-  { id: "stablesTrend", precision: 1, area: "traction", label: "Stablecoins on the chain, 90-day trend", yard: "fixed", types: ["chain"], src: "DefiLlama stablecoins",
+  { id: "stablesTrend", explain: { what: "The change in the value of stablecoins held on the chain over the last 90 days.", why: "Stablecoins are the cash of a chain. Growing balances suggest people are bringing money to use there.", terms: ["stablecoin"] }, principles: [], precision: 1, area: "traction", label: "Stablecoins on the chain, 90-day trend", yard: "fixed", types: ["chain"], src: "DefiLlama stablecoins",
     val: (t) => pctChange(t.llama?.chain?.stables, t.llama?.chain?.stables90), show: (v) => fmt.chg(v),
     base: (t) => [t.llama?.chain?.stables, t.llama?.chain?.stables90], baseShow: (x) => fmt.usd(x),
     extra: (t) => (t.llama?.chain?.stables ? `${fmt.usd(t.llama.chain.stables)} in stablecoins today` : "") },
   // D6 (#54): measured against revenue, what the protocol keeps; the fees-based share below is context.
-  { id: "holdersShare", precision: 1, area: "accrual", label: "Share of revenue reaching token holders", yard: "fixed", src: "DefiLlama holders revenue",
+  { id: "holdersShare", explain: { what: "The share of the protocol's revenue (what it keeps after paying depositors, liquidity providers or validators) that reached token holders over the last 30 days, through buybacks, burns or staking payouts.", why: "It answers whether owning the token gives any claim on the business. It is measured against revenue, not fees, because fees include money that was never the protocol's to share: on fees a protocol that passes most of them through looks stingy even when it gives holders most of what it keeps. DefiLlama can miss value returned outside the protocol, such as buybacks run by a foundation, so a zero here deserves a check of the project's own documents.", terms: ["holders-revenue","buyback","burn","revenue"] }, principles: [], stale: ["holders","revenue"], precision: 1, area: "accrual", label: "Share of revenue reaching token holders", yard: "fixed", src: "DefiLlama holders revenue",
     val: (t) => { const h = t.llama?.holders?.d30, r = t.llama?.revenue?.d30; return h != null && r > 0 ? (h / r) * 100 : null; },
     show: (v) => fmt.pct(v, 1),
     extra: (t) => (t.llama?.holders?.d30 != null ? `${fmt.usd(t.llama.holders.d30)} to holders in 30 days (buybacks, burns, staking payouts)${t.llama?.revenue?.d30 > 0 ? ` out of ${fmt.usd(t.llama.revenue.d30)} revenue` : ""}` : ""),
     note: "DefiLlama's holders revenue can miss value returned outside the protocol, such as buybacks run by a foundation. A zero here deserves a check of the project's own docs." },
-  { id: "holdersShareFees", precision: 1, area: "accrual", label: "Share of fees reaching token holders", yard: "shown", src: "DefiLlama holders revenue",
+  { id: "holdersShareFees", explain: { what: "The same payouts to token holders, as a share of all fees users paid, including what passed straight through to depositors or liquidity providers.", why: "Context for the rated share of revenue: it shows how much of the total money flowing through the protocol ends up with holders. Shown, never rated.", terms: ["holders-revenue","fees"] }, principles: [], stale: ["holders","accrualFees"], precision: 1, area: "accrual", label: "Share of fees reaching token holders", yard: "shown", src: "DefiLlama holders revenue",
     val: (t) => { const h = t.llama?.holders?.d30, f = t.llama?.accrualFees?.d30; return h != null && f > 0 ? (h / f) * 100 : null; },
     show: (v) => fmt.pct(v, 1),
     hint: "Includes the fees that pass straight through to depositors or liquidity providers, so it is lower than the share of revenue" },
   // D8 (#59): only where revenue funds the treasury (a protocol and its DAO). A chain's "revenue" is
   // burned fees or validator income, and an exchange token's treasury is paid from the exchange: the
   // ratio would mean nothing, so the row is not shown there at all.
-  { id: "treasuryYears", area: "treasury", label: "Treasury outside its own token, in years of revenue", yard: "fixed", src: "DefiLlama treasury",
+  { id: "treasuryYears", explain: { what: "Treasury assets other than the project's own token, divided by a year of revenue.", why: "It shows how long the project could keep paying its way from reserves that do not depend on its own token price. Shown only for DeFi protocols (and chains whose protocol side earns fees), where revenue actually funds the treasury. For chains and exchange tokens it is left out: a chain's \"revenue\" is burned fees or validator income that never reaches its foundation, and an exchange token's treasury is paid from the exchange.", terms: ["treasury","revenue"] }, principles: [1], stale: ["revenue"], area: "treasury", label: "Treasury outside its own token, in years of revenue", yard: "fixed", src: "DefiLlama treasury",
     appliesTo: (ctx) => revenueBasis(ctx) && !ctx.exchange,
     val: (t) => { const tr = t.llama?.treasury, r = t.llama?.revenue?.d30; return tr && r ? tr.other / (r * 12) : null; },
     show: (v) => (v >= 100 ? "100+ years" : v.toFixed(1) + " years"),
     extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.other)} in other assets; only wallets DefiLlama tracks` : "") },
-  { id: "treasuryOwnShare", area: "treasury", label: "Treasury held in its own token", yard: "fixed", src: "DefiLlama treasury",
+  { id: "treasuryOwnShare", explain: { what: "The share of the treasury held in the project's own token.", why: "A treasury made mostly of its own token loses value exactly when the project needs it most, and selling it to fund work pushes the price down.", terms: ["treasury"] }, principles: [6], area: "treasury", label: "Treasury held in its own token", yard: "fixed", src: "DefiLlama treasury",
     val: (t) => { const tr = t.llama?.treasury; return tr && tr.own + tr.other > 0 ? (tr.own / (tr.own + tr.other)) * 100 : null; },
     show: (v) => fmt.pct(v, 0),
     extra: (t) => (t.llama?.treasury ? `${fmt.usd(t.llama.treasury.own)} in ${t.sym} (including wrapped and staked forms); only wallets DefiLlama tracks` : ""),
@@ -291,15 +297,15 @@ const PASS_THROUGH = "Shown, not rated: fees include what passes straight throug
 const CHAIN_REVENUE = "Shown, not rated: a chain's \"revenue\" means something different on each chain (burned on Ethereum, a treasury elsewhere), so chains are rated on fees.";
 
 const VALUATION_METRICS = [
-  { id: "feeMultiple", area: "valuation", label: "FDV ÷ yearly fees", yard: "peer", peerKey: "pf", src: "CoinGecko FDV, DefiLlama fees",
+  { id: "feeMultiple", explain: { what: "The fully diluted valuation divided by a year of fees (the last 30 days times twelve).", why: "Like a price-to-sales ratio. Rated for chains only, against other chains: blockspace is a chain's product. For DeFi protocols it is shown but not rated, because fees include what passes straight through to depositors or liquidity providers, so a protocol that keeps little of them would look cheap.", terms: ["fdv","fees","percentile","peer-group"] }, principles: [1,2], stale: ["fees"], area: "valuation", label: "FDV ÷ yearly fees", yard: "peer", peerKey: "pf", src: "CoinGecko FDV, DefiLlama fees",
     ratedFor: (ctx) => !revenueBasis(ctx), shownWhy: PASS_THROUGH,
     val: (t) => (t.fdv && t.llama?.fees?.d30 ? t.fdv / (t.llama.fees.d30 * 12) : null), show: (v) => fmt.x(v),
     extra: (t) => (t.llama?.fees?.d30 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.fees.d30 * 12)} of yearly fees` : "") },
-  { id: "revenueMultiple", area: "valuation", label: "FDV ÷ yearly revenue", yard: "peer", peerKey: "pr", src: "CoinGecko FDV, DefiLlama revenue",
+  { id: "revenueMultiple", explain: { what: "The fully diluted valuation divided by a year of revenue.", why: "Like a price-to-earnings ratio, measured on the money the project keeps. Rated for DeFi protocols (and chains whose protocol side earns fees), against projects in the same DefiLlama category, because a normal multiple for an exchange is not a normal multiple for a lending market. Shown but not rated for chains, where \"revenue\" means something different on each chain. No revenue gives no multiple, never a cheap one.", terms: ["fdv","revenue","percentile","peer-group"] }, principles: [1,2], stale: ["revenue"], area: "valuation", label: "FDV ÷ yearly revenue", yard: "peer", peerKey: "pr", src: "CoinGecko FDV, DefiLlama revenue",
     ratedFor: revenueBasis, shownWhy: CHAIN_REVENUE,
     val: (t) => (t.fdv && t.llama?.revenue?.d30 > 0 ? t.fdv / (t.llama.revenue.d30 * 12) : null), show: (v) => fmt.x(v),
     extra: (t) => (t.llama?.revenue?.d30 > 0 ? `${fmt.usd(t.fdv)} valuation on ${fmt.usd(t.llama.revenue.d30 * 12)} of yearly revenue` : "") },
-  { id: "mcapToTvl", area: "valuation", label: "Market cap ÷ TVL", yard: "fixed", src: "CoinGecko, DefiLlama TVL",
+  { id: "mcapToTvl", explain: { what: "The market cap divided by the total value locked in the protocol.", why: "How much the market pays for each dollar people trust the protocol with. Low values can mean undervaluation or that the locked money is not very sticky.", terms: ["market-cap","tvl"] }, principles: [1,2], area: "valuation", label: "Market cap ÷ TVL", yard: "fixed", src: "CoinGecko, DefiLlama TVL",
     unrated: (t) => thinChainTvl(t, () => `Over ${Math.round(100 / HOUSE_RULES.chainTvlMinSharePct)}×`),
     val: (t) => (t.marketCap && t.llama?.tvl?.now ? t.marketCap / t.llama.tvl.now : null), show: (v) => fmt.x(v),
     extra: (t) => (thinChainTvl(t, () => "") ? `Public DeFi deposits ${fmt.usd(t.llama.tvl.now)} vs market cap ${fmt.usd(t.marketCap)}` : tvlFrom(t).replace(/^; /, "")),
@@ -326,28 +332,28 @@ const nameOf = (t) => t.name || t.symbol || t.id || "";
 const webSearch = (label, q) => ({ label, url: `https://www.google.com/search?q=${encodeURIComponent(q)}` });
 
 const HOLDER_MARKET_SECURITY = [
-  { id: "top10Share", precision: 1, area: "holders", label: "Held by the 10 largest wallets", yard: "fixed", src: "GoPlus",
+  { id: "top10Share", explain: { what: "The share of the total supply held by the ten largest wallets, read from the token's home chain.", why: "Concentrated ownership means a few parties can move the price. The ten largest wallets often include exchanges, bridges, staking contracts and treasuries, which hold tokens for many people, so read it together with the holder list.", terms: ["holder-concentration","home-chain"] }, principles: [], precision: 1, area: "holders", label: "Held by the 10 largest wallets", yard: "fixed", src: "GoPlus",
     unrated: notChecked, val: (t) => top10(t), show: (v) => fmt.pct(v, 1),
     extra: (t) => (t.security?.holders?.length ? `${t.security.chain === "solana" ? "Wallet types not identified on Solana" : `${t.security.holders.filter((h) => h.contract).length} of the 10 are contracts (exchanges, bridges, staking or treasuries)`}${t.security.holderCount ? `; ${fmt.num(t.security.holderCount)} holders in total` : ""}${t.security.home ? "" : " · checked on a bridged copy"}` : ""),
     note: "Large wallets include exchanges, bridges, staking contracts and treasuries, which are not single owners." },
-  { id: "volumeToMcap", precision: 1, area: "market", label: "Daily volume ÷ market cap", yard: "fixed", src: "CoinGecko",
+  { id: "volumeToMcap", explain: { what: "One day of trading volume as a share of the market cap.", why: "It shows how easily the token can be bought or sold without moving the price. Very high values can also reflect speculation.", terms: ["volume","market-cap"] }, principles: [], precision: 1, area: "market", label: "Daily volume ÷ market cap", yard: "fixed", src: "CoinGecko",
     val: (t) => (t.volume24h && t.marketCap ? (t.volume24h / t.marketCap) * 100 : null), show: (v) => fmt.pct(v, 1),
     extra: (t) => (t.volume24h ? `${fmt.usd(t.volume24h)} traded in 24 hours` : "") },
-  { id: "athDistance", precision: 0, area: "market", label: "Distance from all-time high", yard: "shown", src: "CoinGecko",
+  { id: "athDistance", explain: { what: "How far the current price is below the token's all-time high.", why: "Context only, shown but not rated: a large drawdown can mean opportunity or lasting decline.", terms: ["all-time-high"] }, principles: [7], precision: 0, area: "market", label: "Distance from all-time high", yard: "shown", src: "CoinGecko",
     val: (t) => t.athChange ?? null, show: (v) => fmt.pct(v, 0),
     // #68, principle 7: context is shown, not rated
     note: "Context only, not rated: a big drawdown can mean opportunity or decline." },
-  { id: "contractFlags", area: "security", label: "Contract risk flags", yard: "fixed", src: "GoPlus",
+  { id: "contractFlags", explain: { what: "The number of risky features GoPlus finds in the token contract.", why: "Owner powers to mint, change balances, pause transfers or blacklist wallets, trading taxes and honeypot behaviour all put holders at the mercy of whoever controls the contract. An upgradeable contract is flagged too: it is common and often legitimate, but it means the rules can change.", terms: ["honeypot","mint-authority","proxy-contract"] }, principles: [4], area: "security", label: "Contract risk flags", yard: "fixed", src: "GoPlus",
     unrated: notChecked, val: (t) => (t.security ? t.security.flags.length : null), show: (v) => (v === 0 ? "None" : `${v} flag${v > 1 ? "s" : ""}`),
     extra: (t) => (t.security?.flags?.length ? t.security.flags.join(" · ") : t.security ? "No owner powers, taxes or honeypot behaviour found" : "") },
-  { id: "exploitLoss", area: "security", label: "Past exploits, net loss", yard: "fixed", types: ["defi", "chain"], src: "DefiLlama hacks",
+  { id: "exploitLoss", explain: { what: "Money lost in past exploits recorded by DefiLlama, minus any funds returned.", why: "A history of losses says something about how carefully the project is built and run. It is rated only when an exploit is on record; when DefiLlama's list has nothing, the page says unknown rather than none.", terms: ["exploit"] }, principles: [4], area: "security", label: "Past exploits, net loss", yard: "fixed", types: ["defi", "chain"], src: "DefiLlama hacks",
     unrated: (t) => (t.defiExtra && !(t.defiExtra.hacks || []).length ? notOnRecord("exploits") : null),
     val: (t) => (t.defiExtra?.hacks?.length ? t.defiExtra.hacks.reduce((a, h) => a + Math.max(0, h.amount - h.returned), 0) / 1e6 : null),
     show: (v) => (v === 0 ? "$0 net" : fmt.usd(v * 1e6)),
     extra: (t) => { const h = t.defiExtra?.hacks || []; return h.length ? h.slice(0, 3).map((x) => `${x.name}, ${fmtDate(x.date)}${x.cls ? ` (${x.cls})` : ""}${x.returned ? `, ${fmt.usd(x.returned)} returned` : ""}`).join(" · ") : ""; },
     check: (t) => [webSearch("Web search", `${nameOf(t)} crypto exploit hack`), webSearch("Rekt News", `site:rekt.news ${nameOf(t)}`)],
     note: "Rated only when an exploit is on record. An empty record is shown as unknown, not as \"none\": DefiLlama's list misses incidents." },
-  { id: "audits", area: "security", label: "Audit reports linked", yard: "shown", types: ["defi", "chain"], src: "DefiLlama",
+  { id: "audits", explain: { what: "The number of audit reports DefiLlama links for the project.", why: "Shown, never rated: DefiLlama's audit data is patchy and often recorded only on sub-protocols, so a low count does not prove a lack of audits.", terms: ["audit"] }, principles: [4], area: "security", label: "Audit reports linked", yard: "shown", types: ["defi", "chain"], src: "DefiLlama",
     unrated: (t) => (t.defiExtra && !t.defiExtra.audits?.count ? notOnRecord("audit reports") : null),
     val: (t) => t.defiExtra?.audits?.count ?? null, show: (v) => String(v),
     check: (t) => [webSearch("Web search", `${nameOf(t)} smart contract audit report`)],
@@ -364,15 +370,15 @@ const noRepo = (t) => (!t.meta?.orgs?.length
   : !t.meta.devAt ? { missing: true, display: "Not measured yet", rule: "The daily job measures development activity on a weekly rotation; this project is still queued." } : null);
 
 const DEV_BACKERS = [
-  { id: "contributors90", area: "dev", label: "Human contributors, last 90 days", yard: "fixed", src: "GitHub",
+  { id: "contributors90", explain: { what: "The number of distinct people who committed code in the last 90 days, across the project's main public repositories.", why: "It shows whether a team is still building. Bot accounts are excluded, and the main repositories are the most starred among those active in the last six months. Projects that build in private repositories will look quieter than they are.", terms: ["repository","commit"] }, principles: [], area: "dev", label: "Human contributors, last 90 days", yard: "fixed", src: "GitHub",
     unrated: noRepo, val: (t) => t.meta?.dev?.contributors90 ?? null, show: (v) => String(v),
     check: (t) => [{ label: "GitHub search", url: `https://github.com/search?q=${encodeURIComponent(nameOf(t))}&type=users` }],
     extra: (t) => (t.meta?.dev ? `${t.meta.dev.repos.join(", ")}${t.meta.dev.bots90 ? ` · ${t.meta.dev.bots90} bot commits excluded` : ""}` : "") },
-  { id: "commitTrend", precision: 1, area: "dev", label: "Commit trend (90 days vs the 90 before)", yard: "fixed", src: "GitHub",
+  { id: "commitTrend", explain: { what: "Human commits in the last 90 days compared with the 90 days before.", why: "Rising or falling development activity, with the same caveats as the contributor count.", terms: ["commit"] }, principles: [], precision: 1, area: "dev", label: "Commit trend (90 days vs the 90 before)", yard: "fixed", src: "GitHub",
     unrated: noRepo, val: (t) => pctChange(t.meta?.dev?.commits90, t.meta?.dev?.commitsPrev90), show: (v) => fmt.chg(v),
     base: (t) => [t.meta?.dev?.commits90, t.meta?.dev?.commitsPrev90], baseShow: (x) => `${x} commits`,
     extra: (t) => (t.meta?.dev ? `${t.meta.dev.commits90} human commits, against ${t.meta.dev.commitsPrev90} before` : "") },
-  { id: "raised", area: "backers", label: "Total raised", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama raises",
+  { id: "raised", explain: { what: "The total raised in funding rounds recorded by DefiLlama, with the lead investors.", why: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule. DefiLlama's list is incomplete, so an empty record is shown as unknown, with links to check elsewhere.", terms: ["funding-round"] }, principles: [4], area: "backers", label: "Total raised", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama raises",
     unrated: (t) => (t.meta?.raisesAt && !(t.meta.raises || []).length ? notOnRecord("funding rounds") : null),
     val: (t) => (t.meta?.raises?.length ? t.meta.raises.reduce((a, r) => a + r.amount, 0) : null),
     show: (v) => (v ? fmt.usd(v * 1e6) : "Amount undisclosed"),
@@ -380,7 +386,7 @@ const DEV_BACKERS = [
       return `${r.length} recorded round${r.length > 1 ? "s" : ""}${leads.length ? ` · Lead investors: ${leads.join(", ")}` : ""}`; },
     check: (t) => [webSearch("Web search", `${nameOf(t)} crypto funding round raised`), webSearch("CryptoRank", `site:cryptorank.io ${nameOf(t)} funding rounds`)],
     note: "Shown, never rated: judging whether an investor is good would be opinion dressed up as a rule." },
-  { id: "age", area: "backers", label: "Token age (first traded price)", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama coins",
+  { id: "age", explain: { what: "How long the token has traded, from its first recorded price.", why: "Shown, never rated. It is the age of the current token, not the project: a migrated token (LEND to AAVE) restarts the clock.", terms: [] }, principles: [], area: "backers", label: "Token age (first traded price)", yard: "shown", types: ["defi", "chain", "narrative"], src: "DefiLlama coins",
     val: (t) => (t.firstPriceTs ? (Date.now() / 1000 - t.firstPriceTs) / (365 * 86400) : null),
     show: (v) => (v < 1 ? `${Math.max(1, Math.round(v * 12))} months` : `${v.toFixed(1)} years`),
     note: "The age of the current token, not the project: a migrated token (LEND → AAVE) restarts the clock." },
@@ -394,16 +400,16 @@ const noHistory = (what) => ({ missing: true, display: "Not enough history yet",
   rule: `The daily job started recording ${what} in October 2026; this appears once enough days are recorded.` });
 
 const ATTENTION = [
-  { id: "trendingDays", area: "attention", label: "Days in CoinGecko's trending searches (last 30)", yard: "shown", src: "CoinGecko trending",
+  { id: "trendingDays", explain: { what: "On how many of the last 30 days the coin was in CoinGecko's trending searches, checked once a day.", why: "A sudden run of trending days usually means a wave of retail interest, often around news or hype. It is a proxy for social chatter, not Twitter data.", terms: ["trending-searches"] }, principles: [], area: "attention", label: "Days in CoinGecko's trending searches (last 30)", yard: "shown", src: "CoinGecko trending",
     unrated: (t) => (!t.attention?.trending ? noHistory("trending searches") : null),
     val: (t) => t.attention?.trending?.days ?? null,
     show: (v) => (v === 1 ? "1 day" : `${v} days`),
     extra: (t) => { const x = t.attention?.trending; return x ? `out of ${x.of} recorded day${x.of > 1 ? "s" : ""}; the list is checked once a day` : ""; },
     note: "A spike in searches often comes with hype; it is shown, not rated." },
-  { id: "watchlist", area: "attention", label: "CoinGecko watchlist users", yard: "shown", src: "CoinGecko",
+  { id: "watchlist", explain: { what: "How many CoinGecko users follow the coin in a watchlist or portfolio, live.", why: "A rough measure of how many people care about it. Large, old coins always lead on this, so it is context rather than a signal.", terms: ["watchlist"] }, principles: [7], area: "attention", label: "CoinGecko watchlist users", yard: "shown", src: "CoinGecko",
     val: (t) => t.attention?.watch ?? null, show: (v) => fmt.num(v),
     note: "The level mostly reflects how big and old a coin is, so it is shown, not rated." },
-  { id: "watchTrend", precision: 1, area: "attention", label: "Watchlist users, change over ~30 days", yard: "fixed", src: "CoinGecko",
+  { id: "watchTrend", explain: { what: "The change in watchlist users against a snapshot from about 30 days ago (recorded weekly by the daily job).", why: "Growing interest shows up here before it shows up in fundamentals; a shrinking watchlist means people are moving on.", terms: ["watchlist"] }, principles: [], precision: 1, area: "attention", label: "Watchlist users, change over ~30 days", yard: "fixed", src: "CoinGecko",
     unrated: (t) => (t.attention?.watch && !t.attention?.change ? noHistory("watchlist counts") : null),
     val: (t) => t.attention?.change?.pct ?? null, show: (v) => fmt.chg(v),
     base: (t) => [t.attention?.watch, t.attention?.change?.from], baseShow: (x) => `${fmt.num(x)} users`,
@@ -416,16 +422,16 @@ METRICS.push(...ATTENTION);
 // month ago) and the peg target rule in classify.js. Shown, never rated: there is no house rule for
 // a peg, and a stablecoin's supply moving is not good or bad by itself.
 const PEG_METRICS = [
-  { id: "pegDistance", area: "peg", label: "Distance from the peg", yard: "shown", src: "CoinGecko price",
+  { id: "pegDistance", explain: { what: "How far the price is from the value the token is meant to hold, in percent: the price against $1 for a dollar stablecoin.", why: "A pegged token is only worth its target if it holds it. A gap of more than a fraction of a percent means the market doubts the backing or the redemption. Shown as unknown when the free data does not say what the target is." }, principles: [], area: "peg", label: "Distance from the peg", yard: "shown", src: "CoinGecko price",
     unrated: (t) => (t.peg?.target ? null : { display: "Unknown", missing: true,
       rule: `Not known: ${t.peg?.unit ? `it is pegged to ${t.peg.unit}, and no free source here gives that price` : "the free data does not say what this token is pegged to (gold, a fund or another coin)"}, so its distance from the peg can't be measured.` }),
     val: (t) => (t.peg?.target && t.price ? (t.price / t.peg.target - 1) * 100 : null),
     show: (v) => (v > 0 ? "+" : "") + v.toFixed(2) + "%",
     extra: (t) => (t.peg?.target && t.price ? `Price ${fmt.price(t.price)} against a target of ${fmt.price(t.peg.target)}` : "") },
-  { id: "pegSupply", area: "peg", label: "Supply in circulation", yard: "shown", src: "DefiLlama stablecoins, else CoinGecko",
+  { id: "pegSupply", explain: { what: "How many tokens are in circulation, across all chains where DefiLlama tracks the stablecoin, otherwise CoinGecko's circulating supply.", why: "For a pegged token, supply is the money people have put in. It shows the token's size and is the base for the 30-day change." }, principles: [], area: "peg", label: "Supply in circulation", yard: "shown", src: "DefiLlama stablecoins, else CoinGecko",
     val: (t) => t.peg?.supply ?? t.circulatingSupply ?? null, show: (v) => fmt.num(v),
     extra: (t) => (t.peg?.supply != null ? "All chains, from DefiLlama's stablecoin list" : t.circulatingSupply != null ? "From CoinGecko" : "") },
-  { id: "pegSupplyChange", precision: 1, area: "peg", label: "Supply change, last 30 days", yard: "shown", src: "DefiLlama stablecoins",
+  { id: "pegSupplyChange", explain: { what: "The change in supply over the last 30 days, from DefiLlama's stablecoin list.", why: "New tokens are minted when people deposit money, and burned when they redeem. A rising supply means money coming in; a falling one means people taking money out. Shown, not rated: neither is good or bad by itself." }, principles: [], precision: 1, area: "peg", label: "Supply change, last 30 days", yard: "shown", src: "DefiLlama stablecoins",
     val: (t) => pctChange(t.peg?.supply, t.peg?.supplyPrev), show: (v) => fmt.chg(v),
     hint: "Supply now against a month ago. Rising supply means money coming in; falling means redemptions" },
 ];
@@ -434,8 +440,7 @@ METRICS.push(...PEG_METRICS);
 // ---------------------------------------------------------------- stale DefiLlama series (issue #32)
 // A fee or revenue series that stopped updating more than 3 days ago is unknown, not current: every
 // metric built on it says since when, unrated and counted as missing.
-const STALE_SERIES = { fees30: ["fees"], revenue30: ["revenue"], feesTrend: ["fees"], revenueTrend: ["revenue"],
-  holdersShare: ["holders", "revenue"], holdersShareFees: ["holders", "accrualFees"], treasuryYears: ["revenue"], feeMultiple: ["fees"], revenueMultiple: ["revenue"] };
+// each metric's record names the series it rests on (stale: [...], #77)
 const SERIES_NAME = { fees: "fees", revenue: "revenue", holders: "holders revenue", accrualFees: "fees" };
 function staleSkip(t, keys) {
   const k = keys.find((key) => t.llama?.[key]?.stale);
@@ -445,7 +450,7 @@ function staleSkip(t, keys) {
     rule: `DefiLlama's ${SERIES_NAME[k]} figures for this project stopped updating on ${since}, so older figures aren't shown as current.` };
 }
 for (const m of METRICS) {
-  const keys = STALE_SERIES[m.id];
+  const keys = m.stale;
   if (!keys) continue;
   const own = m.unrated;
   m.unrated = (t) => staleSkip(t, keys) || (own ? own(t) : null);
