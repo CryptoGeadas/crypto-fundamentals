@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-17T16:37:01.810Z",
-  "startedAt": "2026-11-17T16:05:53.371Z",
+  "generated": "2026-11-18T16:16:02.389Z",
+  "startedAt": "2026-11-18T15:44:08.997Z",
   "healthy": false,
   "sources": {
     "defillama": "ok",
@@ -12,58 +12,57 @@
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3041,
-      "lastSuccess": "2026-11-17T16:06:42.463Z"
+      "count": 3042,
+      "lastSuccess": "2026-11-18T15:45:58.686Z"
     },
     "universe": {
       "status": "updated",
-      "count": 656,
-      "lastSuccess": "2026-11-17T16:06:42.463Z"
+      "count": 650,
+      "lastSuccess": "2026-11-18T15:45:58.686Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 220,
-      "lastSuccess": "2026-11-17T16:07:04.992Z"
+      "count": 221,
+      "lastSuccess": "2026-11-18T15:46:05.078Z"
     },
     "defi": {
       "status": "updated",
-      "count": 421,
-      "lastSuccess": "2026-11-17T16:07:20.031Z"
+      "count": 416,
+      "lastSuccess": "2026-11-18T15:46:52.324Z"
     },
     "peers": {
       "status": "updated",
-      "count": 291,
-      "lastSuccess": "2026-11-17T16:07:20.811Z"
+      "count": 290,
+      "lastSuccess": "2026-11-18T15:46:53.978Z"
     },
     "meta": {
       "status": "updated",
-      "count": 560,
-      "lastSuccess": "2026-11-17T16:10:10.262Z"
+      "count": 556,
+      "lastSuccess": "2026-11-18T15:49:14.632Z"
     },
     "attention": {
       "status": "updated",
-      "count": 745,
-      "lastSuccess": "2026-11-17T16:34:12.164Z"
+      "count": 747,
+      "lastSuccess": "2026-11-18T16:13:18.344Z"
     },
     "supply": {
       "status": "updated",
-      "count": 688,
-      "lastSuccess": "2026-11-17T16:06:42.463Z"
+      "count": 691,
+      "lastSuccess": "2026-11-18T15:45:58.686Z"
     }
   },
   "problems": [
     {
       "level": "warning",
       "source": "defillama-unlocks",
-      "message": "Schedule for movement not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/ooia); previous copy kept if any. Retried in a week."
-    },
-    {
-      "level": "warning",
-      "source": "defillama-unlocks",
-      "message": "Schedule for bsquared-network not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/buzz-farming); previous copy kept if any. Retried in a week."
+      "message": "Schedule for katana-network-token not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
     }
   ],
   "retries": [
+    {
+      "source": "coingecko",
+      "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
+    },
     {
       "source": "coingecko",
       "message": "HTTP 429 from api.coingecko.com (rate limited), retried after 60s"
