@@ -3,7 +3,7 @@
 import { METRICS, AREAS, AREAS_BY_TYPE, ruleText, tidy } from "./rating.js";
 import { HOUSE_RULES } from "./house-rules.js";
 import { TYPES } from "./classify.js";
-import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY, PRINCIPLES, principlesFor } from "./explain.js";
+import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY, PRINCIPLES, principlesFor, TYPES_NOTE } from "./explain.js";
 import { scaleHtml, peerScaleHtml } from "./rulescale.js";
 import { esc } from "./format.js";
 
@@ -34,7 +34,8 @@ function typesTable() {
   const body = typeOrder.map((t) => `<tr><th scope="row">${esc(TYPES[t].label)}</th><td>${esc(TYPES[t].rule.replace(/^Type rule: /, ""))}</td>
     ${AREAS.map((a) => `<td class="ar">${AREAS_BY_TYPE[t].includes(a.id) ? "●" : ""}</td>`).join("")}</tr>`).join("");
   return `<div class="tablewrap"><table class="score types"><thead>${head}</thead><tbody>${body}</tbody></table></div>
-    <p class="muted small">Checked in the order listed. ● = the area applies. Exchange tokens (CoinGecko's exchange-token categories, such as BNB, CRO and OKB) keep their type, but their valuation and value accrual are shown, not rated: part of their value comes from an exchange business that on-chain data doesn't cover.</p>`;
+    <p class="muted small">Checked in the order listed. ● = the area applies. Exchange tokens (CoinGecko's exchange-token categories, such as BNB, CRO and OKB) keep their type, but their valuation and value accrual are shown, not rated: part of their value comes from an exchange business that on-chain data doesn't cover.</p>
+    <p class="muted small">${esc(TYPES_NOTE)}</p>`;
 }
 
 function metricList() {

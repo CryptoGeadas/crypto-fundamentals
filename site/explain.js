@@ -61,6 +61,9 @@ export const GLOSSARY = {
 
 // The nine rating principles (#60): the rules every rating follows. Shown on the "How it works" page
 // and linked from each metric they apply to. build/check-docs.mjs checks the code against them.
+// #82: under the token-type table. The table shows areas; inside an area a metric can still be left out.
+export const TYPES_NOTE = "Inside an area, a metric can still be left out for one kind of token. A chain's native coin (ETH, SOL) has no token contract, so its holders and contract risk flags show \"Native asset\" and are not rated; a chain token with a contract (ARB) is checked. For chains, Treasury shows only the share held in its own token: treasury in years of revenue is left out, because a chain's revenue never reaches its foundation.";
+
 export const PRINCIPLES = [
   { n: 1, name: "Same meaning or no rating.", text: "A number is rated only where it means the same thing for every token it is rated on. Where it does not, it is shown without a rating, or rated only for the types of token where it holds." },
   { n: 2, name: "Measure where the business is.", text: "Fees, revenue and TVL are taken from the same place: the protocol when the token's value comes from a protocol, the chain when it comes from the chain." },

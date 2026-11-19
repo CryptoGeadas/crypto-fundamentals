@@ -4,7 +4,8 @@
 
 import assert from "node:assert/strict";
 import { METRICS, AREAS } from "../site/rating.js";
-import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY, PRINCIPLES, METRIC_PRINCIPLES, principlesFor } from "../site/explain.js";
+import { METRIC_EXPLAIN, AREA_INTROS, GLOSSARY, PRINCIPLES, METRIC_PRINCIPLES, principlesFor, TYPES_NOTE } from "../site/explain.js";
+import { AREAS_BY_TYPE } from "../site/rating.js";
 import { HOUSE_RULES } from "../site/house-rules.js";
 import { fdvOf } from "../site/fdv.js";
 
@@ -65,6 +66,19 @@ check("principle 9: every rated trend has a minimum base", () => {
   assert.ok(trends.length >= 6);
   assert.deepEqual(trends.filter((m) => !m.base || !(HOUSE_RULES.trendFloors[m.id] > 0)).map((m) => m.id), []);
   for (const m of trends) assert.ok(principlesFor(m).includes(9), m.id);
+});
+
+// #82: the type table marks Holders and Treasury for chains; the note under it says what is left out.
+check("type-table note names the native-coin and chain-treasury exceptions, and the code agrees", () => {
+  assert.ok(AREAS_BY_TYPE.chain.includes("holders") && AREAS_BY_TYPE.chain.includes("treasury"), "the table follows the code");
+  assert.match(TYPES_NOTE, /native coin/i);
+  assert.match(TYPES_NOTE, /Native asset/);
+  assert.match(TYPES_NOTE, /own token/i);
+  const years = METRICS.find((m) => m.id === "treasuryYears");
+  assert.match(METRIC_EXPLAIN.treasuryYears.why, /For chains and exchange tokens it is left out/, "the note matches the metric text");
+  assert.ok(years, "treasury in years exists");
+  const top10 = METRICS.find((m) => m.id === "top10Share");
+  assert.equal(top10.unrated({ contracts: {} })?.display, "Native asset", "a native coin's holders show Native asset");
 });
 
 for (const [s, n] of results) console.log(`${s}  ${n}`);
