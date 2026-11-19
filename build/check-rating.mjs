@@ -188,10 +188,12 @@ check("traction: trends are rated at display precision; fees and revenue are sho
   assert.equal(row(edge, "feesTrend").display, "+10.0%");
   assert.equal(row(edge, "feesTrend").word, "High");   // rated as the +10.0% it shows, not 9.96%
 });
-check("value accrual is rated on revenue (#54): Aave 0% very low; Hyperliquid 97.6% very high; the fees-based share is shown only", () => {
+check("value accrual is rated on revenue (#54): a recorded $0 is unknown, not rated (#81); Hyperliquid 97.6% very high; the fees-based share is shown only", () => {
   const a = row(withU(FIXTURES.arbitrum, null, { llama: LLAMA_AAVE }), "holdersShare");
-  assert.equal(a.word, "Very low");
-  assert.equal(a.favour, -2);
+  assert.equal(a.level, null, "DefiLlama's $0 misses buybacks run outside the protocol: never rated");
+  assert.equal(a.display, "$0 recorded");
+  assert.equal(a.notOnRecord, true, "shown as Unknown");
+  assert.match(a.rule, /buybacks/);
   assert.equal(a.label, "Share of revenue reaching token holders");
   const h = row(withU(FIXTURES.arbitrum, null, { llama: LLAMA_HYPE }), "holdersShare");
   assert.equal(h.display, "97.6%");
@@ -371,7 +373,9 @@ check("every rated metric has a house rule, and rules carry the bands", () => {
     const rule = HOUSE_RULES.metrics[m.id];
     assert.ok(rule, `missing rule for ${m.id}`);
     assert.equal(rule.bands.length, 4);
-    assert.ok(rate(m, full(), HOUSE_RULES).rule.includes("House rule"), m.id);
+    // holdersShare: the fixture's $0 is never rated (#81), so check its rule on a real payout
+    const t = m.id === "holdersShare" ? withU(FIXTURES.arbitrum, ARB_U, { llama: { ...LLAMA_AAVE, holders: { d30: 1e6, prev: 1e6 } } }) : full();
+    assert.ok(rate(m, t, HOUSE_RULES).rule.includes("House rule"), m.id);
   }
 });
 
