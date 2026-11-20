@@ -1,6 +1,6 @@
 {
-  "generated": "2026-11-19T16:23:51.425Z",
-  "startedAt": "2026-11-19T15:49:10.732Z",
+  "generated": "2026-11-20T16:07:26.310Z",
+  "startedAt": "2026-11-20T15:31:26.066Z",
   "healthy": false,
   "sources": {
     "defillama": "ok",
@@ -12,50 +12,50 @@
   "datasets": {
     "idmap": {
       "status": "updated",
-      "count": 3043,
-      "lastSuccess": "2026-11-19T15:50:59.658Z"
+      "count": 3044,
+      "lastSuccess": "2026-11-20T15:32:14.980Z"
     },
     "universe": {
       "status": "updated",
-      "count": 655,
-      "lastSuccess": "2026-11-19T15:50:59.658Z"
+      "count": 658,
+      "lastSuccess": "2026-11-20T15:32:14.980Z"
     },
     "unlocks": {
       "status": "updated",
-      "count": 222,
-      "lastSuccess": "2026-11-19T15:51:28.565Z"
+      "count": 221,
+      "lastSuccess": "2026-11-20T15:32:40.472Z"
     },
     "defi": {
       "status": "updated",
-      "count": 419,
-      "lastSuccess": "2026-11-19T15:52:26.944Z"
+      "count": 418,
+      "lastSuccess": "2026-11-20T15:34:31.380Z"
     },
     "peers": {
       "status": "updated",
-      "count": 291,
-      "lastSuccess": "2026-11-19T15:52:28.445Z"
+      "count": 289,
+      "lastSuccess": "2026-11-20T15:34:31.846Z"
     },
     "meta": {
       "status": "updated",
-      "count": 561,
-      "lastSuccess": "2026-11-19T15:55:41.968Z"
+      "count": 558,
+      "lastSuccess": "2026-11-20T15:38:15.564Z"
     },
     "attention": {
       "status": "updated",
-      "count": 748,
-      "lastSuccess": "2026-11-19T16:20:43.006Z"
+      "count": 753,
+      "lastSuccess": "2026-11-20T16:04:17.491Z"
     },
     "supply": {
       "status": "updated",
-      "count": 693,
-      "lastSuccess": "2026-11-19T15:50:59.658Z"
+      "count": 699,
+      "lastSuccess": "2026-11-20T15:32:14.980Z"
     }
   },
   "problems": [
     {
       "level": "warning",
       "source": "defillama-unlocks",
-      "message": "Schedule for pharos-network not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
+      "message": "Schedule for pearl-2 not refreshed (defillama-datasets.llama.fi answered HTTP 404 for /emissions/undefined); previous copy kept if any. Retried in a week."
     }
   ],
   "retries": [
